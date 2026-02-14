@@ -1,0 +1,339 @@
+:root {
+  --primary-color: #2e7d32;
+  --secondary-color: #f1f8e9;
+  --text-color: #333;
+  --bg-color: #fff;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+main {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.orchid-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.orchid-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.orchid-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.orchid-card h3 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.form-container {
+  background-color: var(--secondary-color);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: #1b5e20;
+}
+
+.delete-btn {
+  background-color: #c62828;
+  padding: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.delete-btn:hover {
+  background-color: #b71c1c;
+}
+
+/* View Toggle */
+.view-toggle {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.view-toggle button {
+    background-color: transparent;
+    border: 2px solid white;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.view-toggle button.active {
+    background-color: white;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Cabinet View */
+.cabinet-view {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.cabinet-section {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: white;
+}
+
+.cabinet-section h3 {
+    margin-top: 0;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 0.5rem;
+}
+
+.high-section {
+    border-top: 4px solid #ffca28; /* Yellow for sun/high light */
+}
+
+.medium-section {
+    border-top: 4px solid #66bb6a; /* Green for medium */
+}
+
+.low-section {
+    border-top: 4px solid #8d6e63; /* Brown for shade/low */
+}
+
+/* Table Styles */
+.orchid-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.orchid-table th, .orchid-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.orchid-table th {
+    background-color: var(--secondary-color);
+    font-weight: bold;
+}
+
+.status-warning {
+    color: #c62828;
+    font-weight: bold;
+}
+
+.status-ok {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.delete-btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    background-color: #e57373;
+    margin: 0;
+}
+
+.delete-btn-small:hover {
+    background-color: #d32f2f;
+}
+
+.empty-shelf {
+    font-style: italic;
+    color: #666;
+    text-align: center;
+    padding: 1rem;
+}
+
+.clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background-color: #f5f5f5;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.close-btn {
+    background-color: #999;
+    padding: 0.5rem;
+}
+
+.timeline {
+    margin-top: 1rem;
+    border-left: 2px solid var(--primary-color);
+    padding-left: 1rem;
+}
+
+.timeline-entry {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.timeline-entry::before {
+    content: '';
+    position: absolute;
+    left: -1.4rem;
+    top: 0.2rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+}
+
+.entry-date {
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.entry-note {
+    margin: 0.25rem 0;
+}
+
+.timeline-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    display: block;
+}
+
+/* Climate Dashboard */
+.climate-dashboard {
+    background-color: white;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    color: var(--text-color);
+    border: 1px solid #ddd;
+    max-width: 600px;
+    margin: 0 auto 1rem auto;
+}
+
+.climate-dashboard.empty {
+    justify-content: center;
+    font-style: italic;
+    color: #666;
+}
+
+.climate-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+}
+
+.climate-stat .label {
+    font-size: 0.8rem;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.climate-stat .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.climate-footer {
+    width: 100%;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.5rem;
+}
