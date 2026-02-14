@@ -2,6 +2,8 @@ use leptos::*;
 
 mod app;
 mod orchid;
+mod db;
+mod components;
 
 use app::App;
 

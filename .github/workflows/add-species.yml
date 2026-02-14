@@ -14,6 +14,7 @@ permissions:
 jobs:
   add-species:
     runs-on: ubuntu-latest
+    if: github.actor == 'inktomi' # STRICT: Only allow this user to run the workflow
     permissions:
       contents: write
       

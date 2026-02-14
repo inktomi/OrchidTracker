@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum LightRequirement {
@@ -36,6 +37,14 @@ impl fmt::Display for Placement {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LogEntry {
+    pub id: u64,
+    pub timestamp: DateTime<Utc>,
+    pub note: String,
+    pub image_data: Option<String>, // Base64 encoded image or URL (simplest for now, though limiting)
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Orchid {
     pub id: u64,
     pub name: String,
@@ -46,6 +55,8 @@ pub struct Orchid {
     pub placement: Placement,
     pub light_lux: String,
     pub temperature_range: String,
+    #[serde(default)]
+    pub history: Vec<LogEntry>,
 }
 
 impl Orchid {
@@ -70,6 +81,7 @@ impl Orchid {
             placement,
             light_lux,
             temperature_range,
+            history: Vec::new(),
         }
     }
     
@@ -79,5 +91,15 @@ impl Orchid {
             LightRequirement::Medium => Placement::Medium,
             LightRequirement::High => Placement::High,
         }
+    }
+
+    pub fn add_log(&mut self, note: String, image_data: Option<String>) {
+        let entry = LogEntry {
+            id: js_sys::Date::now() as u64,
+            timestamp: Utc::now(),
+            note,
+            image_data,
+        };
+        self.history.push(entry);
     }
 }

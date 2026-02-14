@@ -1,6 +1,24 @@
 use leptos::*;
 use gloo_storage::{LocalStorage, Storage};
 use crate::orchid::{Orchid, LightRequirement, Placement};
+use crate::components::orchid_detail::OrchidDetail;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, PartialEq)]
+enum ViewMode {
+    Grid,
+    Table,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ClimateData {
+    pub name: String,
+    pub type_str: Option<String>,
+    pub temperature: f64,
+    pub humidity: f64,
+    pub vpd: f64,
+    pub updated: String,
+}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -11,6 +29,16 @@ pub fn App() -> impl IntoView {
              serde_json::from_str(initial_data).unwrap_or_else(|_| Vec::<Orchid>::new())
         })
     );
+
+    // Load Climate Data (Snapshot from GitHub Action)
+    let climate_data: Vec<ClimateData> = serde_json::from_str(include_str!("data/climate.json"))
+        .unwrap_or_else(|_| Vec::new());
+
+    // State: View Mode
+    let (view_mode, set_view_mode) = create_signal(ViewMode::Grid);
+    
+    // State: Selected Orchid for Detail View
+    let (selected_orchid, set_selected_orchid) = create_signal::<Option<Orchid>>(None);
 
     // Effect: Persist orchids to LocalStorage whenever they change
     create_effect(move |_| {
@@ -25,41 +53,225 @@ pub fn App() -> impl IntoView {
         set_orchids.update(|orchids| orchids.push(new_orchid));
     };
 
+    // Update Orchid Logic (for notes/history)
+    let update_orchid = move |updated_orchid: Orchid| {
+        set_orchids.update(|orchids| {
+            if let Some(pos) = orchids.iter().position(|o| o.id == updated_orchid.id) {
+                orchids[pos] = updated_orchid;
+            }
+        });
+    };
+
     // Delete Orchid Logic
     let delete_orchid = move |id: u64| {
         set_orchids.update(|orchids| {
             orchids.retain(|o| o.id != id);
         });
+        // If the deleted orchid was selected, close the modal
+        if let Some(selected) = selected_orchid.get() {
+            if selected.id == id {
+                set_selected_orchid.set(None);
+            }
+        }
     };
 
     view! {
         <header>
             <h1>"Orchid Tracker"</h1>
+            
+            <ClimateDashboard data=climate_data />
+
+            <div class="view-toggle">
+                <button 
+                    class=move || if view_mode.get() == ViewMode::Grid { "active" } else { "" }
+                    on:click=move |_| set_view_mode.set(ViewMode::Grid)
+                >
+                    "Grid View"
+                </button>
+                <button 
+                    class=move || if view_mode.get() == ViewMode::Table { "active" } else { "" }
+                    on:click=move |_| set_view_mode.set(ViewMode::Table)
+                >
+                    "Cabinet Table View"
+                </button>
+            </div>
         </header>
         <main>
             <AddOrchidForm on_add=add_orchid />
-            <div class="orchid-grid">
-                <For
-                    each=move || orchids.get()
-                    key=|orchid| orchid.id
-                    children=move |orchid| {
-                        let orchid_clone = orchid.clone();
-                        view! {
-                            <OrchidCard orchid=orchid_clone on_delete=delete_orchid />
-                        }
-                    }
-                />
-            </div>
+            
+            {move || match view_mode.get() {
+                ViewMode::Grid => view! {
+                    <div class="orchid-grid">
+                        <For
+                            each=move || orchids.get()
+                            key=|orchid| orchid.id
+                            children=move |orchid| {
+                                let orchid_clone = orchid.clone();
+                                view! {
+                                    <OrchidCard 
+                                        orchid=orchid_clone 
+                                        on_delete=delete_orchid 
+                                        on_select=move |o| set_selected_orchid.set(Some(o))
+                                    />
+                                }
+                            }
+                        />
+                    </div>
+                }.into_view(),
+                ViewMode::Table => view! {
+                    <OrchidCabinetTable 
+                        orchids=orchids.get() 
+                        on_delete=delete_orchid 
+                        on_select=move |o| set_selected_orchid.set(Some(o))
+                    />
+                }.into_view()
+            }}
+
+            // Detail Modal
+            {move || if let Some(orchid) = selected_orchid.get() {
+                view! {
+                    <OrchidDetail 
+                        orchid=orchid 
+                        on_close=move || set_selected_orchid.set(None)
+                        on_update=update_orchid
+                    />
+                }.into_view()
+            } else {
+                view! {}.into_view()
+            }}
         </main>
     }
 }
 
 #[component]
-fn OrchidCard<F>(orchid: Orchid, on_delete: F) -> impl IntoView
+fn ClimateDashboard(data: Vec<ClimateData>) -> impl IntoView {
+    if data.is_empty() {
+        view! { <div class="climate-dashboard empty">"No climate data available (Configure AC Infinity Action)"</div> }.into_view()
+    } else {
+        // Just show the first device (Controller 69 Pro usually)
+        let main_dev = &data[0];
+        
+        view! {
+            <div class="climate-dashboard">
+                <div class="climate-stat">
+                    <span class="label">"Temperature"</span>
+                    <span class="value">{main_dev.temperature} "°C"</span>
+                </div>
+                <div class="climate-stat">
+                    <span class="label">"Humidity"</span>
+                    <span class="value">{main_dev.humidity} "%"</span>
+                </div>
+                <div class="climate-stat">
+                    <span class="label">"VPD"</span>
+                    <span class="value">{main_dev.vpd} " kPa"</span>
+                </div>
+                <div class="climate-footer">
+                    "Last Updated: " {main_dev.updated.clone()}
+                </div>
+            </div>
+        }.into_view()
+    }
+}
+
+#[component]
+fn OrchidCabinetTable<F, S>(orchids: Vec<Orchid>, on_delete: F, on_select: S) -> impl IntoView
 where
     F: Fn(u64) + 'static + Copy,
+    S: Fn(Orchid) + 'static + Copy,
+{
+    // Filter orchids by placement
+    let high_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::High).cloned().collect();
+    let medium_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Medium).cloned().collect();
+    let low_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Low).cloned().collect();
+
+    view! {
+        <div class="cabinet-view">
+            <h2>"Orchidarium Layout (6ft Tall)"</h2>
+            
+            <div class="cabinet-section high-section">
+                <h3>"Top Shelf (High Light - Near Lights)"</h3>
+                <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
+            </div>
+
+            <div class="cabinet-section medium-section">
+                <h3>"Middle Shelf (Medium Light)"</h3>
+                <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
+            </div>
+
+            <div class="cabinet-section low-section">
+                <h3>"Bottom Shelf (Low Light - Floor)"</h3>
+                <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn OrchidTableSection<F, S>(orchids: Vec<Orchid>, on_delete: F, on_select: S) -> impl IntoView
+where
+    F: Fn(u64) + 'static + Copy,
+    S: Fn(Orchid) + 'static + Copy,
+{
+    if orchids.is_empty() {
+        view! { <p class="empty-shelf">"No orchids on this shelf."</p> }.into_view()
+    } else {
+        view! {
+            <table class="orchid-table">
+                <thead>
+                    <tr>
+                        <th>"Name"</th>
+                        <th>"Species"</th>
+                        <th>"Watering"</th>
+                        <th>"Light Req"</th>
+                        <th>"Temp Range"</th>
+                        <th>"Status"</th>
+                        <th>"Actions"</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <For
+                        each=move || orchids.clone()
+                        key=|orchid| orchid.id
+                        children=move |orchid| {
+                            let orchid_id = orchid.id;
+                            let orchid_clone = orchid.clone();
+                            let suggested = orchid.suggested_placement();
+                            let is_misplaced = orchid.placement != suggested;
+                            let status_class = if is_misplaced { "status-warning" } else { "status-ok" };
+                            let status_text = if is_misplaced { "Move Needed" } else { "OK" };
+                            
+                            view! {
+                                <tr class="clickable-row" on:click=move |_| on_select(orchid_clone.clone())>
+                                    <td>{orchid.name}</td>
+                                    <td>{orchid.species}</td>
+                                    <td>"Every " {orchid.water_frequency_days} " days"</td>
+                                    <td>{orchid.light_requirement.to_string()}</td>
+                                    <td>{orchid.temperature_range}</td>
+                                    <td class=status_class>{status_text}</td>
+                                    <td>
+                                        <button class="delete-btn-small" on:click=move |ev| {
+                                            ev.stop_propagation();
+                                            on_delete(orchid_id);
+                                        }>"X"</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    />
+                </tbody>
+            </table>
+        }.into_view()
+    }
+}
+
+#[component]
+fn OrchidCard<F, S>(orchid: Orchid, on_delete: F, on_select: S) -> impl IntoView
+where
+    F: Fn(u64) + 'static + Copy,
+    S: Fn(Orchid) + 'static + Copy,
 {
     let orchid_id = orchid.id;
+    let orchid_clone = orchid.clone();
     let suggested = orchid.suggested_placement();
     let is_misplaced = orchid.placement != suggested;
     let suggestion_msg = if is_misplaced {
@@ -72,15 +284,20 @@ where
 
     view! {
         <div class="orchid-card">
-            <h3>{orchid.name}</h3>
-            <p><strong>"Species: "</strong> {orchid.species}</p>
-            <p><strong>"Watering: "</strong> "Every " {orchid.water_frequency_days} " days"</p>
-            <p><strong>"Light Req: "</strong> {orchid.light_requirement.to_string()} " (" {orchid.light_lux} " Lux)"</p>
-            <p><strong>"Temp Range: "</strong> {orchid.temperature_range}</p>
-            <p><strong>"Placement: "</strong> {orchid.placement.to_string()}</p>
-            <p style=suggestion_style><strong>"Suggestion: "</strong> {suggestion_msg}</p>
-            <p><strong>"Notes: "</strong> {orchid.notes}</p>
-            <button class="delete-btn" on:click=move |_| on_delete(orchid_id)>"Delete"</button>
+            <div class="card-content" on:click=move |_| on_select(orchid_clone.clone())>
+                <h3>{orchid.name}</h3>
+                <p><strong>"Species: "</strong> {orchid.species}</p>
+                <p><strong>"Watering: "</strong> "Every " {orchid.water_frequency_days} " days"</p>
+                <p><strong>"Light Req: "</strong> {orchid.light_requirement.to_string()} " (" {orchid.light_lux} " Lux)"</p>
+                <p><strong>"Temp Range: "</strong> {orchid.temperature_range}</p>
+                <p><strong>"Placement: "</strong> {orchid.placement.to_string()}</p>
+                <p style=suggestion_style><strong>"Suggestion: "</strong> {suggestion_msg}</p>
+                <p><strong>"Notes: "</strong> {orchid.notes}</p>
+            </div>
+            <button class="delete-btn" on:click=move |ev| {
+                ev.stop_propagation();
+                on_delete(orchid_id);
+            }>"Delete"</button>
         </div>
     }
 }
