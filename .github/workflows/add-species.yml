@@ -1,0 +1,40 @@
+name: Add New Orchid Species
+
+on:
+  workflow_dispatch:
+    inputs:
+      species_name:
+        description: 'Name of the orchid species to add'
+        required: true
+        type: string
+
+jobs:
+  add-species:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install @google/generative-ai
+
+      - name: Fetch Data and Update JSON
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/add_species.js "${{ inputs.species_name }}"
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add src/data/orchids.json
+          git commit -m "Add species: ${{ inputs.species_name }}"
+          git push
