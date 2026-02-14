@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Orchid Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/OrchidTracker/style-3e1d170671e3d98e.css" integrity="sha384-2iPxB4p7TlUkmqEu54F4Tzhf68rabw7BqXha1JHHecJaiGaen4jdhDVRZXFeN9+3"/>
+  <link rel="modulepreload" href="/OrchidTracker/orchid-tracker-2ab5ec97c94e3d2e.js" crossorigin="anonymous" integrity="sha384-Di/yaa+l++nz7549cT48D0/qWIrVp9Vzzeni3smRM7MneNxxhRCvjKaDlLpDRK+R"><link rel="preload" href="/OrchidTracker/orchid-tracker-2ab5ec97c94e3d2e_bg.wasm" crossorigin="anonymous" integrity="sha384-kcuOIbVS9g7vBgZh6+A2ph4eatmeGYILwaZMZfl6TGzdz+CkngHGU6nzV2NqrNGP" as="fetch" type="application/wasm"></head>
+  <body>
+<script type="module">
+import init, * as bindings from '/OrchidTracker/orchid-tracker-2ab5ec97c94e3d2e.js';
+const wasm = await init({ module_or_path: '/OrchidTracker/orchid-tracker-2ab5ec97c94e3d2e_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script></body>
+</html>
