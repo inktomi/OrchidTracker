@@ -337,3 +337,54 @@ button:hover {
     color: #999;
     margin-top: 0.5rem;
 }
+
+/* Settings Modal */
+.settings-modal {
+    max-width: 500px;
+}
+
+.settings-hint {
+    font-size: 0.9rem;
+    color: #666;
+    background: #f5f5f5;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+/* Header with Settings */
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    max-width: 1200px;
+    margin: 0 auto 1rem auto;
+}
+
+.header-top h1 {
+    margin: 0;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sync-status {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.8);
+    font-weight: bold;
+}
+
+.settings-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.5);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.settings-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
