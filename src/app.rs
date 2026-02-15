@@ -2,6 +2,8 @@ use leptos::*;
 use gloo_storage::{LocalStorage, Storage};
 use crate::orchid::{Orchid, LightRequirement, Placement};
 use crate::components::orchid_detail::OrchidDetail;
+use crate::components::settings::SettingsModal;
+use crate::github::sync_orchids_to_github;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq)]
@@ -39,6 +41,12 @@ pub fn App() -> impl IntoView {
     
     // State: Selected Orchid for Detail View
     let (selected_orchid, set_selected_orchid) = create_signal::<Option<Orchid>>(None);
+    
+    // State: Show Settings Modal
+    let (show_settings, set_show_settings) = create_signal(false);
+    
+    // State: Sync Status
+    let (sync_status, set_sync_status) = create_signal("".to_string());
 
     // Effect: Persist orchids to LocalStorage whenever they change
     create_effect(move |_| {
@@ -47,10 +55,29 @@ pub fn App() -> impl IntoView {
             log::error!("Failed to save to local storage: {:?}", e);
         }
     });
+    
+    // Function to trigger GitHub Sync
+    let trigger_sync = move |current_orchids: Vec<Orchid>| {
+        set_sync_status.set("Syncing...".to_string());
+        spawn_local(async move {
+            match sync_orchids_to_github(current_orchids).await {
+                Ok(_) => set_sync_status.set("Synced!".to_string()),
+                Err(e) => {
+                    log::error!("Sync failed: {}", e);
+                    set_sync_status.set("Sync Failed".to_string());
+                }
+            }
+            // Clear status after 3s
+            gloo_timers::future::sleep(std::time::Duration::from_secs(3)).await;
+            set_sync_status.set("".to_string());
+        });
+    };
 
     // Add Orchid Logic
     let add_orchid = move |new_orchid: Orchid| {
-        set_orchids.update(|orchids| orchids.push(new_orchid));
+        set_orchids.update(|orchids| orchids.push(new_orchid.clone()));
+        // Trigger Sync
+        trigger_sync(orchids.get());
     };
 
     // Update Orchid Logic (for notes/history)
@@ -60,6 +87,8 @@ pub fn App() -> impl IntoView {
                 orchids[pos] = updated_orchid;
             }
         });
+        // Trigger Sync
+        trigger_sync(orchids.get());
     };
 
     // Delete Orchid Logic
@@ -73,11 +102,19 @@ pub fn App() -> impl IntoView {
                 set_selected_orchid.set(None);
             }
         }
+        // Trigger Sync
+        trigger_sync(orchids.get());
     };
 
     view! {
         <header>
-            <h1>"Orchid Tracker"</h1>
+            <div class="header-top">
+                <h1>"Orchid Tracker"</h1>
+                <div class="header-controls">
+                    <span class="sync-status">{sync_status}</span>
+                    <button class="settings-btn" on:click=move |_| set_show_settings.set(true)>"⚙️ Settings"</button>
+                </div>
+            </div>
             
             <ClimateDashboard data=climate_data />
 
@@ -135,6 +172,15 @@ pub fn App() -> impl IntoView {
                         on_close=move || set_selected_orchid.set(None)
                         on_update=update_orchid
                     />
+                }.into_view()
+            } else {
+                view! {}.into_view()
+            }}
+            
+            // Settings Modal
+            {move || if show_settings.get() {
+                view! {
+                    <SettingsModal on_close=move || set_show_settings.set(false) />
                 }.into_view()
             } else {
                 view! {}.into_view()

@@ -4,6 +4,7 @@ mod app;
 mod orchid;
 mod db;
 mod components;
+mod github;
 
 use app::App;
 

@@ -16,8 +16,11 @@ web-sys = { version = "0.3", features = ["HtmlInputElement", "HtmlSelectElement"
 js-sys = "0.3"
 chrono = { version = "0.4.43", features = ["serde", "wasm-bindgen"] }
 rexie = "0.6.2"
-gloo-file = "0.3.0"
+gloo-file = { version = "0.3.0", features = ["futures"] }
 serde-wasm-bindgen = "0.6.5"
+reqwest = { version = "0.13.2", features = ["json"] }
+base64 = "0.22.1"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
 
 [profile.release]
 codegen-units = 1

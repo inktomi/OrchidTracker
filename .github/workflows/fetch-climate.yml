@@ -8,6 +8,7 @@ on:
 jobs:
   fetch-climate:
     runs-on: ubuntu-latest
+    if: github.actor == 'inktomi' || github.event_name == 'schedule'
     permissions:
       contents: write # Needed to commit JSON to repo
 
