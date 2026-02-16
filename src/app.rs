@@ -3,6 +3,7 @@ use gloo_storage::{LocalStorage, Storage};
 use crate::orchid::{Orchid, LightRequirement, Placement};
 use crate::components::orchid_detail::OrchidDetail;
 use crate::components::settings::SettingsModal;
+use crate::components::scanner::{ScannerModal, AnalysisResult};
 use crate::github::sync_orchids_to_github;
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +46,12 @@ pub fn App() -> impl IntoView {
     // State: Show Settings Modal
     let (show_settings, set_show_settings) = create_signal(false);
     
+    // State: Show Scanner Modal
+    let (show_scanner, set_show_scanner) = create_signal(false);
+    
+    // State: Pre-fill data for Add Form
+    let (prefill_data, set_prefill_data) = create_signal::<Option<AnalysisResult>>(None);
+
     // State: Sync Status
     let (sync_status, set_sync_status) = create_signal("".to_string());
 
@@ -105,6 +112,12 @@ pub fn App() -> impl IntoView {
         // Trigger Sync
         trigger_sync(orchids.get());
     };
+    
+    // Handle Scan Result
+    let handle_scan_result = move |result: AnalysisResult| {
+        set_prefill_data.set(Some(result));
+        set_show_scanner.set(false);
+    };
 
     view! {
         <header>
@@ -112,11 +125,12 @@ pub fn App() -> impl IntoView {
                 <h1>"Orchid Tracker"</h1>
                 <div class="header-controls">
                     <span class="sync-status">{sync_status}</span>
+                    <button class="action-btn" on:click=move |_| set_show_scanner.set(true)>"📷 Scan"</button>
                     <button class="settings-btn" on:click=move |_| set_show_settings.set(true)>"⚙️ Settings"</button>
                 </div>
             </div>
             
-            <ClimateDashboard data=climate_data />
+            <ClimateDashboard data=climate_data.clone() />
 
             <div class="view-toggle">
                 <button 
@@ -134,7 +148,7 @@ pub fn App() -> impl IntoView {
             </div>
         </header>
         <main>
-            <AddOrchidForm on_add=add_orchid />
+            <AddOrchidForm on_add=add_orchid prefill_data=prefill_data />
             
             {move || match view_mode.get() {
                 ViewMode::Grid => view! {
@@ -185,6 +199,27 @@ pub fn App() -> impl IntoView {
                 }.into_view()
             } else {
                 view! {}.into_view()
+            }}
+            
+            // Scanner Modal
+            {move || if show_scanner.get() {
+                let summary = if !climate_data.is_empty() {
+                    let d = &climate_data[0];
+                    format!("Temp: {}C, Humidity: {}%, VPD: {}kPa", d.temperature, d.humidity, d.vpd)
+                } else {
+                    "Unknown climate".to_string()
+                };
+                
+                view! {
+                    <ScannerModal 
+                        on_close=move || set_show_scanner.set(false)
+                        on_add_to_collection=handle_scan_result
+                        existing_orchids=orchids.get()
+                        climate_summary=summary
+                    />
+                }.into_view()
+            } else {
+                 view! {}.into_view()
             }}
         </main>
     }
@@ -389,7 +424,7 @@ where
 }
 
 #[component]
-fn AddOrchidForm<F>(on_add: F) -> impl IntoView
+fn AddOrchidForm<F>(on_add: F, prefill_data: ReadSignal<Option<AnalysisResult>>) -> impl IntoView
 where
     F: Fn(Orchid) + 'static,
 {
@@ -401,6 +436,36 @@ where
     let (notes, set_notes) = create_signal("".to_string());
     let (lux, set_lux) = create_signal("".to_string());
     let (temp, set_temp) = create_signal("".to_string());
+
+    // Effect to pre-fill form when scanner result comes in
+    create_effect(move |_| {
+        if let Some(data) = prefill_data.get() {
+            set_name.set(data.species_name.clone());
+            set_species.set(data.species_name);
+            set_water_freq.set(data.water_freq.to_string());
+            
+            // Map AI light req to form values
+            let light_val = match data.light_req.to_lowercase().as_str() {
+                "low" | "low light" => "Low",
+                "high" | "high light" => "High",
+                _ => "Medium",
+            };
+            set_light.set(light_val.to_string());
+            
+            // Map AI placement to form values
+             let place_val = match data.placement_suggestion.to_lowercase().as_str() {
+                "low" | "low light" => "Low",
+                "high" | "high light" => "High",
+                _ => "Medium",
+            };
+            set_placement.set(place_val.to_string());
+            
+            set_temp.set(data.temp_range);
+            
+            let note_text = format!("AI Analysis: {}\nReason: {}", data.fit_category, data.reason);
+            set_notes.set(note_text);
+        }
+    });
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();

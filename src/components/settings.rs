@@ -10,6 +10,7 @@ where
     let (token, set_token) = create_signal("".to_string());
     let (owner, set_owner) = create_signal("".to_string());
     let (repo, set_repo) = create_signal("".to_string());
+    let (gemini_key, set_gemini_key) = create_signal("".to_string());
 
     // Load initial values
     if let Ok(t) = LocalStorage::get("github_token") {
@@ -21,12 +22,16 @@ where
     if let Ok(r) = LocalStorage::get("repo_name") {
         set_repo.set(r);
     }
+    if let Ok(k) = LocalStorage::get("gemini_api_key") {
+        set_gemini_key.set(k);
+    }
 
     let on_close_clone = on_close.clone();
     let on_save = move |_| {
         let _ = LocalStorage::set("github_token", token.get());
         let _ = LocalStorage::set("repo_owner", owner.get());
         let _ = LocalStorage::set("repo_name", repo.get());
+        let _ = LocalStorage::set("gemini_api_key", gemini_key.get());
         on_close_clone();
     };
 
@@ -34,7 +39,7 @@ where
         <div class="modal-overlay">
             <div class="modal-content settings-modal">
                 <div class="modal-header">
-                    <h2>"Sync Settings (GitHub)"</h2>
+                    <h2>"Sync Settings (GitHub) & AI"</h2>
                     <button class="close-btn" on:click=move |_| on_close()>"X"</button>
                 </div>
                 <div class="modal-body">
@@ -55,6 +60,16 @@ where
                         <label>"Personal Access Token:"</label>
                         <input type="password" prop:value=token on:input=move |ev| set_token.set(event_target_value(&ev)) />
                     </div>
+                    
+                    <hr class="separator" />
+                    
+                    <h3>"AI Integration (Google Gemini)"</h3>
+                    <p class="settings-hint">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
+                     <div class="form-group">
+                        <label>"Gemini API Key:"</label>
+                        <input type="password" prop:value=gemini_key on:input=move |ev| set_gemini_key.set(event_target_value(&ev)) />
+                    </div>
+
                     <div class="button-group">
                         <button on:click=on_save>"Save Settings"</button>
                     </div>
