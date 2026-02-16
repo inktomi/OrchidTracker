@@ -510,3 +510,37 @@ button:hover {
     color: #d32f2f;
     margin: 0.25rem 0;
 }
+
+.close-err-btn {
+    background-color: #c62828;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    margin-left: 8px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 20px;
+    vertical-align: middle;
+}
+
+.close-err-btn:hover {
+    background-color: #b71c1c;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.share-btn {
+    background-color: #1976d2;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.share-btn:hover {
+    background-color: #1565c0;
+}
