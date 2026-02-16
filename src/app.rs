@@ -281,6 +281,8 @@ where
     let high_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::High).cloned().collect();
     let medium_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Medium).cloned().collect();
     let low_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Low).cloned().collect();
+    let patio_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Patio).cloned().collect();
+    let outdoor_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::OutdoorRack).cloned().collect();
 
     // Helper to handle drop
     let handle_drop = move |ev: leptos::ev::DragEvent, new_placement: Placement| {
@@ -330,10 +332,39 @@ where
             <div 
                 class="cabinet-section low-section"
                 on:dragover=move |ev| ev.prevent_default()
-                on:drop=move |ev| handle_drop(ev, Placement::Low)
+                on:drop={
+                    let handle_drop = handle_drop.clone();
+                    move |ev| handle_drop(ev, Placement::Low)
+                }
             >
                 <h3>"Bottom Shelf (Low Light - Floor)"</h3>
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
+            </div>
+            
+            <h2>"Outdoors (90606)"</h2>
+            
+            <div 
+                class="cabinet-section outdoor-section"
+                on:dragover=move |ev| ev.prevent_default()
+                on:drop={
+                    let handle_drop = handle_drop.clone();
+                    move |ev| handle_drop(ev, Placement::OutdoorRack)
+                }
+            >
+                <h3>"Outdoor Rack (High Sun)"</h3>
+                <OrchidTableSection orchids=outdoor_orchids on_delete=on_delete on_select=on_select />
+            </div>
+
+            <div 
+                class="cabinet-section patio-section"
+                on:dragover=move |ev| ev.prevent_default()
+                on:drop={
+                    let handle_drop = handle_drop.clone();
+                    move |ev| handle_drop(ev, Placement::Patio)
+                }
+            >
+                <h3>"Patio (Morning Sun / Afternoon Shade)"</h3>
+                <OrchidTableSection orchids=patio_orchids on_delete=on_delete on_select=on_select />
             </div>
         </div>
     }
@@ -368,8 +399,7 @@ where
                         children=move |orchid| {
                             let orchid_id = orchid.id;
                             let orchid_clone = orchid.clone();
-                            let suggested = orchid.suggested_placement();
-                            let is_misplaced = orchid.placement != suggested;
+                            let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
                             let status_class = if is_misplaced { "status-warning" } else { "status-ok" };
                             let status_text = if is_misplaced { "Move Needed" } else { "OK" };
                             
@@ -414,10 +444,9 @@ where
 {
     let orchid_id = orchid.id;
     let orchid_clone = orchid.clone();
-    let suggested = orchid.suggested_placement();
-    let is_misplaced = orchid.placement != suggested;
+    let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
     let suggestion_msg = if is_misplaced {
-        format!("(Should be {})", suggested)
+        format!("(Needs {})", orchid.light_requirement)
     } else {
         " (Optimal)".to_string()
     };
@@ -486,6 +515,8 @@ where
              let place_val = match data.placement_suggestion.to_lowercase().as_str() {
                 "low" | "low light" => "Low",
                 "high" | "high light" => "High",
+                "patio" => "Patio",
+                "outdoorrack" | "outdoor rack" => "OutdoorRack",
                 _ => "Medium",
             };
             set_placement.set(place_val.to_string());
@@ -513,6 +544,8 @@ where
         let place = match placement.get().as_str() {
              "Low" => Placement::Low,
              "High" => Placement::High,
+             "Patio" => Placement::Patio,
+             "OutdoorRack" => Placement::OutdoorRack,
              _ => Placement::Medium,
         };
         
@@ -610,6 +643,8 @@ where
                                     <option value="Low">"Low Light Area"</option>
                                     <option value="Medium">"Medium Light Area"</option>
                                     <option value="High">"High Light Area"</option>
+                                    <option value="Patio">"Patio (Outdoors)"</option>
+                                    <option value="OutdoorRack">"Outdoor Rack"</option>
                                 </select>
                             </div>
                              <div class="form-group half-width">

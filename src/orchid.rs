@@ -24,6 +24,8 @@ pub enum Placement {
     Low,
     Medium,
     High,
+    Patio,
+    OutdoorRack,
 }
 
 impl fmt::Display for Placement {
@@ -32,6 +34,19 @@ impl fmt::Display for Placement {
             Placement::Low => write!(f, "Low Light Area"),
             Placement::Medium => write!(f, "Medium Light Area"),
             Placement::High => write!(f, "High Light Area"),
+            Placement::Patio => write!(f, "Patio (Outdoors)"),
+            Placement::OutdoorRack => write!(f, "Outdoor Rack"),
+        }
+    }
+
+    pub fn is_compatible_with(&self, req: &LightRequirement) -> bool {
+        match (self, req) {
+            (Placement::Low, LightRequirement::Low) => true,
+            (Placement::Medium, LightRequirement::Medium) => true,
+            (Placement::High, LightRequirement::High) => true,
+            (Placement::Patio, LightRequirement::Medium) | (Placement::Patio, LightRequirement::High) => true,
+            (Placement::OutdoorRack, LightRequirement::High) => true,
+            _ => false,
         }
     }
 }

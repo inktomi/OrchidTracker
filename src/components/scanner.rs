@@ -125,10 +125,12 @@ where
              let prompt = format!(
                  "Identify the orchid species from this image. \
                  Then, evaluate if it is a good fit for my conditions: {}. \
+                 I also have outdoor space in 90606 (Outdoor Rack: High Sun, Patio: Morning Sun/Afternoon Shade). \
                  Also check if I already own it (My List: {:?}). \
                  Return ONLY valid JSON with this structure (no markdown): \
                  {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\", \"conservation_status\": \"CITES II\" }} \
                  Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
+                 For placement_suggestion, choose from: 'High', 'Medium', 'Low', 'Patio', 'OutdoorRack'. \
                  For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common.",
                  summary,
                  existing_names
