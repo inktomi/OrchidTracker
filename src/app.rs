@@ -257,37 +257,41 @@ fn ClimateDashboard(data: Vec<ClimateData>, unit: ReadSignal<String>) -> impl In
     if data.is_empty() {
         view! { <div class="climate-dashboard empty">"No climate data available (Configure AC Infinity Action)"</div> }.into_view()
     } else {
-        // Just show the first device (Controller 69 Pro usually)
-        let main_dev = &data[0];
-        
-        move || {
-            let u = unit.get();
-            let (temp_val, temp_unit_str) = if u == "F" {
-                let f = (main_dev.temperature * 9.0 / 5.0) + 32.0;
-                (format!("{:.1}", f), "°F")
-            } else {
-                (format!("{:.1}", main_dev.temperature), "°C")
-            };
+        view! {
+            <div class="climate-dashboard-container">
+                {move || {
+                    let u = unit.get();
+                    data.iter().map(|dev| {
+                        let (temp_val, temp_unit_str) = if u == "F" {
+                            let f = (dev.temperature * 9.0 / 5.0) + 32.0;
+                            (format!("{:.1}", f), "°F")
+                        } else {
+                            (format!("{:.1}", dev.temperature), "°C")
+                        };
 
-            view! {
-                <div class="climate-dashboard">
-                    <div class="climate-stat">
-                        <span class="label">"Temperature"</span>
-                        <span class="value">{temp_val} " " {temp_unit_str}</span>
-                    </div>
-                    <div class="climate-stat">
-                        <span class="label">"Humidity"</span>
-                        <span class="value">{main_dev.humidity} "%"</span>
-                    </div>
-                    <div class="climate-stat">
-                        <span class="label">"VPD"</span>
-                        <span class="value">{main_dev.vpd} " kPa"</span>
-                    </div>
-                    <div class="climate-footer">
-                        "Last Updated: " {main_dev.updated.clone()}
-                    </div>
-                </div>
-            }
+                        view! {
+                            <div class="climate-dashboard">
+                                <h3>{dev.name.clone()}</h3>
+                                <div class="climate-stat">
+                                    <span class="label">"Temperature"</span>
+                                    <span class="value">{temp_val} " " {temp_unit_str}</span>
+                                </div>
+                                <div class="climate-stat">
+                                    <span class="label">"Humidity"</span>
+                                    <span class="value">{dev.humidity} "%"</span>
+                                </div>
+                                <div class="climate-stat">
+                                    <span class="label">"VPD"</span>
+                                    <span class="value">{dev.vpd} " kPa"</span>
+                                </div>
+                                <div class="climate-footer">
+                                    "Last Updated: " {dev.updated.clone()}
+                                </div>
+                            </div>
+                        }
+                    }).collect_view()
+                }}
+            </div>
         }.into_view()
     }
 }

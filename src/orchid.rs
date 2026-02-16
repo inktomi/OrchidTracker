@@ -38,7 +38,9 @@ impl fmt::Display for Placement {
             Placement::OutdoorRack => write!(f, "Outdoor Rack"),
         }
     }
+}
 
+impl Placement {
     pub fn is_compatible_with(&self, req: &LightRequirement) -> bool {
         match (self, req) {
             (Placement::Low, LightRequirement::Low) => true,
