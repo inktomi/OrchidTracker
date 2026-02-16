@@ -4,7 +4,8 @@ use crate::orchid::{Orchid, LightRequirement, Placement};
 use crate::components::orchid_detail::OrchidDetail;
 use crate::components::settings::SettingsModal;
 use crate::components::scanner::{ScannerModal, AnalysisResult};
-use crate::github::sync_orchids_to_github;
+use crate::github::{sync_orchids_to_github, upload_image_to_github};
+use crate::db::get_image_blob;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq)]
@@ -99,10 +100,50 @@ pub fn App() -> impl IntoView {
     });
     
     // Function to trigger GitHub Sync
-    let trigger_sync = move |current_orchids: Vec<Orchid>| {
+    let trigger_sync = move |orchids_vec: Vec<Orchid>| {
         set_sync_status.set("Syncing...".to_string());
         spawn_local(async move {
-            match sync_orchids_to_github(current_orchids).await {
+            let mut updated_orchids = orchids_vec.clone();
+            let mut changes_made = false;
+
+            // 1. Sync pending images
+            for orchid in updated_orchids.iter_mut() {
+                for entry in orchid.history.iter_mut() {
+                    if let Some(ref data) = entry.image_data {
+                        // If data is purely numeric, it's a local IndexedDB ID
+                        if data.chars().all(char::is_numeric) {
+                            if let Ok(id) = data.parse::<u32>() {
+                                if let Ok(Some(blob)) = get_image_blob(id).await {
+                                    // Read Blob to Vec<u8>
+                                    let promise = blob.array_buffer();
+                                    if let Ok(ab) = wasm_bindgen_futures::JsFuture::from(promise).await {
+                                        let uint8 = js_sys::Uint8Array::new(&ab);
+                                        let vec = uint8.to_vec();
+                                        
+                                        // Filename convention: {orchid_id}_{entry_timestamp}.jpg
+                                        let filename = format!("{}_{}.jpg", orchid.id, entry.id);
+
+                                        match upload_image_to_github(filename, vec).await {
+                                            Ok(remote_path) => {
+                                                entry.image_data = Some(remote_path);
+                                                changes_made = true;
+                                            },
+                                            Err(e) => log::error!("Failed to sync pending image: {}", e),
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if changes_made {
+                set_orchids.set(updated_orchids.clone());
+            }
+
+            // 2. Sync JSON
+            match sync_orchids_to_github(updated_orchids).await {
                 Ok(_) => {
                     set_sync_status.set("Synced!".to_string());
                     // Clear success status after 3s

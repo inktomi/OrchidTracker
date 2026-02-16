@@ -64,7 +64,7 @@ where
                     <p class="settings-hint">
                         "Enter your GitHub Personal Access Token (PAT) to enable syncing changes directly to the repository."
                         <br/>
-                        "Requires 'repo' scope."
+                        "Required scopes: <strong>repo</strong> (for private repos) or <strong>public_repo</strong> (for public repos)."
                     </p>
                     <div class="form-group">
                         <label>"Repo Owner (Username):"</label>

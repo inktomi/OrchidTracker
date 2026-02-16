@@ -77,7 +77,12 @@ where
                                 // Let's store the REMOTE path in the LogEntry if sync succeeds.
                                 image_data_str = Some(path);
                             }
-                            Err(e) => log::error!("GitHub upload failed: {}", e),
+                            Err(e) => {
+                                log::error!("GitHub upload failed: {}", e);
+                                if let Some(window) = web_sys::window() {
+                                    let _ = window.alert_with_message(&format!("Image Upload Failed: {}", e));
+                                }
+                            }
                         }
                     },
                     Err(e) => log::error!("Failed to read file bytes: {}", e),
