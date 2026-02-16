@@ -74,14 +74,15 @@ impl fmt::Display for Placement {
 
 impl Placement {
     pub fn is_compatible_with(&self, req: &LightRequirement) -> bool {
-        match (self, req) {
-            (Placement::Low, LightRequirement::Low) => true,
-            (Placement::Medium, LightRequirement::Medium) => true,
-            (Placement::High, LightRequirement::High) => true,
-            (Placement::Patio, LightRequirement::Medium) | (Placement::Patio, LightRequirement::High) => true,
-            (Placement::OutdoorRack, LightRequirement::High) => true,
-            _ => false,
-        }
+        matches!(
+            (self, req),
+            (Placement::Low, LightRequirement::Low)
+                | (Placement::Medium, LightRequirement::Medium)
+                | (Placement::High, LightRequirement::High)
+                | (Placement::Patio, LightRequirement::Medium)
+                | (Placement::Patio, LightRequirement::High)
+                | (Placement::OutdoorRack, LightRequirement::High)
+        )
     }
 }
 

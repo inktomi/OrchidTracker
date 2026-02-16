@@ -1,6 +1,10 @@
 use leptos::prelude::*;
 use crate::orchid::{Orchid, Placement};
 
+const SECTION_BASE: &str = "border border-gray-300 rounded-lg p-4 bg-white";
+const TH_CLASS: &str = "py-3 px-3 text-left border-b border-gray-200 bg-secondary font-bold";
+const TD_CLASS: &str = "py-3 px-3 text-left border-b border-gray-100";
+
 #[component]
 pub fn OrchidCabinetTable(
     orchids: Vec<Orchid>,
@@ -31,68 +35,68 @@ pub fn OrchidCabinetTable(
     };
 
     view! {
-        <div class="cabinet-view">
+        <div class="flex flex-col gap-8">
             <h2>"Orchidarium Layout"</h2>
 
             <div
-                class="cabinet-section high-section"
+                class=format!("{} border-t-4 border-t-shelf-high", SECTION_BASE)
                 on:dragover=move |ev: leptos::ev::DragEvent| ev.prevent_default()
                 on:drop={
                     let handle_drop = handle_drop.clone();
                     move |ev| handle_drop(ev, Placement::High)
                 }
             >
-                <h3>"Top Shelf (High Light - Near Lights)"</h3>
+                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Top Shelf (High Light - Near Lights)"</h3>
                 <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
             </div>
 
             <div
-                class="cabinet-section medium-section"
+                class=format!("{} border-t-4 border-t-shelf-medium", SECTION_BASE)
                 on:dragover=move |ev: leptos::ev::DragEvent| ev.prevent_default()
                 on:drop={
                     let handle_drop = handle_drop.clone();
                     move |ev| handle_drop(ev, Placement::Medium)
                 }
             >
-                <h3>"Middle Shelf (Medium Light)"</h3>
+                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Middle Shelf (Medium Light)"</h3>
                 <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
             </div>
 
             <div
-                class="cabinet-section low-section"
+                class=format!("{} border-t-4 border-t-shelf-low", SECTION_BASE)
                 on:dragover=move |ev: leptos::ev::DragEvent| ev.prevent_default()
                 on:drop={
                     let handle_drop = handle_drop.clone();
                     move |ev| handle_drop(ev, Placement::Low)
                 }
             >
-                <h3>"Bottom Shelf (Low Light - Floor)"</h3>
+                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Bottom Shelf (Low Light - Floor)"</h3>
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
             </div>
 
             <h2>"Outdoors"</h2>
 
             <div
-                class="cabinet-section outdoor-section"
+                class=format!("{} border-t-4 border-t-primary", SECTION_BASE)
                 on:dragover=move |ev: leptos::ev::DragEvent| ev.prevent_default()
                 on:drop={
                     let handle_drop = handle_drop.clone();
                     move |ev| handle_drop(ev, Placement::OutdoorRack)
                 }
             >
-                <h3>"Outdoor Rack (High Sun)"</h3>
+                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Outdoor Rack (High Sun)"</h3>
                 <OrchidTableSection orchids=outdoor_orchids on_delete=on_delete on_select=on_select />
             </div>
 
             <div
-                class="cabinet-section patio-section"
+                class=format!("{} border-t-4 border-t-primary", SECTION_BASE)
                 on:dragover=move |ev: leptos::ev::DragEvent| ev.prevent_default()
                 on:drop={
                     let handle_drop = handle_drop.clone();
                     move |ev| handle_drop(ev, Placement::Patio)
                 }
             >
-                <h3>"Patio (Morning Sun / Afternoon Shade)"</h3>
+                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Patio (Morning Sun / Afternoon Shade)"</h3>
                 <OrchidTableSection orchids=patio_orchids on_delete=on_delete on_select=on_select />
             </div>
         </div>
@@ -106,19 +110,19 @@ fn OrchidTableSection(
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     if orchids.is_empty() {
-        view! { <p class="empty-shelf">"No orchids on this shelf."</p> }.into_any()
+        view! { <p class="italic text-gray-500 text-center p-4">"No orchids on this shelf."</p> }.into_any()
     } else {
         view! {
-            <table class="orchid-table">
+            <table class="w-full border-collapse mt-4">
                 <thead>
                     <tr>
-                        <th>"Name"</th>
-                        <th>"Species"</th>
-                        <th>"Watering"</th>
-                        <th>"Light Req"</th>
-                        <th>"Temp Range"</th>
-                        <th>"Status"</th>
-                        <th>"Actions"</th>
+                        <th class=TH_CLASS>"Name"</th>
+                        <th class=TH_CLASS>"Species"</th>
+                        <th class=TH_CLASS>"Watering"</th>
+                        <th class=TH_CLASS>"Light Req"</th>
+                        <th class=TH_CLASS>"Temp Range"</th>
+                        <th class=TH_CLASS>"Status"</th>
+                        <th class=TH_CLASS>"Actions"</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -129,12 +133,16 @@ fn OrchidTableSection(
                             let orchid_id = orchid.id;
                             let orchid_clone = orchid.clone();
                             let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
-                            let status_class = if is_misplaced { "status-warning" } else { "status-ok" };
+                            let status_class = if is_misplaced {
+                                format!("{} text-danger font-bold", TD_CLASS)
+                            } else {
+                                format!("{} text-primary font-bold", TD_CLASS)
+                            };
                             let status_text = if is_misplaced { "Move Needed" } else { "OK" };
 
                             view! {
                                 <tr
-                                    class="clickable-row"
+                                    class="cursor-pointer hover:bg-gray-100"
                                     draggable="true"
                                     on:click=move |_| on_select(orchid_clone.clone())
                                     on:dragstart=move |ev: leptos::ev::DragEvent| {
@@ -143,14 +151,14 @@ fn OrchidTableSection(
                                         }
                                     }
                                 >
-                                    <td>{orchid.name}</td>
-                                    <td>{orchid.species}</td>
-                                    <td>"Every " {orchid.water_frequency_days} " days"</td>
-                                    <td>{orchid.light_requirement.to_string()}</td>
-                                    <td>{orchid.temperature_range}</td>
+                                    <td class=TD_CLASS>{orchid.name}</td>
+                                    <td class=TD_CLASS>{orchid.species}</td>
+                                    <td class=TD_CLASS>"Every " {orchid.water_frequency_days} " days"</td>
+                                    <td class=TD_CLASS>{orchid.light_requirement.to_string()}</td>
+                                    <td class=TD_CLASS>{orchid.temperature_range}</td>
                                     <td class=status_class>{status_text}</td>
-                                    <td>
-                                        <button class="delete-btn-small" on:click=move |ev: web_sys::MouseEvent| {
+                                    <td class=TD_CLASS>
+                                        <button class="py-1 px-2 text-sm bg-red-300 text-white border-none rounded cursor-pointer hover:bg-red-500" on:click=move |ev: web_sys::MouseEvent| {
                                             ev.stop_propagation();
                                             on_delete(orchid_id);
                                         }>"X"</button>

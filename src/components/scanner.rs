@@ -7,7 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, FitCategory, LightRequirement};
 use wasm_bindgen_futures::JsFuture;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
+const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-600 pb-2";
+const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnalysisResult {
     pub species_name: String,
     pub fit_category: FitCategory,
@@ -213,51 +217,51 @@ pub fn ScannerModal(
     };
 
     view! {
-        <div class="modal-overlay">
-            <div class="modal-content scanner-modal">
-                 <div class="modal-header">
-                    <h2>"Orchid Scanner"</h2>
-                    <button class="close-btn" on:click=move |_| on_close()>"X"</button>
+        <div class=MODAL_OVERLAY>
+            <div class="bg-neutral-900 text-gray-200 p-8 rounded-lg w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-neutral-700">
+                 <div class=MODAL_HEADER>
+                    <h2 class="text-white m-0">"Orchid Scanner"</h2>
+                    <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
                 </div>
-                <div class="modal-body">
+                <div>
                     {move || error_msg.get().map(|err| {
-                        view! { <div class="error-msg">{err}</div> }
+                        view! { <div class="text-red-400 mb-2">{err}</div> }
                     })}
 
-                    <div class="camera-container" style="position: relative; width: 100%; height: 300px; background: #000;">
+                    <div class="relative w-full h-[300px] bg-black rounded-lg overflow-hidden mb-4">
                         <video
                             node_ref=video_element
                             autoplay
                             playsinline
                             muted
-                            style="width: 100%; height: 100%; object-fit: cover;"
+                            class="w-full h-full object-cover"
                         ></video>
-                        <canvas node_ref=canvas_element style="display:none;"></canvas>
+                        <canvas node_ref=canvas_element class="hidden"></canvas>
                     </div>
 
-                    <div class="scan-results-area">
+                    <div>
                     {move || {
                         if let Some(result) = analysis_result.get() {
                             let fit_class = match result.fit_category {
-                                FitCategory::GoodFit => "status-ok fit-badge",
-                                FitCategory::BadFit => "status-error fit-badge",
-                                FitCategory::CautionFit => "status-warning fit-badge",
+                                FitCategory::GoodFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-green-100 text-primary",
+                                FitCategory::BadFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-red-100 text-danger",
+                                FitCategory::CautionFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-orange-100 text-warning",
                             };
                             let result_clone = result.clone();
 
                             view! {
-                                <div class="scan-result-card">
+                                <div class="bg-neutral-800 p-4 rounded-lg">
                                     <h3>{result.species_name}</h3>
                                     <div class=fit_class>{result.fit_category.to_string()}</div>
-                                    <p class="reason-text">{result.reason}</p>
+                                    <p>{result.reason}</p>
                                     {result.already_owned.then(|| {
-                                        view! { <p class="owned-warning">"You already own this species!"</p> }
+                                        view! { <p class="text-yellow-400 font-bold">"You already own this species!"</p> }
                                     })}
-                                    <div class="action-buttons">
-                                        <button class="action-btn" on:click=move |_| on_add_to_collection(result_clone.clone())>
+                                    <div class="grid grid-cols-2 gap-4 mt-4">
+                                        <button class="bg-primary text-white border-none py-3 rounded cursor-pointer hover:bg-primary-dark" on:click=move |_| on_add_to_collection(result_clone.clone())>
                                             "Use Info"
                                         </button>
-                                        <button class="retry-btn" on:click=move |_| {
+                                        <button class="bg-neutral-600 text-white border-none py-3 rounded cursor-pointer hover:bg-neutral-500" on:click=move |_| {
                                             set_analysis_result.set(None);
                                             set_error_msg.set(None);
                                         }>"Scan Another"</button>
@@ -266,13 +270,13 @@ pub fn ScannerModal(
                             }.into_any()
                         } else {
                             view! {
-                                <div class="controls" style="margin-top: 1rem; text-align: center; display: flex; gap: 1rem; justify-content: center;">
-                                    <button class="action-btn" on:click=flip_camera>"Flip"</button>
+                                <div class="mt-4 text-center flex gap-4 justify-center">
+                                    <button class="bg-transparent border border-white/80 text-white py-2 px-3 rounded cursor-pointer font-bold hover:bg-white/20" on:click=flip_camera>"Flip"</button>
                                     {move || {
                                         if is_scanning.get() {
-                                            view! { <button disabled>"Analyzing..."</button> }.into_any()
+                                            view! { <button class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer" disabled>"Analyzing..."</button> }.into_any()
                                         } else {
-                                            view! { <button on:click=capture_and_analyze>"Capture"</button> }.into_any()
+                                            view! { <button class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer hover:bg-primary-dark" on:click=capture_and_analyze>"Capture"</button> }.into_any()
                                         }
                                     }}
                                 </div>

@@ -16,28 +16,28 @@ pub fn OrchidCard(
         " (Optimal)".to_string()
     };
 
-    let suggestion_style = if is_misplaced { "color: red; font-weight: bold;" } else { "color: green;" };
+    let suggestion_class = if is_misplaced { "text-red-600 font-bold" } else { "text-green-700" };
 
     let conservation = orchid.conservation_status.clone();
 
     view! {
-        <div class="orchid-card">
-            <div class="card-content" on:click=move |_| on_select(orchid_clone.clone())>
-                <h3>{orchid.name}</h3>
+        <div class="border border-gray-300 rounded-lg p-4 bg-white shadow hover:-translate-y-0.5 hover:shadow-md transition-transform cursor-pointer">
+            <div on:click=move |_| on_select(orchid_clone.clone())>
+                <h3 class="mt-0 text-primary">{orchid.name}</h3>
                 <p><strong>"Species: "</strong> {orchid.species}</p>
 
                 {conservation.map(|status| {
-                    view! { <p class="conservation-status"><strong>"Status: "</strong> {status}</p> }
+                    view! { <p class="italic text-red-700 my-1"><strong>"Status: "</strong> {status}</p> }
                 })}
 
                 <p><strong>"Watering: "</strong> "Every " {orchid.water_frequency_days} " days"</p>
                 <p><strong>"Light Req: "</strong> {orchid.light_requirement.to_string()} " (" {orchid.light_lux} " Lux)"</p>
                 <p><strong>"Temp Range: "</strong> {orchid.temperature_range}</p>
                 <p><strong>"Placement: "</strong> {orchid.placement.to_string()}</p>
-                <p style=suggestion_style><strong>"Suggestion: "</strong> {suggestion_msg}</p>
+                <p class=suggestion_class><strong>"Suggestion: "</strong> {suggestion_msg}</p>
                 <p><strong>"Notes: "</strong> {orchid.notes}</p>
             </div>
-            <button class="delete-btn" on:click=move |ev: web_sys::MouseEvent| {
+            <button class="bg-danger text-white border-none p-2 mt-4 text-sm rounded cursor-pointer hover:bg-danger-dark" on:click=move |ev: web_sys::MouseEvent| {
                 ev.stop_propagation();
                 on_delete(orchid_id);
             }>"Delete"</button>

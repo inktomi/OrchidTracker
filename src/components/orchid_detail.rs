@@ -9,6 +9,11 @@ use chrono::Local;
 use crate::github::upload_image_to_github;
 use gloo_file::futures::read_as_bytes;
 
+const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
+const MODAL_CONTENT: &str = "bg-white p-8 rounded-lg w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto";
+const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-200 pb-2";
+const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+
 #[component]
 pub fn OrchidDetail(
     orchid: Orchid,
@@ -88,12 +93,12 @@ pub fn OrchidDetail(
     };
 
     view! {
-        <div class="modal-overlay">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div class=MODAL_OVERLAY>
+            <div class=MODAL_CONTENT>
+                <div class=MODAL_HEADER>
                     <h2>{move || orchid_signal.get().name}</h2>
-                    <div class="header-actions">
-                        <button class="share-btn" on:click=move |_| {
+                    <div class="flex gap-2">
+                        <button class="bg-blue-600 text-white border-none py-2 px-3 rounded cursor-pointer text-sm hover:bg-blue-700" on:click=move |_| {
                             if let Some(window) = web_sys::window() {
                                 let origin = window.location().origin().unwrap_or_default();
                                 let pathname = window.location().pathname().unwrap_or_default();
@@ -105,22 +110,22 @@ pub fn OrchidDetail(
                                 let _ = window.alert_with_message("Deep link copied to clipboard!");
                             }
                         }>"Share"</button>
-                        <button class="close-btn" on:click=move |_| on_close()>"Close"</button>
+                        <button class=CLOSE_BTN on:click=move |_| on_close()>"Close"</button>
                     </div>
                 </div>
-                <div class="modal-body">
-                    <div class="detail-info">
+                <div>
+                    <div class="mb-4">
                         <p><strong>"Species: "</strong> {move || orchid_signal.get().species}</p>
                         {move || orchid_signal.get().conservation_status.map(|status| {
-                            view! { <p class="conservation-status"><strong>"Conservation Status: "</strong> {status}</p> }
+                            view! { <p class="italic text-red-700 my-1"><strong>"Conservation Status: "</strong> {status}</p> }
                         })}
                         <p><strong>"Notes: "</strong> {move || orchid_signal.get().notes}</p>
                     </div>
 
-                    <div class="add-log-section">
+                    <div class="mb-6">
                         <h3>"Add Entry"</h3>
                         <form on:submit=on_submit_log>
-                            <div class="form-group">
+                            <div class="mb-4">
                                 <label>"Note:"</label>
                                 <textarea
                                     prop:value=note
@@ -128,19 +133,19 @@ pub fn OrchidDetail(
                                     placeholder="Growth update, watering note, etc."
                                 ></textarea>
                             </div>
-                            <div class="form-group">
+                            <div class="mb-4">
                                 <label>"Photo (optional):"</label>
                                 <input type="file" accept="image/*" on:change=on_file_change />
                             </div>
-                            <button type="submit" disabled=move || is_syncing.get()>
+                            <button type="submit" class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer text-base hover:bg-primary-dark" disabled=move || is_syncing.get()>
                                 {move || if is_syncing.get() { "Syncing..." } else { "Add Entry" }}
                             </button>
                         </form>
                     </div>
 
-                    <div class="history-section">
+                    <div>
                         <h3>"History"</h3>
-                        <div class="timeline">
+                        <div class="mt-4 border-l-2 border-primary pl-4">
                             <For
                                 each=move || {
                                     let mut history = orchid_signal.get().history.clone();
@@ -151,9 +156,9 @@ pub fn OrchidDetail(
                                 children=move |entry| {
                                     let img = entry.image_data.clone();
                                     view! {
-                                        <div class="timeline-entry">
-                                            <span class="entry-date">{format_date(entry.timestamp)}</span>
-                                            <p class="entry-note">{entry.note.clone()}</p>
+                                        <div class="mb-6 relative before:content-[''] before:absolute before:-left-[1.4rem] before:top-[0.2rem] before:w-2.5 before:h-2.5 before:bg-primary before:rounded-full">
+                                            <span class="text-xs text-gray-500 font-bold block mb-1">{format_date(entry.timestamp)}</span>
+                                            <p class="my-1">{entry.note.clone()}</p>
                                             {img.map(|data| view! { <SmartImage data=data /> })}
                                         </div>
                                     }
@@ -180,18 +185,16 @@ fn SmartImage(data: String) -> impl IntoView {
                         set_src.set(url);
                     }
                 }
-            } else {
-                if let Ok(owner) = LocalStorage::get::<String>("repo_owner") {
-                    if let Ok(repo) = LocalStorage::get::<String>("repo_name") {
-                        let url = format!("https://raw.githubusercontent.com/{}/{}/main/src/data/{}", owner, repo, d);
-                        set_src.set(url);
-                    }
+            } else if let Ok(owner) = LocalStorage::get::<String>("repo_owner") {
+                if let Ok(repo) = LocalStorage::get::<String>("repo_name") {
+                    let url = format!("https://raw.githubusercontent.com/{}/{}/main/src/data/{}", owner, repo, d);
+                    set_src.set(url);
                 }
             }
         });
     });
 
     view! {
-        <img src=src class="timeline-image" alt="Orchid update" />
+        <img src=src class="max-w-full max-h-[300px] rounded mt-2 block" alt="Orchid update" />
     }
 }

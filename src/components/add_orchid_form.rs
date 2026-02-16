@@ -2,11 +2,15 @@ use leptos::prelude::*;
 use crate::orchid::{Orchid, LightRequirement, Placement, generate_id};
 use crate::components::scanner::AnalysisResult;
 
+const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
+const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-200 pb-2";
+const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+
 #[component]
 pub fn AddOrchidForm(
     on_add: impl Fn(Orchid) + 'static + Send + Sync,
     on_close: impl Fn() + 'static + Copy + Send + Sync,
-    prefill_data: ReadSignal<Option<AnalysisResult>>,
+    prefill_data: Memo<Option<AnalysisResult>>,
 ) -> impl IntoView {
     let (name, set_name) = signal(String::new());
     let (species, set_species) = signal(String::new());
@@ -100,15 +104,15 @@ pub fn AddOrchidForm(
     };
 
     view! {
-        <div class="modal-overlay">
-            <div class="modal-content form-modal">
-                <div class="modal-header">
+        <div class=MODAL_OVERLAY>
+            <div class="bg-white p-8 rounded-lg w-[90%] max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <div class=MODAL_HEADER>
                     <h2>"Add New Orchid"</h2>
-                    <button class="close-btn" on:click=move |_| on_close()>"X"</button>
+                    <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
                 </div>
-                <div class="modal-body">
+                <div>
                     <form on:submit=on_submit>
-                        <div class="form-group">
+                        <div class="mb-4">
                             <label>"Name:"</label>
                             <input type="text"
                                 on:input=move |ev| set_name.set(event_target_value(&ev))
@@ -116,7 +120,7 @@ pub fn AddOrchidForm(
                                 required
                             />
                         </div>
-                        <div class="form-group">
+                        <div class="mb-4">
                             <label>"Species:"</label>
                             <input type="text"
                                 on:input=move |ev| set_species.set(event_target_value(&ev))
@@ -124,15 +128,15 @@ pub fn AddOrchidForm(
                                 required
                             />
                         </div>
-                        <div class="form-group">
+                        <div class="mb-4">
                             <label>"Conservation Status (e.g. CITES II):"</label>
                             <input type="text"
                                 on:input=move |ev| set_conservation.set(event_target_value(&ev))
                                 prop:value=conservation
                             />
                         </div>
-                        <div class="form-row">
-                            <div class="form-group half-width">
+                        <div class="flex gap-4 mb-4">
+                            <div class="flex-1">
                                 <label>"Water Freq (days):"</label>
                                 <input type="number"
                                     on:input=move |ev| set_water_freq.set(event_target_value(&ev))
@@ -140,7 +144,7 @@ pub fn AddOrchidForm(
                                     required
                                 />
                             </div>
-                            <div class="form-group half-width">
+                            <div class="flex-1">
                                 <label>"Light Req:"</label>
                                 <select
                                     on:change=move |ev| set_light.set(event_target_value(&ev))
@@ -152,8 +156,8 @@ pub fn AddOrchidForm(
                                 </select>
                             </div>
                         </div>
-                        <div class="form-row">
-                             <div class="form-group half-width">
+                        <div class="flex gap-4 mb-4">
+                             <div class="flex-1">
                                 <label>"Placement:"</label>
                                 <select
                                     on:change=move |ev| set_placement.set(event_target_value(&ev))
@@ -166,7 +170,7 @@ pub fn AddOrchidForm(
                                     <option value="OutdoorRack">"Outdoor Rack"</option>
                                 </select>
                             </div>
-                             <div class="form-group half-width">
+                             <div class="flex-1">
                                 <label>"Light (Lux):"</label>
                                 <input type="text"
                                     on:input=move |ev| set_lux.set(event_target_value(&ev))
@@ -174,14 +178,14 @@ pub fn AddOrchidForm(
                                 />
                             </div>
                         </div>
-                         <div class="form-group">
+                         <div class="mb-4">
                             <label>"Temp Range (Optional):"</label>
                             <input type="text"
                                 on:input=move |ev| set_temp.set(event_target_value(&ev))
                                 prop:value=temp
                             />
                         </div>
-                        <div class="form-group">
+                        <div class="mb-4">
                             <label>"Notes:"</label>
                             <textarea
                                 on:input=move |ev| set_notes.set(event_target_value(&ev))
@@ -189,7 +193,7 @@ pub fn AddOrchidForm(
                                 rows="3"
                             ></textarea>
                         </div>
-                        <button type="submit" class="submit-btn">"Add Orchid"</button>
+                        <button type="submit" class="w-full mt-4 p-4 text-lg font-bold bg-primary text-white border-none rounded cursor-pointer hover:bg-primary-dark">"Add Orchid"</button>
                     </form>
                 </div>
             </div>

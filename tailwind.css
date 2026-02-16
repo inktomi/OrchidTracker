@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@source "./src/**/*.rs";
+
+@theme {
+  --color-primary: #2e7d32;
+  --color-primary-dark: #1b5e20;
+  --color-secondary: #f1f8e9;
+  --color-danger: #c62828;
+  --color-danger-dark: #b71c1c;
+  --color-warning: #ef6c00;
+  --color-shelf-high: #ffca28;
+  --color-shelf-medium: #66bb6a;
+  --color-shelf-low: #8d6e63;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-gray-800 bg-white m-0 p-0;
+  }
+  label {
+    @apply block mb-2 font-bold;
+  }
+  input, textarea, select {
+    @apply w-full p-2 border border-gray-300 rounded;
+  }
+}
