@@ -113,7 +113,22 @@ where
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>{orchid_signal.get().name}</h2>
-                    <button class="close-btn" on:click=move |_| on_close()>"Close"</button>
+                    <div class="header-actions">
+                        <button class="share-btn" on:click=move |_| {
+                            if let Some(window) = web_sys::window() {
+                                let origin = window.location().origin().unwrap_or_default();
+                                let pathname = window.location().pathname().unwrap_or_default();
+                                let url = format!("{}{}?id={}", origin, pathname, orchid_signal.get().id);
+                                
+                                let navigator = window.navigator();
+                                if let Some(clipboard) = navigator.clipboard() {
+                                    let _ = clipboard.write_text(&url);
+                                    let _ = window.alert_with_message("Deep link copied to clipboard!");
+                                }
+                            }
+                        }>"🔗 Share"</button>
+                        <button class="close-btn" on:click=move |_| on_close()>"Close"</button>
+                    </div>
                 </div>
                 <div class="modal-body">
                     <div class="detail-info">

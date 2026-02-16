@@ -529,3 +529,18 @@ button:hover {
 .close-err-btn:hover {
     background-color: #b71c1c;
 }
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.share-btn {
+    background-color: #1976d2;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.share-btn:hover {
+    background-color: #1565c0;
+}

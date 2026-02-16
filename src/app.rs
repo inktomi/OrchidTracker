@@ -43,6 +43,32 @@ pub fn App() -> impl IntoView {
     // State: Selected Orchid for Detail View
     let (selected_orchid, set_selected_orchid) = create_signal::<Option<Orchid>>(None);
     
+    // Check URL for deep link ID on load
+    create_effect(move |_| {
+        // Use a tracker to only run once if needed, but effect runs on mount.
+        // We need to access window location.
+        if let Some(window) = web_sys::window() {
+            if let Ok(search) = window.location().search() {
+                if let Ok(params) = web_sys::UrlSearchParams::new_with_str(&search) {
+                    if let Some(id_str) = params.get("id") {
+                        if let Ok(id) = id_str.parse::<u64>() {
+                            // Defer this to avoid signal update conflicts during initial render if needed,
+                            // but usually fine here.
+                            // We need to look up the orchid in the current list.
+                            // orchids is a Signal.
+                            // Warning: orchids might be empty if not loaded yet?
+                            // But orchids is initialized from LocalStorage synchronously in the signal creation.
+                            let current = orchids.get_untracked();
+                            if let Some(o) = current.iter().find(|o| o.id == id) {
+                                set_selected_orchid.set(Some(o.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
     // State: Show Settings Modal
     let (show_settings, set_show_settings) = create_signal(false);
     
