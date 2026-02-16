@@ -85,7 +85,7 @@ pub async fn upload_image_to_github(file_name: String, file_data: Vec<u8>) -> Re
     };
 
     let batch_resp = client.post(&lfs_url)
-        .basic_auth("git", Some(&token))
+        .basic_auth(owner.as_str(), Some(&token))
         .header("Accept", "application/vnd.git-lfs+json")
         .header("Content-Type", "application/vnd.git-lfs+json")
         .json(&batch_req)
