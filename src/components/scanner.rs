@@ -123,7 +123,9 @@ pub fn ScannerModal(
         set_analysis_result.set(None);
 
         spawn_local(async move {
-            let api_key = LocalStorage::get("gemini_api_key").unwrap_or_else(|_| String::new());
+            let raw_key = LocalStorage::get("gemini_api_key").unwrap_or_else(|_| String::new());
+            let api_key = raw_key.trim();
+            
             if api_key.is_empty() {
                 set_error_msg.set(Some("Gemini API Key missing in Settings".into()));
                 set_is_scanning.set(false);
@@ -182,6 +184,9 @@ pub fn ScannerModal(
              });
 
              let url = format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}", api_key);
+             
+             // Debug log (mask key)
+             log::info!("Sending AI request to: {}...", url.split("?key=").next().unwrap_or("..."));
 
              match client.post(&url)
                 .json(&request_body)
@@ -206,7 +211,12 @@ pub fn ScannerModal(
                                 Err(_) => set_error_msg.set(Some("Invalid response format from AI".into())),
                             }
                         } else {
-                             set_error_msg.set(Some(format!("AI API Error: {}", resp.status())));
+                             let status = resp.status();
+                             let error_body = resp.text().await.unwrap_or_else(|_| "(no content)".into());
+                             log::error!("AI API Error {} Body: {}", status, error_body);
+                             
+                             let msg = format!("AI API Error: {} - Details: {}", status, error_body);
+                             set_error_msg.set(Some(msg));
                         }
                     },
                     Err(e) => set_error_msg.set(Some(format!("Network Error: {}", e))),
