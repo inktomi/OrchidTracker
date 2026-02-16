@@ -11,6 +11,7 @@ where
     let (owner, set_owner) = create_signal("".to_string());
     let (repo, set_repo) = create_signal("".to_string());
     let (gemini_key, set_gemini_key) = create_signal("".to_string());
+    let (temp_unit, set_temp_unit) = create_signal("C".to_string());
 
     // Load initial values
     if let Ok(t) = LocalStorage::get("github_token") {
@@ -25,6 +26,11 @@ where
     if let Ok(k) = LocalStorage::get("gemini_api_key") {
         set_gemini_key.set(k);
     }
+    if let Ok(u) = LocalStorage::get("temp_unit") {
+        set_temp_unit.set(u);
+    } else {
+        set_temp_unit.set("C".to_string());
+    }
 
     let on_close_clone = on_close.clone();
     let on_save = move |_| {
@@ -32,6 +38,7 @@ where
         let _ = LocalStorage::set("repo_owner", owner.get());
         let _ = LocalStorage::set("repo_name", repo.get());
         let _ = LocalStorage::set("gemini_api_key", gemini_key.get());
+        let _ = LocalStorage::set("temp_unit", temp_unit.get());
         on_close_clone();
     };
 
@@ -43,6 +50,17 @@ where
                     <button class="close-btn" on:click=move |_| on_close()>"X"</button>
                 </div>
                 <div class="modal-body">
+                    <div class="form-group">
+                        <label>"Temperature Unit:"</label>
+                        <select
+                            on:change=move |ev| set_temp_unit.set(event_target_value(&ev))
+                            prop:value=temp_unit
+                        >
+                            <option value="C">"Celsius (°C)"</option>
+                            <option value="F">"Fahrenheit (°F)"</option>
+                        </select>
+                    </div>
+
                     <p class="settings-hint">
                         "Enter your GitHub Personal Access Token (PAT) to enable syncing changes directly to the repository."
                         <br/>

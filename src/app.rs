@@ -55,6 +55,12 @@ pub fn App() -> impl IntoView {
     // State: Pre-fill data for Add Form
     let (prefill_data, set_prefill_data) = create_signal::<Option<AnalysisResult>>(None);
 
+    // State: Temperature Unit
+    let (temp_unit, set_temp_unit) = create_signal("C".to_string());
+    if let Ok(u) = LocalStorage::get("temp_unit") {
+        set_temp_unit.set(u);
+    }
+
     // State: Sync Status
     let (sync_status, set_sync_status) = create_signal("".to_string());
 
@@ -135,7 +141,7 @@ pub fn App() -> impl IntoView {
                 </div>
             </div>
             
-            <ClimateDashboard data=climate_data.clone() />
+            <ClimateDashboard data=climate_data.clone() unit=temp_unit />
 
             <div class="view-toggle">
                 <button 
@@ -210,7 +216,13 @@ pub fn App() -> impl IntoView {
             // Settings Modal
             {move || if show_settings.get() {
                 view! {
-                    <SettingsModal on_close=move || set_show_settings.set(false) />
+                    <SettingsModal on_close=move || {
+                        set_show_settings.set(false);
+                        // Refresh prefs
+                        if let Ok(u) = LocalStorage::get("temp_unit") {
+                            set_temp_unit.set(u);
+                        }
+                    } />
                 }.into_view()
             } else {
                 view! {}.into_view()
@@ -241,31 +253,41 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
-fn ClimateDashboard(data: Vec<ClimateData>) -> impl IntoView {
+fn ClimateDashboard(data: Vec<ClimateData>, unit: ReadSignal<String>) -> impl IntoView {
     if data.is_empty() {
         view! { <div class="climate-dashboard empty">"No climate data available (Configure AC Infinity Action)"</div> }.into_view()
     } else {
         // Just show the first device (Controller 69 Pro usually)
         let main_dev = &data[0];
         
-        view! {
-            <div class="climate-dashboard">
-                <div class="climate-stat">
-                    <span class="label">"Temperature"</span>
-                    <span class="value">{main_dev.temperature} "°C"</span>
+        move || {
+            let u = unit.get();
+            let (temp_val, temp_unit_str) = if u == "F" {
+                let f = (main_dev.temperature * 9.0 / 5.0) + 32.0;
+                (format!("{:.1}", f), "°F")
+            } else {
+                (format!("{:.1}", main_dev.temperature), "°C")
+            };
+
+            view! {
+                <div class="climate-dashboard">
+                    <div class="climate-stat">
+                        <span class="label">"Temperature"</span>
+                        <span class="value">{temp_val} " " {temp_unit_str}</span>
+                    </div>
+                    <div class="climate-stat">
+                        <span class="label">"Humidity"</span>
+                        <span class="value">{main_dev.humidity} "%"</span>
+                    </div>
+                    <div class="climate-stat">
+                        <span class="label">"VPD"</span>
+                        <span class="value">{main_dev.vpd} " kPa"</span>
+                    </div>
+                    <div class="climate-footer">
+                        "Last Updated: " {main_dev.updated.clone()}
+                    </div>
                 </div>
-                <div class="climate-stat">
-                    <span class="label">"Humidity"</span>
-                    <span class="value">{main_dev.humidity} "%"</span>
-                </div>
-                <div class="climate-stat">
-                    <span class="label">"VPD"</span>
-                    <span class="value">{main_dev.vpd} " kPa"</span>
-                </div>
-                <div class="climate-footer">
-                    "Last Updated: " {main_dev.updated.clone()}
-                </div>
-            </div>
+            }
         }.into_view()
     }
 }
