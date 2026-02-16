@@ -193,7 +193,7 @@ pub fn AddOrchidForm(
                                 rows="3"
                             ></textarea>
                         </div>
-                        <button type="submit" class="w-full mt-4 p-4 text-lg font-bold bg-primary text-white border-none rounded cursor-pointer hover:bg-primary-dark">"Add Orchid"</button>
+                        <button type="submit" class="p-4 mt-4 w-full text-lg font-bold text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark">"Add Orchid"</button>
                     </form>
                 </div>
             </div>

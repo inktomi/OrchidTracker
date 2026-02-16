@@ -46,7 +46,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::High)
                 }
             >
-                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Top Shelf (High Light - Near Lights)"</h3>
+                <h3 class="pb-2 mt-0 border-b-2 text-primary border-secondary">"Top Shelf (High Light - Near Lights)"</h3>
                 <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -58,7 +58,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Medium)
                 }
             >
-                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Middle Shelf (Medium Light)"</h3>
+                <h3 class="pb-2 mt-0 border-b-2 text-primary border-secondary">"Middle Shelf (Medium Light)"</h3>
                 <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -70,7 +70,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Low)
                 }
             >
-                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Bottom Shelf (Low Light - Floor)"</h3>
+                <h3 class="pb-2 mt-0 border-b-2 text-primary border-secondary">"Bottom Shelf (Low Light - Floor)"</h3>
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -84,7 +84,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::OutdoorRack)
                 }
             >
-                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Outdoor Rack (High Sun)"</h3>
+                <h3 class="pb-2 mt-0 border-b-2 text-primary border-secondary">"Outdoor Rack (High Sun)"</h3>
                 <OrchidTableSection orchids=outdoor_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -96,7 +96,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Patio)
                 }
             >
-                <h3 class="mt-0 text-primary border-b-2 border-secondary pb-2">"Patio (Morning Sun / Afternoon Shade)"</h3>
+                <h3 class="pb-2 mt-0 border-b-2 text-primary border-secondary">"Patio (Morning Sun / Afternoon Shade)"</h3>
                 <OrchidTableSection orchids=patio_orchids on_delete=on_delete on_select=on_select />
             </div>
         </div>
@@ -110,10 +110,10 @@ fn OrchidTableSection(
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     if orchids.is_empty() {
-        view! { <p class="italic text-gray-500 text-center p-4">"No orchids on this shelf."</p> }.into_any()
+        view! { <p class="p-4 italic text-center text-gray-500">"No orchids on this shelf."</p> }.into_any()
     } else {
         view! {
-            <table class="w-full border-collapse mt-4">
+            <table class="mt-4 w-full border-collapse">
                 <thead>
                     <tr>
                         <th class=TH_CLASS>"Name"</th>
@@ -158,7 +158,7 @@ fn OrchidTableSection(
                                     <td class=TD_CLASS>{orchid.temperature_range}</td>
                                     <td class=status_class>{status_text}</td>
                                     <td class=TD_CLASS>
-                                        <button class="py-1 px-2 text-sm bg-red-300 text-white border-none rounded cursor-pointer hover:bg-red-500" on:click=move |ev: web_sys::MouseEvent| {
+                                        <button class="py-1 px-2 text-sm text-white bg-red-300 rounded border-none cursor-pointer hover:bg-red-500" on:click=move |ev: web_sys::MouseEvent| {
                                             ev.stop_propagation();
                                             on_delete(orchid_id);
                                         }>"X"</button>

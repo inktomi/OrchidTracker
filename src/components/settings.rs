@@ -64,7 +64,7 @@ where
                         </select>
                     </div>
 
-                    <p class="text-sm text-gray-500 bg-gray-100 p-2 rounded mb-4">
+                    <p class="p-2 mb-4 text-sm text-gray-500 bg-gray-100 rounded">
                         "Enter your GitHub Personal Access Token (PAT) to enable syncing changes directly to the repository."
                         <br/>
                         "Required scopes: " <strong>"repo"</strong> " (for private repos) or " <strong>"public_repo"</strong> " (for public repos)."
@@ -85,14 +85,14 @@ where
                     <hr class="my-4 border-gray-200" />
 
                     <h3>"AI Integration (Google Gemini)"</h3>
-                    <p class="text-sm text-gray-500 bg-gray-100 p-2 rounded mb-4">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
+                    <p class="p-2 mb-4 text-sm text-gray-500 bg-gray-100 rounded">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
                      <div class="mb-4">
                         <label>"Gemini API Key:"</label>
                         <input type="password" prop:value=gemini_key on:input=move |ev| set_gemini_key.set(event_target_value(&ev)) />
                     </div>
 
                     <div class="mt-4">
-                        <button class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer text-base hover:bg-primary-dark" on:click=on_save>"Save Settings"</button>
+                        <button class="py-3 px-6 text-base text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=on_save>"Save Settings"</button>
                     </div>
                 </div>
             </div>

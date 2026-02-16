@@ -98,7 +98,7 @@ pub fn OrchidDetail(
                 <div class=MODAL_HEADER>
                     <h2>{move || orchid_signal.get().name}</h2>
                     <div class="flex gap-2">
-                        <button class="bg-blue-600 text-white border-none py-2 px-3 rounded cursor-pointer text-sm hover:bg-blue-700" on:click=move |_| {
+                        <button class="py-2 px-3 text-sm text-white bg-blue-600 rounded border-none cursor-pointer hover:bg-blue-700" on:click=move |_| {
                             if let Some(window) = web_sys::window() {
                                 let origin = window.location().origin().unwrap_or_default();
                                 let pathname = window.location().pathname().unwrap_or_default();
@@ -117,7 +117,7 @@ pub fn OrchidDetail(
                     <div class="mb-4">
                         <p><strong>"Species: "</strong> {move || orchid_signal.get().species}</p>
                         {move || orchid_signal.get().conservation_status.map(|status| {
-                            view! { <p class="italic text-red-700 my-1"><strong>"Conservation Status: "</strong> {status}</p> }
+                            view! { <p class="my-1 italic text-red-700"><strong>"Conservation Status: "</strong> {status}</p> }
                         })}
                         <p><strong>"Notes: "</strong> {move || orchid_signal.get().notes}</p>
                     </div>
@@ -137,7 +137,7 @@ pub fn OrchidDetail(
                                 <label>"Photo (optional):"</label>
                                 <input type="file" accept="image/*" on:change=on_file_change />
                             </div>
-                            <button type="submit" class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer text-base hover:bg-primary-dark" disabled=move || is_syncing.get()>
+                            <button type="submit" class="py-3 px-6 text-base text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" disabled=move || is_syncing.get()>
                                 {move || if is_syncing.get() { "Syncing..." } else { "Add Entry" }}
                             </button>
                         </form>
@@ -145,7 +145,7 @@ pub fn OrchidDetail(
 
                     <div>
                         <h3>"History"</h3>
-                        <div class="mt-4 border-l-2 border-primary pl-4">
+                        <div class="pl-4 mt-4 border-l-2 border-primary">
                             <For
                                 each=move || {
                                     let mut history = orchid_signal.get().history.clone();
@@ -156,8 +156,8 @@ pub fn OrchidDetail(
                                 children=move |entry| {
                                     let img = entry.image_data.clone();
                                     view! {
-                                        <div class="mb-6 relative before:content-[''] before:absolute before:-left-[1.4rem] before:top-[0.2rem] before:w-2.5 before:h-2.5 before:bg-primary before:rounded-full">
-                                            <span class="text-xs text-gray-500 font-bold block mb-1">{format_date(entry.timestamp)}</span>
+                                        <div class="relative mb-6 before:content-[''] before:absolute before:-left-[1.4rem] before:top-[0.2rem] before:w-2.5 before:h-2.5 before:bg-primary before:rounded-full">
+                                            <span class="block mb-1 text-xs font-bold text-gray-500">{format_date(entry.timestamp)}</span>
                                             <p class="my-1">{entry.note.clone()}</p>
                                             {img.map(|data| view! { <SmartImage data=data /> })}
                                         </div>
@@ -195,6 +195,6 @@ fn SmartImage(data: String) -> impl IntoView {
     });
 
     view! {
-        <img src=src class="max-w-full max-h-[300px] rounded mt-2 block" alt="Orchid update" />
+        <img src=src class="block mt-2 max-w-full rounded max-h-[300px]" alt="Orchid update" />
     }
 }

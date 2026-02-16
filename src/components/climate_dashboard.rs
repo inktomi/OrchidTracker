@@ -5,7 +5,7 @@ use crate::app::ClimateData;
 pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>) -> impl IntoView {
     let cd = data.get_value();
     if cd.is_empty() {
-        view! { <div class="bg-white p-4 mb-4 rounded-lg shadow border border-gray-300 max-w-[600px] mx-auto flex justify-center italic text-gray-500">"No climate data available (Configure AC Infinity Action)"</div> }.into_any()
+        view! { <div class="flex justify-center p-4 mx-auto mb-4 italic text-gray-500 bg-white rounded-lg border border-gray-300 shadow max-w-[600px]">"No climate data available (Configure AC Infinity Action)"</div> }.into_any()
     } else {
         view! {
             <div>
@@ -25,7 +25,7 @@ pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>)
                         let updated = dev.updated.clone();
 
                         view! {
-                            <div class="bg-white p-4 mb-4 rounded-lg shadow border border-gray-300 max-w-[600px] mx-auto flex justify-around flex-wrap text-gray-800">
+                            <div class="flex flex-wrap justify-around p-4 mx-auto mb-4 text-gray-800 bg-white rounded-lg border border-gray-300 shadow max-w-[600px]">
                                 <h3>{name}</h3>
                                 <div class="flex flex-col items-center p-2">
                                     <span class="text-xs text-gray-500 uppercase">"Temperature"</span>
@@ -39,7 +39,7 @@ pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>)
                                     <span class="text-xs text-gray-500 uppercase">"VPD"</span>
                                     <span class="text-2xl font-bold text-primary">{vpd} " kPa"</span>
                                 </div>
-                                <div class="w-full text-center text-[0.7rem] text-gray-400 mt-2">
+                                <div class="mt-2 w-full text-center text-gray-400 text-[0.7rem]">
                                     "Last Updated: " {updated}
                                 </div>
                             </div>

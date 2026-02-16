@@ -11,6 +11,7 @@ OrchidTracker is a client-side-only (CSR) web application for managing an orchid
 | Language | **Rust (latest stable)** | Target: `wasm32-unknown-unknown` |
 | Framework | **Leptos 0.8+** (CSR only) | No SSR. Mounted via `leptos::mount::mount_to_body` |
 | Styling | **Tailwind CSS v4** | Standalone CLI via Trunk — no Node.js |
+| Sorting | **Rustywind** | CLI tool for sorting Tailwind classes (replaces Prettier plugin) |
 | Build | **Trunk** | WASM bundler. Config in `Trunk.toml` |
 | Deployment | GitHub Pages | Static site via `trunk build --release` |
 
@@ -140,8 +141,9 @@ Data flows: UI signals → LocalStorage (auto-persist via `Effect`) → GitHub (
 
 1. **`cargo clippy --target wasm32-unknown-unknown`** — zero warnings.
 2. **`cargo test`** — all unit tests pass (domain logic in `orchid.rs`, serialization, etc.).
-3. **`cargo check --target wasm32-unknown-unknown`** — full WASM compilation check.
-4. **`trunk build`** — confirm Tailwind compiles and WASM bundles correctly.
+3. **`rustywind . --write`** — sort Tailwind classes.
+4. **`cargo check --target wasm32-unknown-unknown`** — full WASM compilation check.
+5. **`trunk build`** — confirm Tailwind compiles and WASM bundles correctly.
 
 ### Testing guidelines
 

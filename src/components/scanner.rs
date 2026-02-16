@@ -220,21 +220,21 @@ pub fn ScannerModal(
         <div class=MODAL_OVERLAY>
             <div class="bg-neutral-900 text-gray-200 p-8 rounded-lg w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-neutral-700">
                  <div class=MODAL_HEADER>
-                    <h2 class="text-white m-0">"Orchid Scanner"</h2>
+                    <h2 class="m-0 text-white">"Orchid Scanner"</h2>
                     <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
                 </div>
                 <div>
                     {move || error_msg.get().map(|err| {
-                        view! { <div class="text-red-400 mb-2">{err}</div> }
+                        view! { <div class="mb-2 text-red-400">{err}</div> }
                     })}
 
-                    <div class="relative w-full h-[300px] bg-black rounded-lg overflow-hidden mb-4">
+                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-lg h-[300px]">
                         <video
                             node_ref=video_element
                             autoplay
                             playsinline
                             muted
-                            class="w-full h-full object-cover"
+                            class="object-cover w-full h-full"
                         ></video>
                         <canvas node_ref=canvas_element class="hidden"></canvas>
                     </div>
@@ -250,18 +250,18 @@ pub fn ScannerModal(
                             let result_clone = result.clone();
 
                             view! {
-                                <div class="bg-neutral-800 p-4 rounded-lg">
+                                <div class="p-4 rounded-lg bg-neutral-800">
                                     <h3>{result.species_name}</h3>
                                     <div class=fit_class>{result.fit_category.to_string()}</div>
                                     <p>{result.reason}</p>
                                     {result.already_owned.then(|| {
-                                        view! { <p class="text-yellow-400 font-bold">"You already own this species!"</p> }
+                                        view! { <p class="font-bold text-yellow-400">"You already own this species!"</p> }
                                     })}
                                     <div class="grid grid-cols-2 gap-4 mt-4">
-                                        <button class="bg-primary text-white border-none py-3 rounded cursor-pointer hover:bg-primary-dark" on:click=move |_| on_add_to_collection(result_clone.clone())>
+                                        <button class="py-3 text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=move |_| on_add_to_collection(result_clone.clone())>
                                             "Use Info"
                                         </button>
-                                        <button class="bg-neutral-600 text-white border-none py-3 rounded cursor-pointer hover:bg-neutral-500" on:click=move |_| {
+                                        <button class="py-3 text-white rounded border-none cursor-pointer bg-neutral-600 hover:bg-neutral-500" on:click=move |_| {
                                             set_analysis_result.set(None);
                                             set_error_msg.set(None);
                                         }>"Scan Another"</button>
@@ -270,13 +270,13 @@ pub fn ScannerModal(
                             }.into_any()
                         } else {
                             view! {
-                                <div class="mt-4 text-center flex gap-4 justify-center">
-                                    <button class="bg-transparent border border-white/80 text-white py-2 px-3 rounded cursor-pointer font-bold hover:bg-white/20" on:click=flip_camera>"Flip"</button>
+                                <div class="flex gap-4 justify-center mt-4 text-center">
+                                    <button class="py-2 px-3 font-bold text-white bg-transparent rounded border cursor-pointer border-white/80 hover:bg-white/20" on:click=flip_camera>"Flip"</button>
                                     {move || {
                                         if is_scanning.get() {
-                                            view! { <button class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer" disabled>"Analyzing..."</button> }.into_any()
+                                            view! { <button class="py-3 px-6 text-white rounded border-none cursor-pointer bg-primary" disabled>"Analyzing..."</button> }.into_any()
                                         } else {
-                                            view! { <button class="bg-primary text-white border-none py-3 px-6 rounded cursor-pointer hover:bg-primary-dark" on:click=capture_and_analyze>"Capture"</button> }.into_any()
+                                            view! { <button class="py-3 px-6 text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=capture_and_analyze>"Capture"</button> }.into_any()
                                         }
                                     }}
                                 </div>
