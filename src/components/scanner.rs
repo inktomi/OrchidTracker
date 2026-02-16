@@ -4,7 +4,7 @@ use web_sys::{HtmlVideoElement, HtmlCanvasElement, MediaStreamConstraints};
 use wasm_bindgen::JsCast;
 use serde::{Deserialize, Serialize};
 use crate::orchid::Orchid;
-use gloo_timers::future::spawn_local;
+use wasm_bindgen_futures::JsFuture;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AnalysisResult {
@@ -38,6 +38,9 @@ where
     // Node references for video and canvas
     let video_element: NodeRef<html::Video> = create_node_ref();
     let canvas_element: NodeRef<html::Canvas> = create_node_ref();
+    
+    let existing_orchids = store_value(existing_orchids);
+    let climate_summary = store_value(climate_summary);
 
     // Start Camera on Mount
     create_effect(move |_| {
@@ -56,11 +59,11 @@ where
 
                     // Use constraints directly if possible, but web-sys types are tricky. 
                     // Let's use basic constraints first to ensure it compiles, then refine.
-                    constraints.video(&wasm_bindgen::JsValue::TRUE);
+                    constraints.set_video(&wasm_bindgen::JsValue::TRUE);
 
                     match media_devices.get_user_media_with_constraints(&constraints) {
                         Ok(promise) => {
-                            if let Ok(stream_js) = wasm_bindgen_futures::JsFuture::from(promise).await {
+                            if let Ok(stream_js) = JsFuture::from(promise).await {
                                 let stream = stream_js.unchecked_into::<web_sys::MediaStream>();
                                 video.set_src_object(Some(&stream));
                                 let _ = video.play();
@@ -92,8 +95,8 @@ where
             // Capture Frame
             let video = video_element.get().expect("Video element missing");
             let canvas = canvas_element.get().expect("Canvas element missing");
-            // Cast canvas to HtmlCanvasElement to get context
-            let html_canvas: HtmlCanvasElement = canvas.clone().into_any().unchecked_into();
+            // HtmlElement<Canvas> derefs to HtmlCanvasElement
+            let html_canvas: &HtmlCanvasElement = &canvas;
             
             let context = html_canvas.get_context("2d").unwrap().unwrap().unchecked_into::<web_sys::CanvasRenderingContext2d>();
             
@@ -114,7 +117,11 @@ where
 
             // Prepare AI Request
              let client = reqwest::Client::new();
-             let existing_names: Vec<String> = existing_orchids.iter().map(|o| o.species.clone()).collect();
+             let existing_names: Vec<String> = existing_orchids.with_value(|orchids| {
+                 orchids.iter().map(|o| o.species.clone()).collect()
+             });
+             let summary = climate_summary.get_value();
+             
              let prompt = format!(
                  "Identify the orchid species from this image. \
                  Then, evaluate if it is a good fit for my conditions: {}. \
@@ -123,7 +130,7 @@ where
                  {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\", \"conservation_status\": \"CITES II\" }} \
                  Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
                  For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common.",
-                 climate_summary,
+                 summary,
                  existing_names
              );
 
@@ -212,6 +219,7 @@ where
                             "Bad Fit" => "status-error fit-badge",
                              _ => "status-warning fit-badge"
                         };
+                        let result_clone = result.clone();
                         
                         view! {
                             <div class="scan-result-card">
@@ -224,7 +232,7 @@ where
                                     view! {}.into_view()
                                 }}
                                 <div class="action-buttons">
-                                    <button class="action-btn" on:click=move |_| on_add_to_collection(result.clone())>
+                                    <button class="action-btn" on:click=move |_| on_add_to_collection(result_clone.clone())>
                                         "Use Info"
                                     </button>
                                     <button class="retry-btn" on:click=move |_| {

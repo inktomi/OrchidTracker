@@ -306,7 +306,10 @@ where
             <div 
                 class="cabinet-section high-section"
                 on:dragover=move |ev| ev.prevent_default()
-                on:drop=move |ev| handle_drop(ev, Placement::High)
+                on:drop={
+                    let handle_drop = handle_drop.clone();
+                    move |ev| handle_drop(ev, Placement::High)
+                }
             >
                 <h3>"Top Shelf (High Light - Near Lights)"</h3>
                 <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
@@ -315,7 +318,10 @@ where
             <div 
                 class="cabinet-section medium-section"
                 on:dragover=move |ev| ev.prevent_default()
-                on:drop=move |ev| handle_drop(ev, Placement::Medium)
+                on:drop={
+                    let handle_drop = handle_drop.clone();
+                    move |ev| handle_drop(ev, Placement::Medium)
+                }
             >
                 <h3>"Middle Shelf (Medium Light)"</h3>
                 <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
