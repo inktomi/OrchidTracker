@@ -31,7 +31,7 @@ This project includes a GitHub Action workflow to automatically deploy to GitHub
 1.  Push your code to the `main` branch.
 2.  Go to your repository settings on GitHub.
 3.  Under **Pages**, ensure the source is set to `gh-pages` branch (created by the action).
-4.  Your site will be live at `https://<username>.github.io/OrchidTracker/`.
+4.  Your site will be live at `http://orchids.reef.fish/`.
 
 ## Technologies
 
