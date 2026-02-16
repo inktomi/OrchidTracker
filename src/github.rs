@@ -66,6 +66,52 @@ fn get_config() -> Result<(String, String, String), AppError> {
 }
 
 pub async fn upload_image_to_github(file_name: String, file_data: Vec<u8>) -> Result<String, AppError> {
+    // Try LFS first
+    match upload_image_to_github_lfs(file_name.clone(), file_data.clone()).await {
+        Ok(res) => Ok(res),
+        Err(lfs_err) => {
+            // If LFS fails (e.g. CORS), fallback to legacy API
+            // We could log the error to console?
+            let _ = web_sys::console::warn_1(&format!("LFS upload failed, falling back to legacy: {}", lfs_err).into());
+            upload_image_to_github_legacy(file_name, file_data).await
+        }
+    }
+}
+
+async fn upload_image_to_github_legacy(file_name: String, file_data: Vec<u8>) -> Result<String, AppError> {
+    let (token, owner, repo) = get_config()?;
+    let client = Client::new();
+    
+    let path = format!("src/data/images/{}", file_name);
+    let url = format!("{}/repos/{}/{}/contents/{}", API_BASE, owner, repo, path);
+    
+    let content_base64 = general_purpose::STANDARD.encode(&file_data);
+    
+    let payload = UpdateFilePayload {
+        message: format!("Add image {} (Legacy)", file_name),
+        content: content_base64,
+        sha: None, 
+        branch: "main".to_string(),
+    };
+    
+    let resp = client.put(&url)
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/vnd.github.v3+json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| AppError::GithubApi(e.to_string()))?;
+        
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(AppError::GithubApi(format!("Legacy commit failed: {} - {}", status, text)));
+    }
+    
+    Ok(file_name)
+}
+
+async fn upload_image_to_github_lfs(file_name: String, file_data: Vec<u8>) -> Result<String, AppError> {
     let (token, owner, repo) = get_config()?;
     let client = Client::new();
 
