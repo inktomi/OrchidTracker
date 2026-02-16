@@ -207,6 +207,10 @@ function __wbg_get_imports() {
         __wbg_append_dfccc9ddc959bb95: function() { return handleError(function (arg0, arg1) {
             arg0.append(arg1);
         }, arguments); },
+        __wbg_arrayBuffer_05ce1af23e9064e8: function(arg0) {
+            const ret = arg0.arrayBuffer();
+            return ret;
+        },
         __wbg_arrayBuffer_bb54076166006c39: function() { return handleError(function (arg0) {
             const ret = arg0.arrayBuffer();
             return ret;
