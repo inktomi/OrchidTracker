@@ -77,15 +77,18 @@ pub fn App() -> impl IntoView {
         set_sync_status.set("Syncing...".to_string());
         spawn_local(async move {
             match sync_orchids_to_github(current_orchids).await {
-                Ok(_) => set_sync_status.set("Synced!".to_string()),
+                Ok(_) => {
+                    set_sync_status.set("Synced!".to_string());
+                    // Clear success status after 3s
+                    gloo_timers::future::sleep(std::time::Duration::from_secs(3)).await;
+                    set_sync_status.update(|s| if s == "Synced!" { *s = "".to_string(); });
+                },
                 Err(e) => {
                     log::error!("Sync failed: {}", e);
-                    set_sync_status.set("Sync Failed".to_string());
+                    set_sync_status.set(format!("Error: {}", e));
+                    // No auto-clear for errors
                 }
             }
-            // Clear status after 3s
-            gloo_timers::future::sleep(std::time::Duration::from_secs(3)).await;
-            set_sync_status.set("".to_string());
         });
     };
 
@@ -134,7 +137,14 @@ pub fn App() -> impl IntoView {
             <div class="header-top">
                 <h1>"Orchid Tracker"</h1>
                 <div class="header-controls">
-                    <span class="sync-status">{sync_status}</span>
+                    <span class="sync-status">
+                        {move || sync_status.get()}
+                        {move || if sync_status.get().starts_with("Error:") {
+                            view! { <button class="close-err-btn" on:click=move |_| set_sync_status.set("".to_string())>"X"</button> }.into_view()
+                        } else {
+                            view! {}.into_view()
+                        }}
+                    </span>
                     <button class="action-btn" on:click=move |_| trigger_sync(orchids.get())>"🔄 Sync"</button>
                     <button class="action-btn" on:click=move |_| set_show_add_modal.set(true)>"➕ Add"</button>
                     <button class="action-btn" on:click=move |_| set_show_scanner.set(true)>"📷 Scan"</button>
