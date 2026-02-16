@@ -135,6 +135,7 @@ pub fn App() -> impl IntoView {
                 <h1>"Orchid Tracker"</h1>
                 <div class="header-controls">
                     <span class="sync-status">{sync_status}</span>
+                    <button class="action-btn" on:click=move |_| trigger_sync(orchids.get())>"🔄 Sync"</button>
                     <button class="action-btn" on:click=move |_| set_show_add_modal.set(true)>"➕ Add"</button>
                     <button class="action-btn" on:click=move |_| set_show_scanner.set(true)>"📷 Scan"</button>
                     <button class="settings-btn" on:click=move |_| set_show_settings.set(true)>"⚙️ Settings"</button>
