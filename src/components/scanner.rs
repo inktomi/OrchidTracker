@@ -5,6 +5,7 @@ use web_sys::{HtmlCanvasElement, MediaStreamConstraints};
 use wasm_bindgen::JsCast;
 use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, FitCategory, LightRequirement};
+use crate::app::ClimateData;
 use wasm_bindgen_futures::JsFuture;
 
 const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
@@ -40,7 +41,7 @@ pub fn ScannerModal(
     on_close: impl Fn() + 'static + Copy + Send + Sync,
     on_add_to_collection: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
     existing_orchids: Vec<Orchid>,
-    climate_summary: String,
+    climate_data: Vec<ClimateData>,
 ) -> impl IntoView {
     let (is_scanning, set_is_scanning) = signal(false);
     let (analysis_result, set_analysis_result) = signal::<Option<AnalysisResult>>(None);
@@ -50,7 +51,7 @@ pub fn ScannerModal(
     let canvas_element: NodeRef<leptos::html::Canvas> = NodeRef::new();
 
     let existing_orchids = StoredValue::new(existing_orchids);
-    let climate_summary = StoredValue::new(climate_summary);
+    let climate_data = StoredValue::new(climate_data);
 
     let (facing_mode, set_facing_mode) = signal("environment".to_string());
     let (stream_signal, set_stream_signal) = signal_local::<Option<web_sys::MediaStream>>(None);
@@ -157,14 +158,27 @@ pub fn ScannerModal(
              let existing_names: Vec<String> = existing_orchids.with_value(|orchids| {
                  orchids.iter().map(|o| o.species.clone()).collect()
              });
-             let summary = climate_summary.get_value();
+             
+             let summary = climate_data.with_value(|cd| {
+                 if cd.is_empty() {
+                     "Unknown climate".to_string()
+                 } else {
+                     cd.iter().map(|d| {
+                         format!("{}: {}C, {}% Humid, {}kPa VPD", d.name, d.temperature, d.humidity, d.vpd)
+                     }).collect::<Vec<_>>().join(" | ")
+                 }
+             });
 
              let prompt = format!(
                  "Identify the orchid species from this image. \
-                 Then, evaluate if it is a good fit for my conditions: {}. \
-                 I also have outdoor space in zip code 90606 (Outdoor Rack: High Sun but with some shade cloth protection, still very exposed - Laelia anceps does well here; Patio: Morning Sun/Afternoon Shade). \
-                 Also check if I already own it (My List: {:?}). \
-                 Return ONLY valid JSON with this structure (no markdown): \
+                 Think step-by-step: \
+                 1. Identify the species with high confidence (look for tags). \
+                 2. Analyze its natural habitat and care requirements. \
+                 3. Compare requirements against my conditions: {}. \
+                 4. Consider outdoor conditions (90606, partial shade patio or full sun outdoor rack). Outdoor Rack: High Sun with shade cloth. Patio: Morning Sun/Afternoon Shade. \
+                 5. Check if I own it already. I own these plants: {:?}. \
+                 Then, evaluate the fit of this new plant with my existing conditions. \
+                 Finally, return ONLY valid JSON with this structure (no markdown): \
                  {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\", \"conservation_status\": \"CITES II\" }} \
                  Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
                  For light_req, choose from: 'High', 'Medium', 'Low'. \
@@ -183,7 +197,7 @@ pub fn ScannerModal(
                  }]
              });
 
-             let url = format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}", api_key);
+             let url = format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key={}", api_key);
              
              // Debug log (mask key)
              log::info!("Sending AI request to: {}...", url.split("?key=").next().unwrap_or("..."));

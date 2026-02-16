@@ -178,20 +178,12 @@ pub fn App() -> impl IntoView {
             })}
 
             {move || show_scanner.get().then(|| {
-                let cd = climate_data.get_value();
-                let summary = if !cd.is_empty() {
-                    let d = &cd[0];
-                    format!("Temp: {}C, Humidity: {}%, VPD: {}kPa", d.temperature, d.humidity, d.vpd)
-                } else {
-                    "Unknown climate".into()
-                };
-
                 view! {
                     <ScannerModal
                         on_close=move || update::dispatch(set_model, model, Msg::ShowScanner(false))
                         on_add_to_collection=on_scan_result
                         existing_orchids=orchids.get()
-                        climate_summary=summary
+                        climate_data=climate_data.get_value()
                     />
                 }
             })}
