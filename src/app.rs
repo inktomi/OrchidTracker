@@ -49,6 +49,9 @@ pub fn App() -> impl IntoView {
     // State: Show Scanner Modal
     let (show_scanner, set_show_scanner) = create_signal(false);
     
+    // State: Show Add Orchid Modal
+    let (show_add_modal, set_show_add_modal) = create_signal(false);
+    
     // State: Pre-fill data for Add Form
     let (prefill_data, set_prefill_data) = create_signal::<Option<AnalysisResult>>(None);
 
@@ -117,6 +120,7 @@ pub fn App() -> impl IntoView {
     let handle_scan_result = move |result: AnalysisResult| {
         set_prefill_data.set(Some(result));
         set_show_scanner.set(false);
+        set_show_add_modal.set(true);
     };
 
     view! {
@@ -125,6 +129,7 @@ pub fn App() -> impl IntoView {
                 <h1>"Orchid Tracker"</h1>
                 <div class="header-controls">
                     <span class="sync-status">{sync_status}</span>
+                    <button class="action-btn" on:click=move |_| set_show_add_modal.set(true)>"➕ Add"</button>
                     <button class="action-btn" on:click=move |_| set_show_scanner.set(true)>"📷 Scan"</button>
                     <button class="settings-btn" on:click=move |_| set_show_settings.set(true)>"⚙️ Settings"</button>
                 </div>
@@ -148,7 +153,17 @@ pub fn App() -> impl IntoView {
             </div>
         </header>
         <main>
-            <AddOrchidForm on_add=add_orchid prefill_data=prefill_data />
+            {move || if show_add_modal.get() {
+                view! {
+                    <AddOrchidForm 
+                        on_add=add_orchid 
+                        on_close=move || set_show_add_modal.set(false)
+                        prefill_data=prefill_data 
+                    />
+                }.into_view()
+            } else {
+                view! {}.into_view()
+            }}
             
             {move || match view_mode.get() {
                 ViewMode::Grid => view! {
@@ -424,9 +439,10 @@ where
 }
 
 #[component]
-fn AddOrchidForm<F>(on_add: F, prefill_data: ReadSignal<Option<AnalysisResult>>) -> impl IntoView
+fn AddOrchidForm<F, C>(on_add: F, on_close: C, prefill_data: ReadSignal<Option<AnalysisResult>>) -> impl IntoView
 where
     F: Fn(Orchid) + 'static,
+    C: Fn() + 'static + Copy,
 {
     let (name, set_name) = create_signal("".to_string());
     let (species, set_species) = create_signal("".to_string());
@@ -495,6 +511,7 @@ where
         );
         
         on_add(new_orchid);
+        on_close();
         
         // Reset form
         set_name.set("".to_string());
@@ -508,78 +525,90 @@ where
     };
 
     view! {
-        <div class="form-container">
-            <h2>"Add New Orchid"</h2>
-            <form on:submit=on_submit>
-                <div class="form-group">
-                    <label>"Name:"</label>
-                    <input type="text"
-                        on:input=move |ev| set_name.set(event_target_value(&ev))
-                        prop:value=name
-                        required
-                    />
+        <div class="modal-overlay">
+            <div class="modal-content form-modal">
+                <div class="modal-header">
+                    <h2>"Add New Orchid"</h2>
+                    <button class="close-btn" on:click=move |_| on_close()>"X"</button>
                 </div>
-                <div class="form-group">
-                    <label>"Species:"</label>
-                    <input type="text"
-                        on:input=move |ev| set_species.set(event_target_value(&ev))
-                        prop:value=species
-                        required
-                    />
+                <div class="modal-body">
+                    <form on:submit=on_submit>
+                        <div class="form-group">
+                            <label>"Name:"</label>
+                            <input type="text"
+                                on:input=move |ev| set_name.set(event_target_value(&ev))
+                                prop:value=name
+                                required
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label>"Species:"</label>
+                            <input type="text"
+                                on:input=move |ev| set_species.set(event_target_value(&ev))
+                                prop:value=species
+                                required
+                            />
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group half-width">
+                                <label>"Water Freq (days):"</label>
+                                <input type="number"
+                                    on:input=move |ev| set_water_freq.set(event_target_value(&ev))
+                                    prop:value=water_freq
+                                    required
+                                />
+                            </div>
+                            <div class="form-group half-width">
+                                <label>"Light Req:"</label>
+                                <select
+                                    on:change=move |ev| set_light.set(event_target_value(&ev))
+                                    prop:value=light
+                                >
+                                    <option value="Low">"Low"</option>
+                                    <option value="Medium">"Medium"</option>
+                                    <option value="High">"High"</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                             <div class="form-group half-width">
+                                <label>"Placement:"</label>
+                                <select
+                                    on:change=move |ev| set_placement.set(event_target_value(&ev))
+                                    prop:value=placement
+                                >
+                                    <option value="Low">"Low Light Area"</option>
+                                    <option value="Medium">"Medium Light Area"</option>
+                                    <option value="High">"High Light Area"</option>
+                                </select>
+                            </div>
+                             <div class="form-group half-width">
+                                <label>"Light (Lux):"</label>
+                                <input type="text"
+                                    on:input=move |ev| set_lux.set(event_target_value(&ev))
+                                    prop:value=lux
+                                />
+                            </div>
+                        </div>
+                         <div class="form-group">
+                            <label>"Temp Range (Optional):"</label>
+                            <input type="text"
+                                on:input=move |ev| set_temp.set(event_target_value(&ev))
+                                prop:value=temp
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label>"Notes:"</label>
+                            <textarea
+                                on:input=move |ev| set_notes.set(event_target_value(&ev))
+                                prop:value=notes
+                                rows="3"
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">"Add Orchid"</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label>"Water Frequency (days):"</label>
-                    <input type="number"
-                        on:input=move |ev| set_water_freq.set(event_target_value(&ev))
-                        prop:value=water_freq
-                        required
-                    />
-                </div>
-                <div class="form-group">
-                    <label>"Light Requirement:"</label>
-                    <select
-                        on:change=move |ev| set_light.set(event_target_value(&ev))
-                        prop:value=light
-                    >
-                        <option value="Low">"Low Light"</option>
-                        <option value="Medium">"Medium Light"</option>
-                        <option value="High">"High Light"</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>"Current Placement:"</label>
-                    <select
-                        on:change=move |ev| set_placement.set(event_target_value(&ev))
-                        prop:value=placement
-                    >
-                        <option value="Low">"Low Light Area"</option>
-                        <option value="Medium">"Medium Light Area"</option>
-                        <option value="High">"High Light Area"</option>
-                    </select>
-                </div>
-                 <div class="form-group">
-                    <label>"Light (Lux) (Optional):"</label>
-                    <input type="text"
-                        on:input=move |ev| set_lux.set(event_target_value(&ev))
-                        prop:value=lux
-                    />
-                </div>
-                 <div class="form-group">
-                    <label>"Temp Range (Optional):"</label>
-                    <input type="text"
-                        on:input=move |ev| set_temp.set(event_target_value(&ev))
-                        prop:value=temp
-                    />
-                </div>
-                <div class="form-group">
-                    <label>"Notes:"</label>
-                    <textarea
-                        on:input=move |ev| set_notes.set(event_target_value(&ev))
-                        prop:value=notes
-                    ></textarea>
-                </div>
-                <button type="submit">"Add Orchid"</button>
-            </form>
+            </div>
         </div>
     }
 }

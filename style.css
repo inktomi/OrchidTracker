@@ -388,3 +388,119 @@ button:hover {
 .settings-btn:hover {
     background: rgba(255,255,255,0.1);
 }
+
+/* Form Modal Layout */
+.form-modal {
+    max-width: 500px;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.half-width {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.submit-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.submit-btn:hover {
+    background-color: #1b5e20;
+}
+
+/* Header Actions */
+.action-btn {
+    background-color: transparent;
+    border: 1px solid rgba(255,255,255,0.8);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.action-btn:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+/* Scanner Styles */
+.modal-content.scanner-modal {
+    background-color: #1a1a1a;
+    color: #eee;
+    border: 1px solid #333;
+}
+
+.modal-content.scanner-modal h2 {
+    color: #fff;
+    margin: 0;
+}
+
+.modal-content.scanner-modal .modal-header {
+    border-bottom: 1px solid #333;
+}
+
+.camera-container {
+    width: 100%;
+    height: 300px;
+    background-color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.camera-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fit-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    background-color: #333;
+}
+
+.fit-badge.status-ok { background-color: #e8f5e9; color: #2e7d32; }
+.fit-badge.status-warning { background-color: #fff3e0; color: #ef6c00; }
+.fit-badge.status-error { background-color: #ffebee; color: #c62828; }
+
+.scan-result-card {
+    background-color: #2a2a2a;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.retry-btn {
+    background-color: #444;
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
