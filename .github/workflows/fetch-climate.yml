@@ -28,6 +28,7 @@ jobs:
         env:
           AC_INFINITY_USERNAME: ${{ secrets.AC_INFINITY_USERNAME }}
           AC_INFINITY_PASSWORD: ${{ secrets.AC_INFINITY_PASSWORD }}
+          TEMPEST_API_TOKEN: ${{ secrets.TEMPEST_API_TOKEN }}
         run: node scripts/fetch_climate.js
 
       - name: Commit and Push
