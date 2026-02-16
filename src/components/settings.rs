@@ -1,17 +1,16 @@
-use leptos::*;
+use leptos::prelude::*;
 use gloo_storage::{LocalStorage, Storage};
-use web_sys::{HtmlInputElement, Event};
 
 #[component]
 pub fn SettingsModal<F>(on_close: F) -> impl IntoView
 where
-    F: Fn() + 'static + Clone,
+    F: Fn() + 'static + Clone + Send + Sync,
 {
-    let (token, set_token) = create_signal("".to_string());
-    let (owner, set_owner) = create_signal("".to_string());
-    let (repo, set_repo) = create_signal("".to_string());
-    let (gemini_key, set_gemini_key) = create_signal("".to_string());
-    let (temp_unit, set_temp_unit) = create_signal("C".to_string());
+    let (token, set_token) = signal(String::new());
+    let (owner, set_owner) = signal(String::new());
+    let (repo, set_repo) = signal(String::new());
+    let (gemini_key, set_gemini_key) = signal(String::new());
+    let (temp_unit, set_temp_unit) = signal("C".to_string());
 
     // Load initial values
     if let Ok(t) = LocalStorage::get("github_token") {
@@ -56,15 +55,15 @@ where
                             on:change=move |ev| set_temp_unit.set(event_target_value(&ev))
                             prop:value=temp_unit
                         >
-                            <option value="C">"Celsius (°C)"</option>
-                            <option value="F">"Fahrenheit (°F)"</option>
+                            <option value="C">"Celsius (C)"</option>
+                            <option value="F">"Fahrenheit (F)"</option>
                         </select>
                     </div>
 
                     <p class="settings-hint">
                         "Enter your GitHub Personal Access Token (PAT) to enable syncing changes directly to the repository."
                         <br/>
-                        "Required scopes: <strong>repo</strong> (for private repos) or <strong>public_repo</strong> (for public repos)."
+                        "Required scopes: " <strong>"repo"</strong> " (for private repos) or " <strong>"public_repo"</strong> " (for public repos)."
                     </p>
                     <div class="form-group">
                         <label>"Repo Owner (Username):"</label>
@@ -78,9 +77,9 @@ where
                         <label>"Personal Access Token:"</label>
                         <input type="password" prop:value=token on:input=move |ev| set_token.set(event_target_value(&ev)) />
                     </div>
-                    
+
                     <hr class="separator" />
-                    
+
                     <h3>"AI Integration (Google Gemini)"</h3>
                     <p class="settings-hint">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
                      <div class="form-group">

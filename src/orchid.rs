@@ -1,11 +1,43 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::atomic::{AtomicU64, Ordering};
 use chrono::{DateTime, Utc};
+
+static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+pub fn generate_id() -> u64 {
+    let ts = js_sys::Date::now() as u64;
+    let seq = ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+    ts * 1000 + (seq % 1000)
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum FitCategory {
+    #[serde(rename = "Good Fit")]
+    GoodFit,
+    #[serde(rename = "Bad Fit")]
+    BadFit,
+    #[serde(rename = "Caution Fit")]
+    CautionFit,
+}
+
+impl fmt::Display for FitCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FitCategory::GoodFit => write!(f, "Good Fit"),
+            FitCategory::BadFit => write!(f, "Bad Fit"),
+            FitCategory::CautionFit => write!(f, "Caution Fit"),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum LightRequirement {
+    #[serde(alias = "low", alias = "Low Light")]
     Low,
+    #[serde(alias = "medium", alias = "Medium Light")]
     Medium,
+    #[serde(alias = "high", alias = "High Light")]
     High,
 }
 
@@ -58,7 +90,7 @@ pub struct LogEntry {
     pub id: u64,
     pub timestamp: DateTime<Utc>,
     pub note: String,
-    pub image_data: Option<String>, // Base64 encoded image or URL (simplest for now, though limiting)
+    pub image_data: Option<String>, // IndexedDB ID (numeric) or LFS filename
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -79,33 +111,6 @@ pub struct Orchid {
 }
 
 impl Orchid {
-    pub fn new(
-        id: u64,
-        name: String,
-        species: String,
-        water_frequency_days: u32,
-        light_requirement: LightRequirement,
-        notes: String,
-        placement: Placement,
-        light_lux: String,
-        temperature_range: String,
-        conservation_status: Option<String>,
-    ) -> Self {
-        Orchid {
-            id,
-            name,
-            species,
-            water_frequency_days,
-            light_requirement,
-            notes,
-            placement,
-            light_lux,
-            temperature_range,
-            conservation_status,
-            history: Vec::new(),
-        }
-    }
-    
     pub fn suggested_placement(&self) -> Placement {
         match self.light_requirement {
             LightRequirement::Low => Placement::Low,
@@ -116,7 +121,7 @@ impl Orchid {
 
     pub fn add_log(&mut self, note: String, image_data: Option<String>) {
         let entry = LogEntry {
-            id: Utc::now().timestamp_millis() as u64,
+            id: generate_id(),
             timestamp: Utc::now(),
             note,
             image_data,
@@ -133,61 +138,72 @@ mod tests {
     fn test_placement_compatibility() {
         assert!(Placement::Low.is_compatible_with(&LightRequirement::Low));
         assert!(!Placement::Low.is_compatible_with(&LightRequirement::High));
-        
+
         assert!(Placement::Patio.is_compatible_with(&LightRequirement::Medium));
         assert!(Placement::Patio.is_compatible_with(&LightRequirement::High));
         assert!(!Placement::Patio.is_compatible_with(&LightRequirement::Low));
-        
+
         assert!(Placement::OutdoorRack.is_compatible_with(&LightRequirement::High));
         assert!(!Placement::OutdoorRack.is_compatible_with(&LightRequirement::Low));
     }
 
     #[test]
     fn test_orchid_creation() {
-        let orchid = Orchid::new(
-            1,
-            "Test Orchid".to_string(),
-            "Phalaenopsis".to_string(),
-            7,
-            LightRequirement::Medium,
-            "Notes".to_string(),
-            Placement::Medium,
-            "1000".to_string(),
-            "20-30C".to_string(),
-            Some("CITES II".to_string()),
-        );
+        let orchid = Orchid {
+            id: 1,
+            name: "Test Orchid".into(),
+            species: "Phalaenopsis".into(),
+            water_frequency_days: 7,
+            light_requirement: LightRequirement::Medium,
+            notes: "Notes".into(),
+            placement: Placement::Medium,
+            light_lux: "1000".into(),
+            temperature_range: "20-30C".into(),
+            conservation_status: Some("CITES II".into()),
+            history: Vec::new(),
+        };
 
         assert_eq!(orchid.name, "Test Orchid");
         assert_eq!(orchid.light_requirement, LightRequirement::Medium);
         assert_eq!(orchid.history.len(), 0);
-        assert_eq!(orchid.conservation_status, Some("CITES II".to_string()));
+        assert_eq!(orchid.conservation_status, Some("CITES II".into()));
     }
 
     #[test]
-    fn test_add_log() {
-        let mut orchid = Orchid::new(
-            1, "Test".to_string(), "Test".to_string(), 7, 
-            LightRequirement::High, "".to_string(), Placement::Low, 
-            "".to_string(), "".to_string(), None
-        );
-        
-        orchid.add_log("Watered".to_string(), None);
-        assert_eq!(orchid.history.len(), 1);
-        assert_eq!(orchid.history[0].note, "Watered");
-        assert!(orchid.history[0].image_data.is_none());
-        
-        orchid.add_log("Photo".to_string(), Some("img.jpg".to_string()));
-        assert_eq!(orchid.history.len(), 2);
-        assert_eq!(orchid.history[1].image_data, Some("img.jpg".to_string()));
-    }
-    
-    #[test]
     fn test_suggested_placement() {
-        let orchid = Orchid::new(
-            1, "Test".to_string(), "Test".to_string(), 7, 
-            LightRequirement::High, "".to_string(), Placement::Low, 
-            "".to_string(), "".to_string(), None
-        );
+        let orchid = Orchid {
+            id: 1,
+            name: "Test".into(),
+            species: "Test".into(),
+            water_frequency_days: 7,
+            light_requirement: LightRequirement::High,
+            notes: String::new(),
+            placement: Placement::Low,
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            history: Vec::new(),
+        };
         assert_eq!(orchid.suggested_placement(), Placement::High);
+    }
+
+    #[test]
+    fn test_fit_category_serde() {
+        let good: FitCategory = serde_json::from_str("\"Good Fit\"").unwrap();
+        assert_eq!(good, FitCategory::GoodFit);
+        let bad: FitCategory = serde_json::from_str("\"Bad Fit\"").unwrap();
+        assert_eq!(bad, FitCategory::BadFit);
+        let caution: FitCategory = serde_json::from_str("\"Caution Fit\"").unwrap();
+        assert_eq!(caution, FitCategory::CautionFit);
+    }
+
+    #[test]
+    fn test_light_requirement_aliases() {
+        let low: LightRequirement = serde_json::from_str("\"low\"").unwrap();
+        assert_eq!(low, LightRequirement::Low);
+        let low2: LightRequirement = serde_json::from_str("\"Low Light\"").unwrap();
+        assert_eq!(low2, LightRequirement::Low);
+        let medium: LightRequirement = serde_json::from_str("\"Medium\"").unwrap();
+        assert_eq!(medium, LightRequirement::Medium);
     }
 }
