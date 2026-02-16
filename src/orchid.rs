@@ -56,6 +56,8 @@ pub struct Orchid {
     pub light_lux: String,
     pub temperature_range: String,
     #[serde(default)]
+    pub conservation_status: Option<String>,
+    #[serde(default)]
     pub history: Vec<LogEntry>,
 }
 
@@ -70,6 +72,7 @@ impl Orchid {
         placement: Placement,
         light_lux: String,
         temperature_range: String,
+        conservation_status: Option<String>,
     ) -> Self {
         Orchid {
             id,
@@ -81,6 +84,7 @@ impl Orchid {
             placement,
             light_lux,
             temperature_range,
+            conservation_status,
             history: Vec::new(),
         }
     }

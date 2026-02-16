@@ -118,6 +118,11 @@ where
                 <div class="modal-body">
                     <div class="detail-info">
                         <p><strong>"Species: "</strong> {orchid_signal.get().species}</p>
+                         {if let Some(status) = orchid_signal.get().conservation_status {
+                            view! { <p class="conservation-status"><strong>"Conservation Status: "</strong> {status}</p> }.into_view()
+                        } else {
+                            view! {}.into_view()
+                        }}
                         <p><strong>"Notes: "</strong> {orchid_signal.get().notes}</p>
                     </div>
 

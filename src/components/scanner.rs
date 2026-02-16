@@ -17,6 +17,7 @@ pub struct AnalysisResult {
     pub light_req: String,
     pub temp_range: String,
     pub placement_suggestion: String,
+    pub conservation_status: Option<String>,
 }
 
 #[component]
@@ -119,8 +120,9 @@ where
                  Then, evaluate if it is a good fit for my conditions: {}. \
                  Also check if I already own it (My List: {:?}). \
                  Return ONLY valid JSON with this structure (no markdown): \
-                 {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\" }} \
-                 Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'.",
+                 {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\", \"conservation_status\": \"CITES II\" }} \
+                 Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
+                 For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common.",
                  climate_summary,
                  existing_names
              );

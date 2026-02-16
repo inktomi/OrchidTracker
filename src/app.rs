@@ -423,6 +423,13 @@ where
             <div class="card-content" on:click=move |_| on_select(orchid_clone.clone())>
                 <h3>{orchid.name}</h3>
                 <p><strong>"Species: "</strong> {orchid.species}</p>
+                
+                {if let Some(status) = orchid.conservation_status {
+                    view! { <p class="conservation-status"><strong>"Status: "</strong> {status}</p> }.into_view()
+                } else {
+                    view! {}.into_view()
+                }}
+                
                 <p><strong>"Watering: "</strong> "Every " {orchid.water_frequency_days} " days"</p>
                 <p><strong>"Light Req: "</strong> {orchid.light_requirement.to_string()} " (" {orchid.light_lux} " Lux)"</p>
                 <p><strong>"Temp Range: "</strong> {orchid.temperature_range}</p>
@@ -452,6 +459,7 @@ where
     let (notes, set_notes) = create_signal("".to_string());
     let (lux, set_lux) = create_signal("".to_string());
     let (temp, set_temp) = create_signal("".to_string());
+    let (conservation, set_conservation) = create_signal("".to_string());
 
     // Effect to pre-fill form when scanner result comes in
     create_effect(move |_| {
@@ -478,6 +486,10 @@ where
             
             set_temp.set(data.temp_range);
             
+            if let Some(status) = data.conservation_status {
+                set_conservation.set(status);
+            }
+            
             let note_text = format!("AI Analysis: {}\nReason: {}", data.fit_category, data.reason);
             set_notes.set(note_text);
         }
@@ -498,6 +510,9 @@ where
              _ => Placement::Medium,
         };
         
+        let cons_status = conservation.get();
+        let conservation_opt = if cons_status.is_empty() { None } else { Some(cons_status) };
+
         let new_orchid = Orchid::new(
             id,
             name.get(),
@@ -508,6 +523,7 @@ where
             place,
             lux.get(),
             temp.get(),
+            conservation_opt,
         );
         
         on_add(new_orchid);
@@ -522,6 +538,7 @@ where
         set_notes.set("".to_string());
         set_lux.set("".to_string());
         set_temp.set("".to_string());
+        set_conservation.set("".to_string());
     };
 
     view! {
@@ -547,6 +564,13 @@ where
                                 on:input=move |ev| set_species.set(event_target_value(&ev))
                                 prop:value=species
                                 required
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label>"Conservation Status (e.g. CITES II):"</label>
+                            <input type="text"
+                                on:input=move |ev| set_conservation.set(event_target_value(&ev))
+                                prop:value=conservation
                             />
                         </div>
                         <div class="form-row">
