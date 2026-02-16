@@ -154,7 +154,7 @@ pub fn App() -> impl IntoView {
                     class=move || if view_mode.get() == ViewMode::Table { "active" } else { "" }
                     on:click=move |_| set_view_mode.set(ViewMode::Table)
                 >
-                    "Cabinet Table View"
+                    "Placement View"
                 </button>
             </div>
         </header>
@@ -329,7 +329,7 @@ where
 
     view! {
         <div class="cabinet-view">
-            <h2>"Orchidarium Layout (6ft Tall)"</h2>
+            <h2>"Orchidarium Layout"</h2>
             
             <div 
                 class="cabinet-section high-section"
@@ -367,7 +367,7 @@ where
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
             </div>
             
-            <h2>"Outdoors (90606)"</h2>
+            <h2>"Outdoors"</h2>
             
             <div 
                 class="cabinet-section outdoor-section"
