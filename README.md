@@ -24,6 +24,27 @@ A simple web application to track your orchids and their care requirements, buil
     ```
 3.  Open `http://127.0.0.1:8080` in your browser.
 
+## Testing
+
+This project includes both unit tests and integration tests.
+
+### Running Tests
+
+To run all tests (unit and integration), execute:
+
+```bash
+cargo test
+```
+
+### Test Coverage
+
+-   **Unit Tests:** Located in `src/` files (e.g., `src/orchid.rs`). These test individual functions and logic, such as data models and placement compatibility validation.
+-   **Integration Tests:** Located in `tests/`. These test broader interactions, such as JSON serialization/deserialization of the core data models to ensure persistence compatibility.
+
+### Note on WASM Testing
+
+Some components rely on browser APIs (`web-sys`, `js-sys`). The core logic has been decoupled where possible to allow native `cargo test` execution. For full component testing in a browser environment, `wasm-pack test` would be required (not currently configured).
+
 ## Deployment (GitHub Pages)
 
 This project includes a GitHub Action workflow to automatically deploy to GitHub Pages.

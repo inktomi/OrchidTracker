@@ -1,12 +1,5 @@
 use leptos::*;
-
-mod app;
-mod orchid;
-mod db;
-mod components;
-mod github;
-
-use app::App;
+use orchid_tracker::app::App;
 
 pub fn main() {
     _ = console_log::init_with_level(log::Level::Debug);

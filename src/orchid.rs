@@ -116,11 +116,78 @@ impl Orchid {
 
     pub fn add_log(&mut self, note: String, image_data: Option<String>) {
         let entry = LogEntry {
-            id: js_sys::Date::now() as u64,
+            id: Utc::now().timestamp_millis() as u64,
             timestamp: Utc::now(),
             note,
             image_data,
         };
         self.history.push(entry);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_placement_compatibility() {
+        assert!(Placement::Low.is_compatible_with(&LightRequirement::Low));
+        assert!(!Placement::Low.is_compatible_with(&LightRequirement::High));
+        
+        assert!(Placement::Patio.is_compatible_with(&LightRequirement::Medium));
+        assert!(Placement::Patio.is_compatible_with(&LightRequirement::High));
+        assert!(!Placement::Patio.is_compatible_with(&LightRequirement::Low));
+        
+        assert!(Placement::OutdoorRack.is_compatible_with(&LightRequirement::High));
+        assert!(!Placement::OutdoorRack.is_compatible_with(&LightRequirement::Low));
+    }
+
+    #[test]
+    fn test_orchid_creation() {
+        let orchid = Orchid::new(
+            1,
+            "Test Orchid".to_string(),
+            "Phalaenopsis".to_string(),
+            7,
+            LightRequirement::Medium,
+            "Notes".to_string(),
+            Placement::Medium,
+            "1000".to_string(),
+            "20-30C".to_string(),
+            Some("CITES II".to_string()),
+        );
+
+        assert_eq!(orchid.name, "Test Orchid");
+        assert_eq!(orchid.light_requirement, LightRequirement::Medium);
+        assert_eq!(orchid.history.len(), 0);
+        assert_eq!(orchid.conservation_status, Some("CITES II".to_string()));
+    }
+
+    #[test]
+    fn test_add_log() {
+        let mut orchid = Orchid::new(
+            1, "Test".to_string(), "Test".to_string(), 7, 
+            LightRequirement::High, "".to_string(), Placement::Low, 
+            "".to_string(), "".to_string(), None
+        );
+        
+        orchid.add_log("Watered".to_string(), None);
+        assert_eq!(orchid.history.len(), 1);
+        assert_eq!(orchid.history[0].note, "Watered");
+        assert!(orchid.history[0].image_data.is_none());
+        
+        orchid.add_log("Photo".to_string(), Some("img.jpg".to_string()));
+        assert_eq!(orchid.history.len(), 2);
+        assert_eq!(orchid.history[1].image_data, Some("img.jpg".to_string()));
+    }
+    
+    #[test]
+    fn test_suggested_placement() {
+        let orchid = Orchid::new(
+            1, "Test".to_string(), "Test".to_string(), 7, 
+            LightRequirement::High, "".to_string(), Placement::Low, 
+            "".to_string(), "".to_string(), None
+        );
+        assert_eq!(orchid.suggested_placement(), Placement::High);
     }
 }

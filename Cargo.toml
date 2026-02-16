@@ -23,6 +23,7 @@ base64 = "0.22.1"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 wasm-bindgen-futures = "0.4"
 sha2 = "0.10"
+hex = "0.4"
 
 [profile.release]
 codegen-units = 1
