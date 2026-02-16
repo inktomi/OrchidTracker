@@ -160,6 +160,7 @@ pub fn App() -> impl IntoView {
                         orchids=orchids.get() 
                         on_delete=delete_orchid 
                         on_select=move |o| set_selected_orchid.set(Some(o))
+                        on_update=update_orchid
                     />
                 }.into_view()
             }}
@@ -220,31 +221,61 @@ fn ClimateDashboard(data: Vec<ClimateData>) -> impl IntoView {
 }
 
 #[component]
-fn OrchidCabinetTable<F, S>(orchids: Vec<Orchid>, on_delete: F, on_select: S) -> impl IntoView
+fn OrchidCabinetTable<F, S, U>(orchids: Vec<Orchid>, on_delete: F, on_select: S, on_update: U) -> impl IntoView
 where
     F: Fn(u64) + 'static + Copy,
     S: Fn(Orchid) + 'static + Copy,
+    U: Fn(Orchid) + 'static + Copy,
 {
     // Filter orchids by placement
     let high_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::High).cloned().collect();
     let medium_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Medium).cloned().collect();
     let low_orchids: Vec<Orchid> = orchids.iter().filter(|o| o.placement == Placement::Low).cloned().collect();
 
+    // Helper to handle drop
+    let handle_drop = move |ev: leptos::ev::DragEvent, new_placement: Placement| {
+        ev.prevent_default();
+        if let Some(data) = ev.data_transfer() {
+            if let Ok(id_str) = data.get_data("text/plain") {
+                if let Ok(id) = id_str.parse::<u64>() {
+                     if let Some(mut orchid) = orchids.iter().find(|o| o.id == id).cloned() {
+                         if orchid.placement != new_placement {
+                             orchid.placement = new_placement;
+                             on_update(orchid);
+                         }
+                     }
+                }
+            }
+        }
+    };
+
     view! {
         <div class="cabinet-view">
             <h2>"Orchidarium Layout (6ft Tall)"</h2>
             
-            <div class="cabinet-section high-section">
+            <div 
+                class="cabinet-section high-section"
+                on:dragover=move |ev| ev.prevent_default()
+                on:drop=move |ev| handle_drop(ev, Placement::High)
+            >
                 <h3>"Top Shelf (High Light - Near Lights)"</h3>
                 <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
             </div>
 
-            <div class="cabinet-section medium-section">
+            <div 
+                class="cabinet-section medium-section"
+                on:dragover=move |ev| ev.prevent_default()
+                on:drop=move |ev| handle_drop(ev, Placement::Medium)
+            >
                 <h3>"Middle Shelf (Medium Light)"</h3>
                 <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
             </div>
 
-            <div class="cabinet-section low-section">
+            <div 
+                class="cabinet-section low-section"
+                on:dragover=move |ev| ev.prevent_default()
+                on:drop=move |ev| handle_drop(ev, Placement::Low)
+            >
                 <h3>"Bottom Shelf (Low Light - Floor)"</h3>
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
             </div>
@@ -287,7 +318,16 @@ where
                             let status_text = if is_misplaced { "Move Needed" } else { "OK" };
                             
                             view! {
-                                <tr class="clickable-row" on:click=move |_| on_select(orchid_clone.clone())>
+                                <tr 
+                                    class="clickable-row" 
+                                    draggable="true"
+                                    on:click=move |_| on_select(orchid_clone.clone())
+                                    on:dragstart=move |ev| {
+                                        if let Some(data) = ev.data_transfer() {
+                                            let _ = data.set_data("text/plain", &orchid_id.to_string());
+                                        }
+                                    }
+                                >
                                     <td>{orchid.name}</td>
                                     <td>{orchid.species}</td>
                                     <td>"Every " {orchid.water_frequency_days} " days"</td>
