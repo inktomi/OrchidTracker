@@ -41,9 +41,36 @@ where
     
     let existing_orchids = store_value(existing_orchids);
     let climate_summary = store_value(climate_summary);
+    
+    let (facing_mode, set_facing_mode) = create_signal("environment".to_string());
+    let (stream_signal, set_stream_signal) = create_signal::<Option<web_sys::MediaStream>>(None);
 
-    // Start Camera on Mount
+    // Stop camera cleanup
+    on_cleanup(move || {
+        if let Some(stream) = stream_signal.get() {
+            let tracks = stream.get_tracks();
+            for i in 0..tracks.length() {
+                if let Ok(track) = tracks.get(i).dyn_into::<web_sys::MediaStreamTrack>() {
+                    track.stop();
+                }
+            }
+        }
+    });
+
+    // Start/Restart Camera when facing_mode changes
     create_effect(move |_| {
+        let mode = facing_mode.get();
+        
+        // Stop previous stream
+        if let Some(stream) = stream_signal.get_untracked() {
+            let tracks = stream.get_tracks();
+            for i in 0..tracks.length() {
+                if let Ok(track) = tracks.get(i).dyn_into::<web_sys::MediaStreamTrack>() {
+                    track.stop();
+                }
+            }
+        }
+
         if let Some(video) = video_element.get() {
              let window = web_sys::window().unwrap();
              let navigator = window.navigator();
@@ -51,15 +78,17 @@ where
              spawn_local(async move {
                 if let Ok(media_devices) = navigator.media_devices() {
                     let mut constraints = MediaStreamConstraints::new();
-                    // Prefer environment facing camera
+                    
                     let constraint_obj = js_sys::Object::new();
                     let video_constraint = js_sys::Object::new();
-                    let _ = js_sys::Reflect::set(&video_constraint, &"facingMode".into(), &"environment".into());
+                    let _ = js_sys::Reflect::set(&video_constraint, &"facingMode".into(), &mode.into());
                     let _ = js_sys::Reflect::set(&constraint_obj, &"video".into(), &video_constraint);
 
-                    // Use constraints directly if possible, but web-sys types are tricky. 
-                    // Let's use basic constraints first to ensure it compiles, then refine.
-                    constraints.set_video(&wasm_bindgen::JsValue::TRUE);
+                    // We need to pass the object structure manually because MediaStreamConstraints binding is simple
+                    // Actually, web_sys MediaStreamConstraints has a `video` field which takes &JsValue.
+                    // We can pass the video_constraint object there.
+                    
+                    constraints.set_video(&video_constraint);
 
                     match media_devices.get_user_media_with_constraints(&constraints) {
                         Ok(promise) => {
@@ -67,6 +96,7 @@ where
                                 let stream = stream_js.unchecked_into::<web_sys::MediaStream>();
                                 video.set_src_object(Some(&stream));
                                 let _ = video.play();
+                                set_stream_signal.set(Some(stream));
                             }
                         }
                         Err(e) => {
@@ -78,6 +108,10 @@ where
              });
         }
     });
+
+    let flip_camera = move |_| {
+        set_facing_mode.update(|m| *m = if m == "environment" { "user".to_string() } else { "environment".to_string() });
+    };
 
     let capture_and_analyze = move |_| {
         set_is_scanning.set(true);
@@ -246,11 +280,12 @@ where
                         }.into_view()
                     } else {
                         view! {
-                            <div class="controls" style="margin-top: 1rem; text-align: center;">
+                            <div class="controls" style="margin-top: 1rem; text-align: center; display: flex; gap: 1rem; justify-content: center;">
+                                <button class="action-btn" on:click=flip_camera>"🔄 Flip"</button>
                                 {if is_scanning.get() {
                                     view! { <button disabled>"Analyzing..."</button> }.into_view()
                                 } else {
-                                    view! { <button on:click=capture_and_analyze>"Capture & Analyze"</button> }.into_view()
+                                    view! { <button on:click=capture_and_analyze>"📸 Capture"</button> }.into_view()
                                 }}
                             </div>
                         }.into_view()
