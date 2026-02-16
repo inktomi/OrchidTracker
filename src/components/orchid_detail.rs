@@ -121,10 +121,10 @@ where
                                 let url = format!("{}{}?id={}", origin, pathname, orchid_signal.get().id);
                                 
                                 let navigator = window.navigator();
-                                if let Some(clipboard) = navigator.clipboard() {
-                                    let _ = clipboard.write_text(&url);
-                                    let _ = window.alert_with_message("Deep link copied to clipboard!");
-                                }
+                                // navigator.clipboard() returns Clipboard directly in recent web-sys
+                                let clipboard = navigator.clipboard();
+                                let _ = clipboard.write_text(&url);
+                                let _ = window.alert_with_message("Deep link copied to clipboard!");
                             }
                         }>"🔗 Share"</button>
                         <button class="close-btn" on:click=move |_| on_close()>"Close"</button>
