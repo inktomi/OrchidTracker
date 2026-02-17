@@ -433,5 +433,18 @@
     "temperature_range": "15-30C",
     "conservation_status": "CITES II",
     "history": []
+  },
+  {
+    "id": 1771287250338001,
+    "name": "Isochilus linearis",
+    "species": "Isochilus linearis",
+    "water_frequency_days": 5,
+    "light_requirement": "Medium",
+    "notes": "",
+    "placement": "Patio",
+    "light_lux": "",
+    "temperature_range": "15-30C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
