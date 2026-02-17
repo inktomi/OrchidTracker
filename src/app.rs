@@ -22,8 +22,8 @@ pub struct ClimateData {
     pub updated: String,
 }
 
-const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold text-primary bg-surface rounded-lg shadow-sm cursor-pointer border-none transition-all";
-const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-transparent rounded-lg cursor-pointer border-none hover:text-stone-700 transition-all";
+const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold text-primary bg-surface rounded-lg shadow-sm cursor-pointer border-none transition-all dark:text-primary-light";
+const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-transparent rounded-lg cursor-pointer border-none transition-all hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200";
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -45,6 +45,7 @@ pub fn App() -> impl IntoView {
     let show_scanner = Memo::new(move |_| model.get().show_scanner);
     let temp_unit = Memo::new(move |_| model.get().temp_unit.clone());
     let prefill_data = Memo::new(move |_| model.get().prefill_data.clone());
+    let dark_mode = Memo::new(move |_| model.get().dark_mode);
 
     // ── Persist orchids to LocalStorage on every model change ─────────
     Effect::new(move |_| {
@@ -99,6 +100,9 @@ pub fn App() -> impl IntoView {
                             }
                         })
                     }}
+                    <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ToggleDarkMode)>
+                        {move || if dark_mode.get() { "\u{2600}" } else { "\u{263E}" }}
+                    </button>
                     <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::TriggerSync)>"Sync"</button>
                     <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ShowAddModal(true))>"Add"</button>
                     <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ShowScanner(true))>"Scan"</button>

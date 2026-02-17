@@ -119,10 +119,10 @@ where
                         </select>
                     </div>
 
-                    <hr class="my-5 border-stone-200" />
+                    <hr class="my-5 border-stone-200 dark:border-stone-700" />
 
                     <h3 class="mt-0 mb-3">"GitHub Sync"</h3>
-                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary">
+                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary dark:text-stone-400">
                         "Enter your GitHub Personal Access Token (PAT) to enable syncing."
                         <br/>
                         "Required scopes: " <strong>"repo"</strong> " (private) or " <strong>"public_repo"</strong> " (public)."
@@ -140,10 +140,10 @@ where
                         <input type="password" prop:value=token on:input=move |ev| set_token.set(event_target_value(&ev)) />
                     </div>
 
-                    <hr class="my-5 border-stone-200" />
+                    <hr class="my-5 border-stone-200 dark:border-stone-700" />
 
                     <h3 class="mt-0 mb-3">"AI Integration"</h3>
-                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
+                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary dark:text-stone-400">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
                      <div class="mb-4">
                         <label>"Gemini API Key:"</label>
                         <input type="password" prop:value=gemini_key on:input=move |ev| set_gemini_key.set(event_target_value(&ev)) on:blur=move |_| fetch_models() />

@@ -28,7 +28,7 @@ pub fn OrchidCard(
     let notes = orchid.notes.clone();
 
     view! {
-        <div class="overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md bg-surface border-stone-200/80 hover:border-stone-300">
+        <div class="overflow-hidden rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 bg-surface border-stone-200/80 dark:border-stone-700 dark:hover:border-stone-600 hover:border-stone-300">
             <div class="p-5 cursor-pointer" on:click=move |_| on_select(orchid_clone.clone())>
                 <div class="flex gap-2 justify-between items-start mb-1">
                     <h3 class="m-0 text-primary">{orchid.name}</h3>
@@ -43,19 +43,19 @@ pub fn OrchidCard(
                 <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Water"</div>
-                        <div class="font-medium text-stone-700">"Every " {orchid.water_frequency_days} " days"</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">"Every " {orchid.water_frequency_days} " days"</div>
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Light"</div>
-                        <div class="font-medium text-stone-700">{orchid.light_requirement.to_string()}</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.light_requirement.to_string()}</div>
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Shelf"</div>
-                        <div class="font-medium text-stone-700">{orchid.placement.to_string()}</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.placement.to_string()}</div>
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Temp"</div>
-                        <div class="font-medium text-stone-700">{orchid.temperature_range}</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.temperature_range}</div>
                     </div>
                 </div>
 
@@ -63,7 +63,7 @@ pub fn OrchidCard(
                     view! { <p class="mt-3 text-sm leading-relaxed text-stone-500 line-clamp-2">{notes.clone()}</p> }
                 })}
             </div>
-            <div class="flex justify-end py-3 px-5 border-t border-stone-100">
+            <div class="flex justify-end py-3 px-5 border-t border-stone-100 dark:border-stone-800">
                 <button class=BTN_DANGER on:click=move |ev: web_sys::MouseEvent| {
                     ev.stop_propagation();
                     on_delete(orchid_id);

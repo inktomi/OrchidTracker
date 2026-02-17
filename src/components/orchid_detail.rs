@@ -11,7 +11,7 @@ use gloo_file::futures::read_as_bytes;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
 
 const EDIT_BTN: &str = "py-2 px-3 text-sm font-semibold text-white rounded-lg border-none cursor-pointer bg-accent hover:bg-accent-dark transition-colors";
-const SHARE_BTN: &str = "py-2 px-3 text-sm font-semibold text-stone-600 bg-stone-100 rounded-lg border-none cursor-pointer hover:bg-stone-200 transition-colors";
+const SHARE_BTN: &str = "py-2 px-3 text-sm font-semibold text-stone-600 bg-stone-100 rounded-lg border-none cursor-pointer hover:bg-stone-200 transition-colors dark:text-stone-300 dark:bg-stone-700 dark:hover:bg-stone-600";
 
 fn light_req_to_key(lr: &LightRequirement) -> String {
     match lr {
@@ -323,7 +323,7 @@ pub fn OrchidDetail(
                         }
                     }}
 
-                    <hr class="my-6 border-stone-200" />
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
 
                     <div class="mb-6">
                         <h3 class="mt-0 mb-3">"Add Entry"</h3>
@@ -347,7 +347,7 @@ pub fn OrchidDetail(
                         </form>
                     </div>
 
-                    <hr class="my-6 border-stone-200" />
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
 
                     <div>
                         <h3 class="mt-0 mb-3">"History"</h3>
@@ -364,7 +364,7 @@ pub fn OrchidDetail(
                                     view! {
                                         <div class="relative mb-6 before:content-[''] before:absolute before:-left-[1.4rem] before:top-[0.2rem] before:w-2.5 before:h-2.5 before:rounded-full before:bg-primary-light">
                                             <span class="block mb-1 text-xs font-medium text-stone-400">{format_date(entry.timestamp)}</span>
-                                            <p class="my-1 text-sm text-stone-700">{entry.note.clone()}</p>
+                                            <p class="my-1 text-sm text-stone-700 dark:text-stone-300">{entry.note.clone()}</p>
                                             {img.map(|data| view! { <SmartImage data=data /> })}
                                         </div>
                                     }

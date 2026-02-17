@@ -25,9 +25,9 @@ pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>)
                         let updated = dev.updated.clone();
 
                         view! {
-                            <div class="p-4 mx-auto mb-6 rounded-xl border shadow-sm bg-surface border-stone-200 max-w-[700px]">
+                            <div class="p-4 mx-auto mb-6 rounded-xl border shadow-sm bg-surface border-stone-200 max-w-[700px] dark:border-stone-700">
                                 <div class="flex flex-wrap gap-4 justify-between items-center">
-                                    <h3 class="m-0 text-base text-stone-700">{name}</h3>
+                                    <h3 class="m-0 text-base text-stone-700 dark:text-stone-300">{name}</h3>
                                     <div class="flex flex-wrap gap-6 items-center">
                                         <div class="flex flex-col items-center">
                                             <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Temp"</span>

@@ -2,10 +2,10 @@ use leptos::prelude::*;
 use crate::orchid::{Orchid, Placement};
 use super::BTN_DANGER;
 
-const SECTION_BASE: &str = "rounded-xl border p-4 bg-surface border-stone-200 shadow-sm transition-all";
+const SECTION_BASE: &str = "rounded-xl border p-4 bg-surface border-stone-200 shadow-sm transition-all dark:border-stone-700";
 const SECTION_DRAG_OVER: &str = "ring-2 ring-primary-light/30 bg-primary-light/5";
-const TH_CLASS: &str = "py-3 px-3 text-left text-xs font-semibold tracking-wider uppercase border-b text-stone-400 border-stone-200 bg-secondary";
-const TD_CLASS: &str = "py-3 px-3 text-left text-sm border-b border-stone-100";
+const TH_CLASS: &str = "py-3 px-3 text-left text-xs font-semibold tracking-wider uppercase border-b text-stone-400 border-stone-200 bg-secondary dark:text-stone-500 dark:border-stone-700";
+const TD_CLASS: &str = "py-3 px-3 text-left text-sm border-b border-stone-100 dark:border-stone-800";
 
 #[component]
 pub fn OrchidCabinetTable(
@@ -60,7 +60,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::High)
                 }
             >
-                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200">"Top Shelf (High Light)"</h3>
+                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">"Top Shelf (High Light)"</h3>
                 <OrchidTableSection orchids=high_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -81,7 +81,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Medium)
                 }
             >
-                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200">"Middle Shelf (Medium Light)"</h3>
+                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">"Middle Shelf (Medium Light)"</h3>
                 <OrchidTableSection orchids=medium_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -102,7 +102,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Low)
                 }
             >
-                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200">"Bottom Shelf (Low Light)"</h3>
+                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">"Bottom Shelf (Low Light)"</h3>
                 <OrchidTableSection orchids=low_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -125,7 +125,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::OutdoorRack)
                 }
             >
-                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200">"Outdoor Rack (High Sun)"</h3>
+                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">"Outdoor Rack (High Sun)"</h3>
                 <OrchidTableSection orchids=outdoor_orchids on_delete=on_delete on_select=on_select />
             </div>
 
@@ -146,7 +146,7 @@ pub fn OrchidCabinetTable(
                     move |ev| handle_drop(ev, Placement::Patio)
                 }
             >
-                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200">"Patio (Morning Sun / Afternoon Shade)"</h3>
+                <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">"Patio (Morning Sun / Afternoon Shade)"</h3>
                 <OrchidTableSection orchids=patio_orchids on_delete=on_delete on_select=on_select />
             </div>
         </div>
@@ -193,7 +193,7 @@ fn OrchidTableSection(
 
                                 view! {
                                     <tr
-                                        class="transition-colors cursor-pointer hover:bg-secondary/50"
+                                        class="transition-colors cursor-pointer dark:hover:bg-stone-800/50 hover:bg-secondary/50"
                                         draggable="true"
                                         on:click=move |_| on_select(orchid_clone.clone())
                                         on:dragstart=move |ev: leptos::ev::DragEvent| {
@@ -202,7 +202,7 @@ fn OrchidTableSection(
                                             }
                                         }
                                     >
-                                        <td class=TD_CLASS><span class="font-medium text-primary">{orchid.name}</span></td>
+                                        <td class=TD_CLASS><span class="font-medium text-primary dark:text-primary-light">{orchid.name}</span></td>
                                         <td class=format!("{} italic", TD_CLASS)>{orchid.species}</td>
                                         <td class=TD_CLASS>"Every " {orchid.water_frequency_days} " days"</td>
                                         <td class=TD_CLASS>{orchid.light_requirement.to_string()}</td>

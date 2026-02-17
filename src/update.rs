@@ -61,6 +61,10 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
             model.temp_unit = temp_unit;
             vec![]
         }
+        Msg::ToggleDarkMode => {
+            model.dark_mode = !model.dark_mode;
+            vec![Cmd::ApplyDarkMode(model.dark_mode)]
+        }
         Msg::TriggerSync => {
             model.sync_status = "Syncing...".into();
             vec![Cmd::SyncToGitHub(model.orchids.clone())]
@@ -156,6 +160,19 @@ fn execute_cmd(cmd: Cmd, set_model: WriteSignal<Model>, model: ReadSignal<Model>
                     }
                 }
             });
+        }
+        Cmd::ApplyDarkMode(enabled) => {
+            if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+                if let Some(root) = document.document_element() {
+                    let class_list = root.class_list();
+                    if enabled {
+                        let _ = class_list.add_1("dark");
+                    } else {
+                        let _ = class_list.remove_1("dark");
+                    }
+                }
+            }
+            let _ = LocalStorage::set("dark_mode", enabled);
         }
         Cmd::ClearSyncAfterDelay => {
             spawn_local(async move {
@@ -380,6 +397,20 @@ mod tests {
 
         update(&mut model, Msg::ClearSyncStatus);
         assert_eq!(model.sync_status, "Error: something");
+    }
+
+    #[test]
+    fn test_toggle_dark_mode() {
+        let mut model = Model::default();
+        assert!(!model.dark_mode);
+
+        let cmds = update(&mut model, Msg::ToggleDarkMode);
+        assert!(model.dark_mode);
+        assert!(cmds.iter().any(|c| matches!(c, Cmd::ApplyDarkMode(true))));
+
+        let cmds = update(&mut model, Msg::ToggleDarkMode);
+        assert!(!model.dark_mode);
+        assert!(cmds.iter().any(|c| matches!(c, Cmd::ApplyDarkMode(false))));
     }
 
     #[test]

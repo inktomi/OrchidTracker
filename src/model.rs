@@ -21,6 +21,7 @@ pub struct Model {
     pub prefill_data: Option<AnalysisResult>,
     pub temp_unit: String,
     pub sync_status: String,
+    pub dark_mode: bool,
 }
 
 impl Default for Model {
@@ -35,6 +36,7 @@ impl Default for Model {
             prefill_data: None,
             temp_unit: "C".to_string(),
             sync_status: String::new(),
+            dark_mode: false,
         }
     }
 }
@@ -48,11 +50,13 @@ impl Model {
         });
 
         let temp_unit = LocalStorage::get("temp_unit").unwrap_or_else(|_| "C".to_string());
+        let dark_mode = LocalStorage::get("dark_mode").unwrap_or(false);
         let selected_orchid = Self::check_deep_link(&orchids);
 
         Self {
             orchids,
             temp_unit,
+            dark_mode,
             selected_orchid,
             ..Default::default()
         }
@@ -91,6 +95,9 @@ pub enum Msg {
     // Settings
     SettingsClosed { temp_unit: String },
 
+    // Theme
+    ToggleDarkMode,
+
     // Sync
     TriggerSync,
     SetSyncStatus(String),
@@ -103,4 +110,5 @@ pub enum Cmd {
     Persist,
     SyncToGitHub(Vec<Orchid>),
     ClearSyncAfterDelay,
+    ApplyDarkMode(bool),
 }
