@@ -459,5 +459,18 @@
     "temperature_range": "12-26C",
     "conservation_status": "CITES II",
     "history": []
+  },
+  {
+    "id": 1771289678167003,
+    "name": "Laelia kleberii",
+    "species": "Laelia kleberii",
+    "water_frequency_days": 3,
+    "light_requirement": "High",
+    "notes": "AI Analysis: Good Fit\nReason: This is a rupicolous orchid native to Brazil that thrives in high light and well-ventilated environments. While your orchidarium is suitable, it will likely perform best on your Outdoor Rack with a shade cloth, as it benefits from higher light levels and natural temperature fluctuations found in the 90606 climate.",
+    "placement": "OutdoorRack",
+    "light_lux": "",
+    "temperature_range": "15-30C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
