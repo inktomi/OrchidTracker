@@ -3,7 +3,7 @@ use orchid_tracker::orchid::{Orchid, LightRequirement, Placement, FitCategory};
 #[test]
 fn test_orchid_json_serialization() {
     let orchid = Orchid {
-        id: 123,
+        id: "orchid:test123".into(),
         name: "Test Name".into(),
         species: "Test Species".into(),
         water_frequency_days: 10,

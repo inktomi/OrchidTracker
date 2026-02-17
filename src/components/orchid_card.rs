@@ -5,10 +5,10 @@ use super::BTN_DANGER;
 #[component]
 pub fn OrchidCard(
     orchid: Orchid,
-    on_delete: impl Fn(u64) + 'static + Copy + Send + Sync,
+    on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
-    let orchid_id = orchid.id;
+    let orchid_id = orchid.id.clone();
     let orchid_clone = orchid.clone();
     let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
     let suggestion_msg = if is_misplaced {
@@ -64,9 +64,12 @@ pub fn OrchidCard(
                 })}
             </div>
             <div class="flex justify-end py-3 px-5 border-t border-stone-100 dark:border-stone-800">
-                <button class=BTN_DANGER on:click=move |ev: web_sys::MouseEvent| {
-                    ev.stop_propagation();
-                    on_delete(orchid_id);
+                <button class=BTN_DANGER on:click={
+                    let id = orchid_id.clone();
+                    move |ev: leptos::ev::MouseEvent| {
+                        ev.stop_propagation();
+                        on_delete(id.clone());
+                    }
                 }>"Delete"</button>
             </div>
         </div>

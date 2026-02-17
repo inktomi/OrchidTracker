@@ -10,7 +10,7 @@ const TD_CLASS: &str = "py-3 px-3 text-left text-sm border-b border-stone-100 da
 #[component]
 pub fn OrchidCabinetTable(
     orchids: Vec<Orchid>,
-    on_delete: impl Fn(u64) + 'static + Copy + Send + Sync,
+    on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
@@ -22,18 +22,20 @@ pub fn OrchidCabinetTable(
 
     let (drag_target, set_drag_target) = signal::<Option<Placement>>(None);
 
+    #[allow(unused_variables)]
     let handle_drop = move |ev: leptos::ev::DragEvent, new_placement: Placement| {
         ev.prevent_default();
         set_drag_target.set(None);
-        if let Some(data) = ev.data_transfer() {
-            if let Ok(id_str) = data.get_data("text/plain") {
-                if let Ok(id) = id_str.parse::<u64>() {
-                     if let Some(mut orchid) = orchids.iter().find(|o| o.id == id).cloned() {
-                         if orchid.placement != new_placement {
-                             orchid.placement = new_placement;
-                             on_update(orchid);
-                         }
-                     }
+        #[cfg(feature = "hydrate")]
+        {
+            if let Some(data) = ev.data_transfer() {
+                if let Ok(id_str) = data.get_data("text/plain") {
+                    if let Some(mut orchid) = orchids.iter().find(|o| o.id == id_str).cloned() {
+                        if orchid.placement != new_placement {
+                            orchid.placement = new_placement;
+                            on_update(orchid);
+                        }
+                    }
                 }
             }
         }
@@ -156,7 +158,7 @@ pub fn OrchidCabinetTable(
 #[component]
 fn OrchidTableSection(
     orchids: Vec<Orchid>,
-    on_delete: impl Fn(u64) + 'static + Copy + Send + Sync,
+    on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     if orchids.is_empty() {
@@ -179,9 +181,9 @@ fn OrchidTableSection(
                     <tbody>
                         <For
                             each=move || orchids.clone()
-                            key=|orchid| orchid.id
+                            key=|orchid| orchid.id.clone()
                             children=move |orchid| {
-                                let orchid_id = orchid.id;
+                                let orchid_id = orchid.id.clone();
                                 let orchid_clone = orchid.clone();
                                 let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
                                 let status_class = if is_misplaced {
@@ -196,9 +198,15 @@ fn OrchidTableSection(
                                         class="transition-colors cursor-pointer dark:hover:bg-stone-800/50 hover:bg-secondary/50"
                                         draggable="true"
                                         on:click=move |_| on_select(orchid_clone.clone())
-                                        on:dragstart=move |ev: leptos::ev::DragEvent| {
-                                            if let Some(data) = ev.data_transfer() {
-                                                let _ = data.set_data("text/plain", &orchid_id.to_string());
+                                        on:dragstart={
+                                            let id = orchid_id.clone();
+                                            move |ev: leptos::ev::DragEvent| {
+                                                #[cfg(feature = "hydrate")]
+                                                {
+                                                    if let Some(data) = ev.data_transfer() {
+                                                        let _ = data.set_data("text/plain", &id);
+                                                    }
+                                                }
                                             }
                                         }
                                     >
@@ -209,9 +217,12 @@ fn OrchidTableSection(
                                         <td class=TD_CLASS>{orchid.temperature_range}</td>
                                         <td class=status_class>{status_text}</td>
                                         <td class=TD_CLASS>
-                                            <button class=BTN_DANGER on:click=move |ev: web_sys::MouseEvent| {
-                                                ev.stop_propagation();
-                                                on_delete(orchid_id);
+                                            <button class=BTN_DANGER on:click={
+                                                let id = orchid.id.clone();
+                                                move |ev: leptos::ev::MouseEvent| {
+                                                    ev.stop_propagation();
+                                                    on_delete(id.clone());
+                                                }
                                             }>"Delete"</button>
                                         </td>
                                     </tr>

@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, Placement, generate_id};
+use crate::orchid::{Orchid, LightRequirement, Placement};
 use crate::components::scanner::AnalysisResult;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE};
 
@@ -55,7 +55,6 @@ pub fn AddOrchidForm(
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
 
-        let id = generate_id();
         let light_req = match light.get().as_str() {
             "Low" => LightRequirement::Low,
             "High" => LightRequirement::High,
@@ -72,8 +71,9 @@ pub fn AddOrchidForm(
         let cons_status = conservation.get();
         let conservation_opt = if cons_status.is_empty() { None } else { Some(cons_status) };
 
+        // ID is a placeholder — server will generate the real one
         let new_orchid = Orchid {
-            id,
+            id: String::new(),
             name: name.get(),
             species: species.get(),
             water_frequency_days: water_freq.get().parse().unwrap_or(7),

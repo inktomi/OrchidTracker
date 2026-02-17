@@ -1,68 +1,90 @@
-use rexie::{Rexie, ObjectStore};
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::Blob;
+use crate::config::AppConfig;
 use crate::error::AppError;
+use surrealdb::engine::remote::ws::{Client, Ws};
+use surrealdb::opt::auth::Root;
+use surrealdb::Surreal;
+use std::sync::OnceLock;
 
-const DB_NAME: &str = "OrchidImagesDB";
-const STORE_NAME: &str = "images";
+static DB: OnceLock<Surreal<Client>> = OnceLock::new();
 
-pub async fn init_db() -> Result<Rexie, AppError> {
-    Rexie::builder(DB_NAME)
-        .version(1)
-        .add_object_store(
-            ObjectStore::new(STORE_NAME)
-                .auto_increment(true)
-        )
-        .build()
+pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
+    let db = Surreal::new::<Ws>(&config.surreal_url)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))
+        .map_err(|e| AppError::Database(format!("Connection failed: {}", e)))?;
+
+    db.signin(Root {
+        username: &config.surreal_user,
+        password: &config.surreal_pass,
+    })
+    .await
+    .map_err(|e| AppError::Database(format!("Auth failed: {}", e)))?;
+
+    db.use_ns(&config.surreal_ns)
+        .use_db(&config.surreal_db)
+        .await
+        .map_err(|e| AppError::Database(format!("Namespace/DB selection failed: {}", e)))?;
+
+    DB.set(db).map_err(|_| AppError::Database("DB already initialized".into()))?;
+    Ok(())
 }
 
-pub async fn save_image_blob(blob: Blob) -> Result<u32, AppError> {
-    let rexie = init_db().await?;
-
-    let transaction = rexie
-        .transaction(&[STORE_NAME], rexie::TransactionMode::ReadWrite)
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-    let store = transaction.store(STORE_NAME)
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-    let id_js = store.add(&JsValue::from(blob), None).await
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-    transaction.done().await
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-    let id = id_js.as_f64()
-        .ok_or_else(|| AppError::Database("Failed to parse ID as number".into()))? as u32;
-
-    Ok(id)
+pub fn db() -> &'static Surreal<Client> {
+    DB.get().expect("DB not initialized — call init_db() first")
 }
 
-pub async fn get_image_blob(id: u32) -> Result<Option<Blob>, AppError> {
-    let rexie = init_db().await?;
+/// Run all pending migrations from the migrations/ directory
+pub async fn run_migrations() -> Result<(), AppError> {
+    let db = db();
 
-    let transaction = rexie
-        .transaction(&[STORE_NAME], rexie::TransactionMode::ReadOnly)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    // Read migration files
+    let mut entries: Vec<_> = std::fs::read_dir("migrations")
+        .map_err(|e| AppError::Database(format!("Can't read migrations dir: {}", e)))?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.path().extension().is_some_and(|ext| ext == "surql")
+        })
+        .collect();
 
-    let store = transaction.store(STORE_NAME)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    entries.sort_by_key(|e| e.file_name());
 
-    let key = JsValue::from_f64(id as f64);
-    let result_opt = store.get(key).await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    for entry in entries {
+        let name = entry.file_name().to_string_lossy().to_string();
 
-    if let Some(result_js) = result_opt {
-        if result_js.is_undefined() || result_js.is_null() {
-            return Ok(None);
+        // Check if already applied
+        let applied: Option<MigrationRecord> = db
+            .query("SELECT * FROM migration WHERE name = $name LIMIT 1")
+            .bind(("name", name.clone()))
+            .await
+            .map_err(|e| AppError::Database(format!("Migration check failed: {}", e)))?
+            .take(0)
+            .map_err(|e| AppError::Database(format!("Migration check failed: {}", e)))?;
+
+        if applied.is_some() {
+            tracing::info!("Migration {} already applied, skipping", name);
+            continue;
         }
-        let blob = result_js.dyn_into::<Blob>()
-            .map_err(|_| AppError::Database("Failed to cast to Blob".into()))?;
-        Ok(Some(blob))
-    } else {
-        Ok(None)
+
+        // Read and execute
+        let sql = std::fs::read_to_string(entry.path())
+            .map_err(|e| AppError::Database(format!("Can't read migration {}: {}", name, e)))?;
+
+        tracing::info!("Applying migration: {}", name);
+        db.query(&sql)
+            .await
+            .map_err(|e| AppError::Database(format!("Migration {} failed: {}", name, e)))?;
+
+        // Record it
+        db.query("CREATE migration SET name = $name")
+            .bind(("name", name.clone()))
+            .await
+            .map_err(|e| AppError::Database(format!("Failed to record migration {}: {}", name, e)))?;
     }
+
+    Ok(())
+}
+
+#[derive(serde::Deserialize)]
+struct MigrationRecord {
+    #[allow(dead_code)]
+    name: String,
 }

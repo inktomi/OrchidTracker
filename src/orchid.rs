@@ -1,15 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::sync::atomic::{AtomicU64, Ordering};
 use chrono::{DateTime, Utc};
-
-static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-pub fn generate_id() -> u64 {
-    let ts = js_sys::Date::now() as u64;
-    let seq = ID_COUNTER.fetch_add(1, Ordering::Relaxed);
-    ts * 1000 + (seq % 1000)
-}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FitCategory {
@@ -88,15 +79,15 @@ impl Placement {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LogEntry {
-    pub id: u64,
+    pub id: String,
     pub timestamp: DateTime<Utc>,
     pub note: String,
-    pub image_data: Option<String>, // IndexedDB ID (numeric) or LFS filename
+    pub image_filename: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Orchid {
-    pub id: u64,
+    pub id: String,
     pub name: String,
     pub species: String,
     pub water_frequency_days: u32,
@@ -118,16 +109,6 @@ impl Orchid {
             LightRequirement::Medium => Placement::Medium,
             LightRequirement::High => Placement::High,
         }
-    }
-
-    pub fn add_log(&mut self, note: String, image_data: Option<String>) {
-        let entry = LogEntry {
-            id: generate_id(),
-            timestamp: Utc::now(),
-            note,
-            image_data,
-        };
-        self.history.push(entry);
     }
 }
 
@@ -151,7 +132,7 @@ mod tests {
     #[test]
     fn test_orchid_creation() {
         let orchid = Orchid {
-            id: 1,
+            id: "test:1".into(),
             name: "Test Orchid".into(),
             species: "Phalaenopsis".into(),
             water_frequency_days: 7,
@@ -173,7 +154,7 @@ mod tests {
     #[test]
     fn test_suggested_placement() {
         let orchid = Orchid {
-            id: 1,
+            id: "test:1".into(),
             name: "Test".into(),
             species: "Test".into(),
             water_frequency_days: 7,

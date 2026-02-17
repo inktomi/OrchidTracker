@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "./src/**/*.rs";
+@source "./src/pages/**/*.rs";
 
 @custom-variant dark (&:is(.dark *));
 
