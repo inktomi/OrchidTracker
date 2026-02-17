@@ -472,5 +472,18 @@
     "temperature_range": "15-30C",
     "conservation_status": "CITES II",
     "history": []
+  },
+  {
+    "id": 1771289784066004,
+    "name": "Dendrobium x delicatum",
+    "species": "Dendrobium x delicatum",
+    "water_frequency_days": 5,
+    "light_requirement": "High",
+    "notes": "AI Analysis: Good Fit\nReason: This Australian natural hybrid (D. kingianum x D. speciosum) is exceptionally hardy and perfectly suited for the Southern California climate in 90606. It thrives on high light and needs the seasonal temperature fluctuations of an outdoor environment to trigger flowering, which makes your outdoor rack or patio much better than the stable 25.4C orchidarium.",
+    "placement": "Patio",
+    "light_lux": "",
+    "temperature_range": "5-35C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
