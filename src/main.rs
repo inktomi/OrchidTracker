@@ -35,12 +35,14 @@ async fn main() {
         .with_http_only(true);
 
     // Leptos config
+    let site_addr: std::net::SocketAddr = cfg.site_addr.parse()
+        .expect("Invalid SITE_ADDR format (expected e.g. 0.0.0.0:3000)");
     let leptos_options = LeptosOptions::builder()
         .output_name("orchid-tracker")
         .site_root("target/site")
         .site_pkg_dir("pkg")
-        .site_addr(std::net::SocketAddr::from(([0, 0, 0, 0], 3000)))
-        .reload_port(3001)
+        .site_addr(site_addr)
+        .reload_port(cfg.reload_port)
         .build();
     let routes = generate_route_list(App);
 
@@ -62,8 +64,8 @@ async fn main() {
         .layer(session_layer)
         .with_state(leptos_options);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    tracing::info!("Listening on http://0.0.0.0:3000");
+    let listener = tokio::net::TcpListener::bind(&cfg.site_addr).await.unwrap();
+    tracing::info!("Listening on http://{}", cfg.site_addr);
     axum::serve(listener, app.into_make_service()).await.unwrap();
 }
 
