@@ -7,6 +7,7 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
     monospace;
     --color-red-300: oklch(80.8% 0.114 19.571);
+    --color-red-900: oklch(39.6% 0.141 25.723);
     --color-amber-300: oklch(87.9% 0.169 91.605);
     --color-amber-400: oklch(82.8% 0.189 84.429);
     --color-gray-100: oklch(96.7% 0.003 264.542);
@@ -64,6 +65,8 @@
     --color-shelf-medium: #6b9e7a;
     --color-shelf-low: #8b7355;
     --font-display: "DM Serif Display", Georgia, serif;
+    --animate-fade-in: fade-in 0.2s ease-out both;
+    --animate-modal-in: modal-in 0.25s ease-out both;
   }
 }
 @layer base {
@@ -355,6 +358,12 @@
   }
   .border-collapse {
     border-collapse: collapse;
+  }
+  .animate-fade-in {
+    animation: var(--animate-fade-in);
+  }
+  .animate-modal-in {
+    animation: var(--animate-modal-in);
   }
   .animate-spin {
     animation: var(--animate-spin);
@@ -871,6 +880,10 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .duration-200 {
+    --tw-duration: 200ms;
+    transition-duration: 200ms;
+  }
   .before\:absolute {
     &::before {
       content: var(--tw-content);
@@ -917,6 +930,14 @@
     &::before {
       --tw-content: '';
       content: var(--tw-content);
+    }
+  }
+  .hover\:-translate-y-0\.5 {
+    &:hover {
+      @media (hover: hover) {
+        --tw-translate-y: calc(var(--spacing) * -0.5);
+        translate: var(--tw-translate-x) var(--tw-translate-y);
+      }
     }
   }
   .hover\:border-stone-300 {
@@ -1054,6 +1075,140 @@
       padding-inline: calc(var(--spacing) * 6);
     }
   }
+  .dark\:border-stone-700 {
+    &:is(.dark *) {
+      border-color: var(--color-stone-700);
+    }
+  }
+  .dark\:border-stone-700\/60 {
+    &:is(.dark *) {
+      border-color: color-mix(in srgb, oklch(37.4% 0.01 67.558) 60%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        border-color: color-mix(in oklab, var(--color-stone-700) 60%, transparent);
+      }
+    }
+  }
+  .dark\:border-stone-800 {
+    &:is(.dark *) {
+      border-color: var(--color-stone-800);
+    }
+  }
+  .dark\:bg-black\/50 {
+    &:is(.dark *) {
+      background-color: color-mix(in srgb, #000 50%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
+      }
+    }
+  }
+  .dark\:bg-red-900\/30 {
+    &:is(.dark *) {
+      background-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 30%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-red-900) 30%, transparent);
+      }
+    }
+  }
+  .dark\:bg-stone-700 {
+    &:is(.dark *) {
+      background-color: var(--color-stone-700);
+    }
+  }
+  .dark\:bg-stone-800 {
+    &:is(.dark *) {
+      background-color: var(--color-stone-800);
+    }
+  }
+  .dark\:text-primary-light {
+    &:is(.dark *) {
+      color: var(--color-primary-light);
+    }
+  }
+  .dark\:text-red-300 {
+    &:is(.dark *) {
+      color: var(--color-red-300);
+    }
+  }
+  .dark\:text-stone-300 {
+    &:is(.dark *) {
+      color: var(--color-stone-300);
+    }
+  }
+  .dark\:text-stone-400 {
+    &:is(.dark *) {
+      color: var(--color-stone-400);
+    }
+  }
+  .dark\:text-stone-500 {
+    &:is(.dark *) {
+      color: var(--color-stone-500);
+    }
+  }
+  .dark\:hover\:border-stone-600 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          border-color: var(--color-stone-600);
+        }
+      }
+    }
+  }
+  .dark\:hover\:bg-red-900\/50 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 50%, transparent);
+          @supports (color: color-mix(in lab, red, red)) {
+            background-color: color-mix(in oklab, var(--color-red-900) 50%, transparent);
+          }
+        }
+      }
+    }
+  }
+  .dark\:hover\:bg-stone-600 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: var(--color-stone-600);
+        }
+      }
+    }
+  }
+  .dark\:hover\:bg-stone-700 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: var(--color-stone-700);
+        }
+      }
+    }
+  }
+  .dark\:hover\:bg-stone-800\/50 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          background-color: color-mix(in srgb, oklch(26.8% 0.007 34.298) 50%, transparent);
+          @supports (color: color-mix(in lab, red, red)) {
+            background-color: color-mix(in oklab, var(--color-stone-800) 50%, transparent);
+          }
+        }
+      }
+    }
+  }
+  .dark\:hover\:text-stone-200 {
+    &:is(.dark *) {
+      &:hover {
+        @media (hover: hover) {
+          color: var(--color-stone-200);
+        }
+      }
+    }
+  }
+}
+html.dark {
+  --color-surface: #1c1917;
+  --color-cream: #0c0a09;
+  --color-secondary: #292524;
 }
 @layer base {
   body {
@@ -1090,6 +1245,35 @@
     padding-block: calc(var(--spacing) * 2.5);
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+  html.dark body {
+    color: #e7e5e4;
+  }
+  html.dark input, html.dark textarea, html.dark select {
+    background: #292524;
+    border-color: #44403c;
+    color: #e7e5e4;
+  }
+  html.dark label {
+    color: #a8a29e;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 @property --tw-border-style {
@@ -1263,10 +1447,29 @@
   syntax: "*";
   inherits: false;
 }
+@property --tw-duration {
+  syntax: "*";
+  inherits: false;
+}
 @property --tw-content {
   syntax: "*";
   initial-value: "";
   inherits: false;
+}
+@property --tw-translate-x {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-translate-y {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-translate-z {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
 }
 @keyframes spin {
   to {
@@ -1316,7 +1519,11 @@
       --tw-backdrop-opacity: initial;
       --tw-backdrop-saturate: initial;
       --tw-backdrop-sepia: initial;
+      --tw-duration: initial;
       --tw-content: "";
+      --tw-translate-x: 0;
+      --tw-translate-y: 0;
+      --tw-translate-z: 0;
     }
   }
 }
