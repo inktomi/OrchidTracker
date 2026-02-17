@@ -1,5 +1,4 @@
 use leptos::prelude::*;
-use leptos_router::hooks::use_navigate;
 use crate::components::add_orchid_form::AddOrchidForm;
 use crate::components::cabinet_table::OrchidCabinetTable;
 use crate::components::climate_dashboard::ClimateDashboard;
@@ -18,8 +17,6 @@ const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-tran
 
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let navigate = use_navigate();
-
     // Check auth — redirect to login if not authenticated
     let user = Resource::new(|| (), |_| get_current_user());
 
@@ -120,12 +117,19 @@ pub fn HomePage() -> impl IntoView {
     view! {
         <Suspense fallback=move || view! { <p class="p-8 text-center text-stone-500">"Loading..."</p> }>
             {move || {
-                let nav = navigate.clone();
                 user.get().map(|result| match result {
                     Ok(Some(_user_info)) => view! { <div></div> }.into_any(),
                     _ => {
-                        // Not authenticated, redirect
-                        nav("/login", Default::default());
+                        // Server: send 302 redirect
+                        #[cfg(feature = "ssr")]
+                        leptos_axum::redirect("/login");
+                        // Client: full navigation to login
+                        #[cfg(feature = "hydrate")]
+                        {
+                            if let Some(window) = web_sys::window() {
+                                let _ = window.location().set_href("/login");
+                            }
+                        }
                         view! { <div></div> }.into_any()
                     }
                 })
