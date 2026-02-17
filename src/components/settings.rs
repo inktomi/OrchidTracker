@@ -2,10 +2,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
-
-const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
-const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-200 pb-2";
-const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE, BTN_SECONDARY};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 struct ModelInfo {
@@ -60,17 +57,16 @@ where
     let fetch_models = move || {
         let key = gemini_key.get();
         if key.is_empty() { return; }
-        
+
         spawn_local(async move {
             let url = format!("https://generativelanguage.googleapis.com/v1beta/models?key={}", key.trim());
             match reqwest::get(&url).await {
                 Ok(resp) => {
                     if resp.status().is_success() {
                         if let Ok(list) = resp.json::<ModelList>().await {
-                            // Filter for 'generateContent' support
                             let filtered: Vec<ModelInfo> = list.models.into_iter()
                                 .filter(|m| m.supported_generation_methods.as_ref()
-                                    .map_or(false, |methods| methods.iter().any(|method| method == "generateContent")))
+                                    .is_some_and(|methods| methods.iter().any(|method| method == "generateContent")))
                                 .collect();
                             set_available_models.set(filtered);
                             set_fetch_error.set(None);
@@ -106,10 +102,10 @@ where
 
     view! {
         <div class=MODAL_OVERLAY>
-            <div class="bg-white p-8 rounded-lg w-[90%] max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <div class=MODAL_CONTENT>
                 <div class=MODAL_HEADER>
-                    <h2>"Sync Settings (GitHub) & AI"</h2>
-                    <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
+                    <h2 class="m-0">"Settings"</h2>
+                    <button class=BTN_CLOSE on:click=move |_| on_close()>"Close"</button>
                 </div>
                 <div>
                     <div class="mb-4">
@@ -123,10 +119,13 @@ where
                         </select>
                     </div>
 
-                    <p class="p-2 mb-4 text-sm text-gray-500 bg-gray-100 rounded">
-                        "Enter your GitHub Personal Access Token (PAT) to enable syncing changes directly to the repository."
+                    <hr class="my-5 border-stone-200" />
+
+                    <h3 class="mt-0 mb-3">"GitHub Sync"</h3>
+                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary">
+                        "Enter your GitHub Personal Access Token (PAT) to enable syncing."
                         <br/>
-                        "Required scopes: " <strong>"repo"</strong> " (for private repos) or " <strong>"public_repo"</strong> " (for public repos)."
+                        "Required scopes: " <strong>"repo"</strong> " (private) or " <strong>"public_repo"</strong> " (public)."
                     </p>
                     <div class="mb-4">
                         <label>"Repo Owner (Username):"</label>
@@ -141,15 +140,15 @@ where
                         <input type="password" prop:value=token on:input=move |ev| set_token.set(event_target_value(&ev)) />
                     </div>
 
-                    <hr class="my-4 border-gray-200" />
+                    <hr class="my-5 border-stone-200" />
 
-                    <h3>"AI Integration (Google Gemini)"</h3>
-                    <p class="p-2 mb-4 text-sm text-gray-500 bg-gray-100 rounded">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
+                    <h3 class="mt-0 mb-3">"AI Integration"</h3>
+                    <p class="p-3 mb-4 text-xs leading-relaxed rounded-lg text-stone-500 bg-secondary">"Enter your Gemini API Key to enable image scanning and care suggestions."</p>
                      <div class="mb-4">
                         <label>"Gemini API Key:"</label>
                         <input type="password" prop:value=gemini_key on:input=move |ev| set_gemini_key.set(event_target_value(&ev)) on:blur=move |_| fetch_models() />
                     </div>
-                    
+
                     <div class="mb-4">
                         <label>"Gemini Model:"</label>
                         <div class="flex gap-2">
@@ -168,20 +167,17 @@ where
                                         view! { <option value=name>{label}</option> }
                                     }
                                 />
-                                // Fallback option if list empty
-                                {move || if available_models.get().is_empty() {
-                                    view! { <option value="gemini-1.5-flash">"gemini-1.5-flash (Default)"</option> }.into_any()
-                                } else {
-                                    view! {}.into_any()
-                                }}
+                                {move || available_models.get().is_empty().then(|| {
+                                    view! { <option value="gemini-1.5-flash">"gemini-1.5-flash (Default)"</option> }
+                                })}
                             </select>
-                            <button class="bg-gray-200 border border-gray-300 rounded px-3 hover:bg-gray-300" on:click=move |_| fetch_models()>"Refresh"</button>
+                            <button class=BTN_SECONDARY on:click=move |_| fetch_models()>"Refresh"</button>
                         </div>
-                        {move || fetch_error.get().map(|err| view! { <p class="text-xs text-red-500 mt-1">{err}</p> })}
+                        {move || fetch_error.get().map(|err| view! { <p class="mt-1 text-xs text-danger">{err}</p> })}
                     </div>
 
-                    <div class="mt-4">
-                        <button class="py-3 px-6 text-base text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=on_save>"Save Settings"</button>
+                    <div class="mt-6">
+                        <button class=BTN_PRIMARY on:click=on_save>"Save Settings"</button>
                     </div>
                 </div>
             </div>

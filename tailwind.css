@@ -2,25 +2,36 @@
 @source "./src/**/*.rs";
 
 @theme {
-  --color-primary: #2e7d32;
-  --color-primary-dark: #1b5e20;
-  --color-secondary: #f1f8e9;
-  --color-danger: #c62828;
-  --color-danger-dark: #b71c1c;
-  --color-warning: #ef6c00;
-  --color-shelf-high: #ffca28;
-  --color-shelf-medium: #66bb6a;
-  --color-shelf-low: #8d6e63;
+  --color-primary: #1b4332;
+  --color-primary-dark: #14342a;
+  --color-primary-light: #2d6a4f;
+  --color-accent: #b68d40;
+  --color-accent-dark: #9a7634;
+  --color-accent-light: #d4a843;
+  --color-surface: #fffefb;
+  --color-cream: #faf7f2;
+  --color-secondary: #f0ebe3;
+  --color-danger: #be123c;
+  --color-danger-dark: #9f1239;
+  --color-warning: #d97706;
+  --color-shelf-high: #d4a843;
+  --color-shelf-medium: #6b9e7a;
+  --color-shelf-low: #8b7355;
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-display: "DM Serif Display", Georgia, serif;
 }
 
 @layer base {
   body {
-    @apply font-sans text-gray-800 bg-white m-0 p-0;
+    @apply font-sans text-stone-800 bg-cream m-0 p-0 antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-display font-normal;
   }
   label {
-    @apply block mb-2 font-bold;
+    @apply block mb-1.5 text-sm font-medium text-stone-500;
   }
   input, textarea, select {
-    @apply w-full p-2 border border-gray-300 rounded;
+    @apply w-full px-3 py-2.5 text-sm bg-white border border-stone-300 rounded-lg;
   }
 }

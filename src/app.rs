@@ -5,6 +5,7 @@ use crate::components::orchid_card::OrchidCard;
 use crate::components::orchid_detail::OrchidDetail;
 use crate::components::scanner::ScannerModal;
 use crate::components::settings::SettingsModal;
+use crate::components::BTN_GHOST;
 use crate::model::{Model, Msg, ViewMode};
 use crate::update;
 use gloo_storage::{LocalStorage, Storage};
@@ -21,7 +22,8 @@ pub struct ClimateData {
     pub updated: String,
 }
 
-const ACTION_BTN: &str = "bg-transparent border border-white/80 text-white py-2 px-3 text-sm rounded cursor-pointer font-bold hover:bg-white/20";
+const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold text-primary bg-surface rounded-lg shadow-sm cursor-pointer border-none transition-all";
+const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-transparent rounded-lg cursor-pointer border-none hover:text-stone-700 transition-all";
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -79,49 +81,51 @@ pub fn App() -> impl IntoView {
 
     // ── View ──────────────────────────────────────────────────────────
     view! {
-        <header class="p-4 text-center text-white bg-primary">
-            <div class="flex justify-between items-center mx-auto mb-4 max-w-[1200px]">
-                <h1 class="m-0">"Orchid Tracker"</h1>
-                <div class="flex gap-4 items-center">
-                    <span class="text-xs font-bold text-white/80">
-                        {move || sync_status.get()}
-                        {move || sync_status.get().starts_with("Error:").then(|| {
-                            view! { <button class="p-0 ml-2 w-5 h-5 text-xs leading-5 text-white align-middle rounded-full border-none cursor-pointer bg-danger hover:bg-danger-dark" on:click=move |_| update::dispatch(set_model, model, Msg::SetSyncStatus(String::new()))>"X"</button> }
-                        })}
-                    </span>
-                    <button class=ACTION_BTN on:click=move |_| update::dispatch(set_model, model, Msg::TriggerSync)>"Sync"</button>
-                    <button class=ACTION_BTN on:click=move |_| update::dispatch(set_model, model, Msg::ShowAddModal(true))>"Add"</button>
-                    <button class=ACTION_BTN on:click=move |_| update::dispatch(set_model, model, Msg::ShowScanner(true))>"Scan"</button>
-                    <button class="py-2 px-3 text-sm text-white bg-transparent rounded border cursor-pointer border-white/50 hover:bg-white/10" on:click=move |_| update::dispatch(set_model, model, Msg::ShowSettings(true))>"Settings"</button>
+        <header class="bg-primary">
+            <div class="flex flex-wrap gap-3 justify-between items-center py-3 px-4 mx-auto sm:px-6 max-w-[1200px]">
+                <h1 class="m-0 text-xl tracking-wide text-white">"Orchid Tracker"</h1>
+                <div class="flex flex-wrap gap-2 items-center">
+                    {move || {
+                        let status = sync_status.get();
+                        (!status.is_empty()).then(|| {
+                            let has_error = status.starts_with("Error:");
+                            view! {
+                                <span class="py-1 px-2.5 text-xs font-medium rounded-md text-white/80 bg-white/15">
+                                    {status}
+                                    {has_error.then(|| {
+                                        view! { <button class="p-0 ml-1.5 text-xs bg-transparent border-none cursor-pointer hover:text-white text-white/60" on:click=move |_| update::dispatch(set_model, model, Msg::SetSyncStatus(String::new()))>"×"</button> }
+                                    })}
+                                </span>
+                            }
+                        })
+                    }}
+                    <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::TriggerSync)>"Sync"</button>
+                    <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ShowAddModal(true))>"Add"</button>
+                    <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ShowScanner(true))>"Scan"</button>
+                    <button class=BTN_GHOST on:click=move |_| update::dispatch(set_model, model, Msg::ShowSettings(true))>"Settings"</button>
+                </div>
+            </div>
+        </header>
+        <main class="py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
+            <ClimateDashboard data=climate_data unit=temp_unit />
+
+            <div class="flex justify-center mb-6">
+                <div class="inline-flex gap-1 p-1 rounded-xl bg-secondary">
+                    <button
+                        class=move || if view_mode.get() == ViewMode::Grid { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| update::dispatch(set_model, model, Msg::SetViewMode(ViewMode::Grid))
+                    >
+                        "Grid View"
+                    </button>
+                    <button
+                        class=move || if view_mode.get() == ViewMode::Table { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| update::dispatch(set_model, model, Msg::SetViewMode(ViewMode::Table))
+                    >
+                        "Shelf View"
+                    </button>
                 </div>
             </div>
 
-            <ClimateDashboard data=climate_data unit=temp_unit />
-
-            <div class="flex gap-4 justify-center mt-4">
-                <button
-                    class=move || if view_mode.get() == ViewMode::Grid {
-                        "bg-white text-primary font-bold border-2 border-white py-2 px-4 text-sm rounded cursor-pointer"
-                    } else {
-                        "bg-transparent text-white border-2 border-white py-2 px-4 text-sm rounded cursor-pointer"
-                    }
-                    on:click=move |_| update::dispatch(set_model, model, Msg::SetViewMode(ViewMode::Grid))
-                >
-                    "Grid View"
-                </button>
-                <button
-                    class=move || if view_mode.get() == ViewMode::Table {
-                        "bg-white text-primary font-bold border-2 border-white py-2 px-4 text-sm rounded cursor-pointer"
-                    } else {
-                        "bg-transparent text-white border-2 border-white py-2 px-4 text-sm rounded cursor-pointer"
-                    }
-                    on:click=move |_| update::dispatch(set_model, model, Msg::SetViewMode(ViewMode::Table))
-                >
-                    "Placement View"
-                </button>
-            </div>
-        </header>
-        <main class="p-4 mx-auto max-w-[1200px]">
             {move || show_add_modal.get().then(|| {
                 view! {
                     <AddOrchidForm
@@ -134,7 +138,7 @@ pub fn App() -> impl IntoView {
 
             {move || match view_mode.get() {
                 ViewMode::Grid => view! {
-                    <div class="grid gap-4 p-4 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+                    <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
                         <For
                             each=move || orchids.get()
                             key=|orchid| orchid.id

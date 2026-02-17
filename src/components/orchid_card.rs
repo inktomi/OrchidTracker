@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use crate::orchid::Orchid;
+use super::BTN_DANGER;
 
 #[component]
 pub fn OrchidCard(
@@ -11,36 +12,63 @@ pub fn OrchidCard(
     let orchid_clone = orchid.clone();
     let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
     let suggestion_msg = if is_misplaced {
-        format!("(Needs {})", orchid.light_requirement)
+        format!("Needs {}", orchid.light_requirement)
     } else {
-        " (Optimal)".to_string()
+        "Optimal".to_string()
     };
 
-    let suggestion_class = if is_misplaced { "text-red-600 font-bold" } else { "text-green-700" };
+    let status_class = if is_misplaced {
+        "inline-flex py-1 px-2.5 text-xs font-semibold rounded-full bg-danger/10 text-danger"
+    } else {
+        "inline-flex py-1 px-2.5 text-xs font-semibold rounded-full bg-primary-light/10 text-primary-light"
+    };
 
     let conservation = orchid.conservation_status.clone();
+    let has_notes = !orchid.notes.is_empty();
+    let notes = orchid.notes.clone();
 
     view! {
-        <div class="p-4 bg-white rounded-lg border border-gray-300 shadow transition-transform cursor-pointer hover:shadow-md hover:-translate-y-0.5">
-            <div on:click=move |_| on_select(orchid_clone.clone())>
-                <h3 class="mt-0 text-primary">{orchid.name}</h3>
-                <p><strong>"Species: "</strong> {orchid.species}</p>
+        <div class="overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md bg-surface border-stone-200/80 hover:border-stone-300">
+            <div class="p-5 cursor-pointer" on:click=move |_| on_select(orchid_clone.clone())>
+                <div class="flex gap-2 justify-between items-start mb-1">
+                    <h3 class="m-0 text-primary">{orchid.name}</h3>
+                    <span class=status_class>{suggestion_msg}</span>
+                </div>
+                <p class="mt-0 mb-3 text-sm italic text-stone-400">{orchid.species}</p>
 
                 {conservation.map(|status| {
-                    view! { <p class="my-1 italic text-red-700"><strong>"Status: "</strong> {status}</p> }
+                    view! { <span class="inline-block py-0.5 px-2 mb-3 text-xs font-medium rounded-full border text-danger bg-danger/5 border-danger/20">{status}</span> }
                 })}
 
-                <p><strong>"Watering: "</strong> "Every " {orchid.water_frequency_days} " days"</p>
-                <p><strong>"Light Req: "</strong> {orchid.light_requirement.to_string()} " (" {orchid.light_lux} " Lux)"</p>
-                <p><strong>"Temp Range: "</strong> {orchid.temperature_range}</p>
-                <p><strong>"Placement: "</strong> {orchid.placement.to_string()}</p>
-                <p class=suggestion_class><strong>"Suggestion: "</strong> {suggestion_msg}</p>
-                <p><strong>"Notes: "</strong> {orchid.notes}</p>
+                <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                    <div>
+                        <div class="text-xs tracking-wide text-stone-400">"Water"</div>
+                        <div class="font-medium text-stone-700">"Every " {orchid.water_frequency_days} " days"</div>
+                    </div>
+                    <div>
+                        <div class="text-xs tracking-wide text-stone-400">"Light"</div>
+                        <div class="font-medium text-stone-700">{orchid.light_requirement.to_string()}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs tracking-wide text-stone-400">"Shelf"</div>
+                        <div class="font-medium text-stone-700">{orchid.placement.to_string()}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs tracking-wide text-stone-400">"Temp"</div>
+                        <div class="font-medium text-stone-700">{orchid.temperature_range}</div>
+                    </div>
+                </div>
+
+                {has_notes.then(|| {
+                    view! { <p class="mt-3 text-sm leading-relaxed text-stone-500 line-clamp-2">{notes.clone()}</p> }
+                })}
             </div>
-            <button class="p-2 mt-4 text-sm text-white rounded border-none cursor-pointer bg-danger hover:bg-danger-dark" on:click=move |ev: web_sys::MouseEvent| {
-                ev.stop_propagation();
-                on_delete(orchid_id);
-            }>"Delete"</button>
+            <div class="flex justify-end py-3 px-5 border-t border-stone-100">
+                <button class=BTN_DANGER on:click=move |ev: web_sys::MouseEvent| {
+                    ev.stop_propagation();
+                    on_delete(orchid_id);
+                }>"Delete"</button>
+            </div>
         </div>
     }
 }

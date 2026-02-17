@@ -5,7 +5,7 @@ use crate::app::ClimateData;
 pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>) -> impl IntoView {
     let cd = data.get_value();
     if cd.is_empty() {
-        view! { <div class="flex justify-center p-4 mx-auto mb-4 italic text-gray-500 bg-white rounded-lg border border-gray-300 shadow max-w-[600px]">"No climate data available (Configure AC Infinity Action)"</div> }.into_any()
+        view! { <div class="flex justify-center p-4 mx-auto mb-6 text-sm italic rounded-xl border shadow-sm text-stone-400 bg-surface border-stone-200 max-w-[700px]">"No climate data available (Configure AC Infinity Action)"</div> }.into_any()
     } else {
         view! {
             <div>
@@ -25,22 +25,26 @@ pub fn ClimateDashboard(data: StoredValue<Vec<ClimateData>>, unit: Memo<String>)
                         let updated = dev.updated.clone();
 
                         view! {
-                            <div class="flex flex-wrap justify-around p-4 mx-auto mb-4 text-gray-800 bg-white rounded-lg border border-gray-300 shadow max-w-[600px]">
-                                <h3>{name}</h3>
-                                <div class="flex flex-col items-center p-2">
-                                    <span class="text-xs text-gray-500 uppercase">"Temperature"</span>
-                                    <span class="text-2xl font-bold text-primary">{temp_val} " " {temp_unit_str}</span>
+                            <div class="p-4 mx-auto mb-6 rounded-xl border shadow-sm bg-surface border-stone-200 max-w-[700px]">
+                                <div class="flex flex-wrap gap-4 justify-between items-center">
+                                    <h3 class="m-0 text-base text-stone-700">{name}</h3>
+                                    <div class="flex flex-wrap gap-6 items-center">
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Temp"</span>
+                                            <span class="text-xl font-semibold text-primary">{temp_val}" "{temp_unit_str}</span>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Humidity"</span>
+                                            <span class="text-xl font-semibold text-primary">{humidity}"%"</span>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"VPD"</span>
+                                            <span class="text-xl font-semibold text-primary">{vpd}" kPa"</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="flex flex-col items-center p-2">
-                                    <span class="text-xs text-gray-500 uppercase">"Humidity"</span>
-                                    <span class="text-2xl font-bold text-primary">{humidity} "%"</span>
-                                </div>
-                                <div class="flex flex-col items-center p-2">
-                                    <span class="text-xs text-gray-500 uppercase">"VPD"</span>
-                                    <span class="text-2xl font-bold text-primary">{vpd} " kPa"</span>
-                                </div>
-                                <div class="mt-2 w-full text-center text-gray-400 text-[0.7rem]">
-                                    "Last Updated: " {updated}
+                                <div class="mt-2 text-xs text-right text-stone-400">
+                                    "Updated: " {updated}
                                 </div>
                             </div>
                         }

@@ -7,10 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, FitCategory, LightRequirement};
 use crate::app::ClimateData;
 use wasm_bindgen_futures::JsFuture;
+use super::{MODAL_OVERLAY, BTN_PRIMARY, BTN_GHOST};
 
-const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
-const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-600 pb-2";
-const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+const SCANNER_CONTENT: &str = "bg-stone-900 text-stone-200 p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-700/60";
+const SCANNER_HEADER: &str = "flex justify-between items-center mb-5 pb-4 border-b border-stone-700";
+const SCANNER_CLOSE: &str = "py-2 px-3 text-sm text-stone-400 bg-stone-800 rounded-lg border-none cursor-pointer hover:bg-stone-700 hover:text-stone-200 transition-colors";
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnalysisResult {
@@ -56,7 +57,6 @@ pub fn ScannerModal(
     let (facing_mode, set_facing_mode) = signal("environment".to_string());
     let (stream_signal, set_stream_signal) = signal_local::<Option<web_sys::MediaStream>>(None);
 
-    // Stop camera cleanup
     on_cleanup(move || {
         if let Some(stream) = stream_signal.get() {
             let tracks = stream.get_tracks();
@@ -68,11 +68,9 @@ pub fn ScannerModal(
         }
     });
 
-    // Start/Restart Camera when facing_mode changes
     Effect::new(move |_| {
         let mode = facing_mode.get();
 
-        // Stop previous stream
         if let Some(stream) = stream_signal.get_untracked() {
             let tracks = stream.get_tracks();
             for i in 0..tracks.length() {
@@ -126,7 +124,7 @@ pub fn ScannerModal(
         spawn_local(async move {
             let raw_key = LocalStorage::get("gemini_api_key").unwrap_or_else(|_| String::new());
             let api_key = raw_key.trim();
-            
+
             if api_key.is_empty() {
                 set_error_msg.set(Some("Gemini API Key missing in Settings".into()));
                 set_is_scanning.set(false);
@@ -158,7 +156,7 @@ pub fn ScannerModal(
              let existing_names: Vec<String> = existing_orchids.with_value(|orchids| {
                  orchids.iter().map(|o| o.species.clone()).collect()
              });
-             
+
              let summary = climate_data.with_value(|cd| {
                  if cd.is_empty() {
                      "Unknown climate".to_string()
@@ -197,11 +195,9 @@ pub fn ScannerModal(
                  }]
              });
 
-             // Use selected model or default
              let model = LocalStorage::get("gemini_model").unwrap_or_else(|_| "gemini-1.5-flash".to_string());
              let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", model, api_key);
-             
-             // Debug log (mask key)
+
              log::info!("Sending AI request to: {}...", url.split("?key=").next().unwrap_or("..."));
 
              match client.post(&url)
@@ -230,7 +226,7 @@ pub fn ScannerModal(
                              let status = resp.status();
                              let error_body = resp.text().await.unwrap_or_else(|_| "(no content)".into());
                              log::error!("AI API Error {} Body: {}", status, error_body);
-                             
+
                              let msg = format!("AI API Error: {} - Details: {}", status, error_body);
                              set_error_msg.set(Some(msg));
                         }
@@ -244,17 +240,17 @@ pub fn ScannerModal(
 
     view! {
         <div class=MODAL_OVERLAY>
-            <div class="bg-neutral-900 text-gray-200 p-8 rounded-lg w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto border border-neutral-700">
-                 <div class=MODAL_HEADER>
+            <div class=SCANNER_CONTENT>
+                 <div class=SCANNER_HEADER>
                     <h2 class="m-0 text-white">"Orchid Scanner"</h2>
-                    <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
+                    <button class=SCANNER_CLOSE on:click=move |_| on_close()>"Close"</button>
                 </div>
                 <div>
                     {move || error_msg.get().map(|err| {
-                        view! { <div class="mb-2 text-red-400">{err}</div> }
+                        view! { <div class="p-3 mb-4 text-sm text-red-300 rounded-lg bg-danger/20">{err}</div> }
                     })}
 
-                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-lg h-[300px]">
+                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-xl h-[300px]">
                         <video
                             node_ref=video_element
                             autoplay
@@ -269,25 +265,25 @@ pub fn ScannerModal(
                     {move || {
                         if let Some(result) = analysis_result.get() {
                             let fit_class = match result.fit_category {
-                                FitCategory::GoodFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-green-100 text-primary",
-                                FitCategory::BadFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-red-100 text-danger",
-                                FitCategory::CautionFit => "py-1 px-3 rounded-xl inline-block mb-2 text-sm bg-orange-100 text-warning",
+                                FitCategory::GoodFit => "py-1 px-3 text-sm font-semibold rounded-full bg-primary-light/20 text-primary-light",
+                                FitCategory::BadFit => "py-1 px-3 text-sm font-semibold rounded-full bg-danger/20 text-red-300",
+                                FitCategory::CautionFit => "py-1 px-3 text-sm font-semibold rounded-full bg-warning/20 text-amber-300",
                             };
                             let result_clone = result.clone();
 
                             view! {
-                                <div class="p-4 rounded-lg bg-neutral-800">
-                                    <h3>{result.species_name}</h3>
+                                <div class="p-5 rounded-xl bg-stone-800">
+                                    <h3 class="mt-0 text-white">{result.species_name}</h3>
                                     <div class=fit_class>{result.fit_category.to_string()}</div>
-                                    <p>{result.reason}</p>
+                                    <p class="mt-3 text-sm leading-relaxed text-stone-300">{result.reason}</p>
                                     {result.already_owned.then(|| {
-                                        view! { <p class="font-bold text-yellow-400">"You already own this species!"</p> }
+                                        view! { <p class="mt-2 text-sm font-semibold text-amber-400">"You already own this species!"</p> }
                                     })}
                                     <div class="grid grid-cols-2 gap-4 mt-4">
-                                        <button class="py-3 text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=move |_| on_add_to_collection(result_clone.clone())>
-                                            "Use Info"
+                                        <button class=BTN_PRIMARY on:click=move |_| on_add_to_collection(result_clone.clone())>
+                                            "Add to Collection"
                                         </button>
-                                        <button class="py-3 text-white rounded border-none cursor-pointer bg-neutral-600 hover:bg-neutral-500" on:click=move |_| {
+                                        <button class="py-3 text-sm font-medium rounded-lg border-none transition-colors cursor-pointer text-stone-300 bg-stone-700 hover:bg-stone-600" on:click=move |_| {
                                             set_analysis_result.set(None);
                                             set_error_msg.set(None);
                                         }>"Scan Another"</button>
@@ -296,18 +292,18 @@ pub fn ScannerModal(
                             }.into_any()
                         } else {
                             view! {
-                                <div class="flex gap-4 justify-center mt-4 text-center">
-                                    <button class="py-2 px-3 font-bold text-white bg-transparent rounded border cursor-pointer border-white/80 hover:bg-white/20" on:click=flip_camera>"Flip"</button>
+                                <div class="flex gap-3 justify-center mt-4 text-center">
+                                    <button class=BTN_GHOST on:click=flip_camera>"Flip"</button>
                                     {move || {
                                         if is_scanning.get() {
                                             view! {
-                                                <button class="flex gap-2 items-center py-3 px-6 text-white rounded border-none cursor-not-allowed bg-primary/70" disabled>
+                                                <button class="flex gap-2 items-center py-3 px-6 text-sm font-semibold text-white rounded-lg border-none cursor-not-allowed bg-primary/70" disabled>
                                                     <div class="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
                                                     "Thinking..."
                                                 </button>
                                             }.into_any()
                                         } else {
-                                            view! { <button class="py-3 px-6 text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=capture_and_analyze>"Capture"</button> }.into_any()
+                                            view! { <button class=BTN_PRIMARY on:click=capture_and_analyze>"Capture"</button> }.into_any()
                                         }
                                     }}
                                 </div>

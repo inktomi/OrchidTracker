@@ -1,10 +1,7 @@
 use leptos::prelude::*;
 use crate::orchid::{Orchid, LightRequirement, Placement, generate_id};
 use crate::components::scanner::AnalysisResult;
-
-const MODAL_OVERLAY: &str = "fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]";
-const MODAL_HEADER: &str = "flex justify-between items-center mb-4 border-b border-gray-200 pb-2";
-const CLOSE_BTN: &str = "bg-gray-400 text-white border-none py-2 px-3 rounded cursor-pointer hover:bg-gray-500";
+use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE};
 
 #[component]
 pub fn AddOrchidForm(
@@ -105,10 +102,10 @@ pub fn AddOrchidForm(
 
     view! {
         <div class=MODAL_OVERLAY>
-            <div class="bg-white p-8 rounded-lg w-[90%] max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <div class=MODAL_CONTENT>
                 <div class=MODAL_HEADER>
-                    <h2>"Add New Orchid"</h2>
-                    <button class=CLOSE_BTN on:click=move |_| on_close()>"X"</button>
+                    <h2 class="m-0">"Add New Orchid"</h2>
+                    <button class=BTN_CLOSE on:click=move |_| on_close()>"Close"</button>
                 </div>
                 <div>
                     <form on:submit=on_submit>
@@ -135,7 +132,7 @@ pub fn AddOrchidForm(
                                 prop:value=conservation
                             />
                         </div>
-                        <div class="flex gap-4 mb-4">
+                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                             <div class="flex-1">
                                 <label>"Water Freq (days):"</label>
                                 <input type="number"
@@ -156,7 +153,7 @@ pub fn AddOrchidForm(
                                 </select>
                             </div>
                         </div>
-                        <div class="flex gap-4 mb-4">
+                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                              <div class="flex-1">
                                 <label>"Placement:"</label>
                                 <select
@@ -175,6 +172,7 @@ pub fn AddOrchidForm(
                                 <input type="text"
                                     on:input=move |ev| set_lux.set(event_target_value(&ev))
                                     prop:value=lux
+                                    placeholder="e.g. 5000"
                                 />
                             </div>
                         </div>
@@ -183,6 +181,7 @@ pub fn AddOrchidForm(
                             <input type="text"
                                 on:input=move |ev| set_temp.set(event_target_value(&ev))
                                 prop:value=temp
+                                placeholder="e.g. 18-28C"
                             />
                         </div>
                         <div class="mb-4">
@@ -193,7 +192,7 @@ pub fn AddOrchidForm(
                                 rows="3"
                             ></textarea>
                         </div>
-                        <button type="submit" class="p-4 mt-4 w-full text-lg font-bold text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark">"Add Orchid"</button>
+                        <button type="submit" class=format!("{} w-full mt-2", BTN_PRIMARY)>"Add Orchid"</button>
                     </form>
                 </div>
             </div>
