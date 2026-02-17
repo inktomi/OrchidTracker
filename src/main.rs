@@ -21,9 +21,8 @@ async fn main() {
     orchid_tracker::config::init_config();
     let cfg = orchid_tracker::config::config();
 
-    // Init SurrealDB
+    // Init SurrealDB (also runs migrations)
     orchid_tracker::db::init_db(cfg).await.expect("Failed to connect to SurrealDB");
-    orchid_tracker::db::run_migrations().await.expect("Failed to run migrations");
 
     tracing::info!("SurrealDB connected and migrations applied");
 

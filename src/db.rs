@@ -31,14 +31,39 @@ pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
         .await
         .map_err(|e| AppError::Database(format!("Namespace/DB selection failed: {}", e)))?;
 
-    tracing::info!("Namespace/DB selected, running test query...");
+    tracing::info!("Namespace/DB selected, running test queries...");
 
-    // Verify the connection works with a simple query
+    // Test 1: Simple query (no bind)
     DB.query("RETURN 1")
         .await
-        .map_err(|e| AppError::Database(format!("Test query failed: {}", e)))?;
+        .map_err(|e| AppError::Database(format!("Test query 1 (no bind) failed: {}", e)))?;
+    tracing::info!("Test 1 (no bind) passed");
 
-    tracing::info!("Test query succeeded — DB connection verified");
+    // Test 2: Query with bind
+    DB.query("RETURN $val")
+        .bind(("val", 1))
+        .await
+        .map_err(|e| AppError::Database(format!("Test query 2 (with bind) failed: {}", e)))?;
+    tracing::info!("Test 2 (with bind) passed");
+
+    // Test 3: Query via db() helper
+    db().query("RETURN 1")
+        .await
+        .map_err(|e| AppError::Database(format!("Test query 3 (via db()) failed: {}", e)))?;
+    tracing::info!("Test 3 (via db()) passed");
+
+    // Test 4: Query with bind via db() helper
+    db().query("RETURN $val")
+        .bind(("val", 1))
+        .await
+        .map_err(|e| AppError::Database(format!("Test query 4 (bind via db()) failed: {}", e)))?;
+    tracing::info!("Test 4 (bind via db()) passed");
+
+    tracing::info!("All test queries passed — DB connection verified");
+
+    // Run migrations from within init_db to test if they work here
+    run_migrations().await?;
+
     Ok(())
 }
 
@@ -51,6 +76,12 @@ pub async fn run_migrations() -> Result<(), AppError> {
     let db = db();
 
     tracing::info!("Starting migration check...");
+
+    // Pre-flight: can we query at all?
+    db.query("RETURN 1")
+        .await
+        .map_err(|e| AppError::Database(format!("Pre-flight query failed: {}", e)))?;
+    tracing::info!("Pre-flight query OK in run_migrations");
 
     // Read migration files
     let mut entries: Vec<_> = std::fs::read_dir("migrations")
