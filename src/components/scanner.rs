@@ -175,9 +175,9 @@ pub fn ScannerModal(
                  1. Identify the species with high confidence (look for tags). \
                  2. Analyze its natural habitat and care requirements. \
                  3. Compare requirements against my conditions: {}. \
-                 4. Consider outdoor conditions (90606, partial shade patio or full sun outdoor rack). Outdoor Rack: High Sun with shade cloth. Patio: Morning Sun/Afternoon Shade. \
-                 5. Check if I own it already. I own these plants: {:?}. \
-                 Then, evaluate the fit of this new plant with my existing conditions. \
+                 4. Consider outdoor conditions (90606, partial shade/rack). Outdoor Rack: High Sun with shade cloth. Patio: Morning Sun/Afternoon Shade. \
+                 5. Check if I own it: {:?}. \
+                 Then, evaluate the fit. \
                  Finally, return ONLY valid JSON with this structure (no markdown): \
                  {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"Medium\", \"conservation_status\": \"CITES II\" }} \
                  Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
@@ -197,7 +197,9 @@ pub fn ScannerModal(
                  }]
              });
 
-             let url = format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key={}", api_key);
+             // Use selected model or default
+             let model = LocalStorage::get("gemini_model").unwrap_or_else(|_| "gemini-1.5-flash".to_string());
+             let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", model, api_key);
              
              // Debug log (mask key)
              log::info!("Sending AI request to: {}...", url.split("?key=").next().unwrap_or("..."));
