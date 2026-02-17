@@ -31,37 +31,9 @@ pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
         .await
         .map_err(|e| AppError::Database(format!("Namespace/DB selection failed: {}", e)))?;
 
-    tracing::info!("Namespace/DB selected, running test queries...");
+    tracing::info!("DB connected and configured");
 
-    // Test 1: Simple query (no bind)
-    DB.query("RETURN 1")
-        .await
-        .map_err(|e| AppError::Database(format!("Test query 1 (no bind) failed: {}", e)))?;
-    tracing::info!("Test 1 (no bind) passed");
-
-    // Test 2: Query with bind
-    DB.query("RETURN $val")
-        .bind(("val", 1))
-        .await
-        .map_err(|e| AppError::Database(format!("Test query 2 (with bind) failed: {}", e)))?;
-    tracing::info!("Test 2 (with bind) passed");
-
-    // Test 3: Query via db() helper
-    db().query("RETURN 1")
-        .await
-        .map_err(|e| AppError::Database(format!("Test query 3 (via db()) failed: {}", e)))?;
-    tracing::info!("Test 3 (via db()) passed");
-
-    // Test 4: Query with bind via db() helper
-    db().query("RETURN $val")
-        .bind(("val", 1))
-        .await
-        .map_err(|e| AppError::Database(format!("Test query 4 (bind via db()) failed: {}", e)))?;
-    tracing::info!("Test 4 (bind via db()) passed");
-
-    tracing::info!("All test queries passed — DB connection verified");
-
-    // Run migrations from within init_db to test if they work here
+    // Run migrations
     run_migrations().await?;
 
     Ok(())
@@ -74,14 +46,6 @@ pub fn db() -> &'static Surreal<Client> {
 /// Run all pending migrations from the migrations/ directory
 pub async fn run_migrations() -> Result<(), AppError> {
     let db = db();
-
-    tracing::info!("Starting migration check...");
-
-    // Pre-flight: can we query at all?
-    db.query("RETURN 1")
-        .await
-        .map_err(|e| AppError::Database(format!("Pre-flight query failed: {}", e)))?;
-    tracing::info!("Pre-flight query OK in run_migrations");
 
     // Read migration files
     let mut entries: Vec<_> = std::fs::read_dir("migrations")
@@ -97,20 +61,29 @@ pub async fn run_migrations() -> Result<(), AppError> {
 
     for entry in entries {
         let name = entry.file_name().to_string_lossy().to_string();
-        tracing::info!("Checking migration: {}", name);
 
-        // Check if already applied
-        let applied: Option<MigrationRecord> = db
+        // Check if already applied — use .check() to surface real SurrealDB errors
+        // instead of the misleading "Connection uninitialised" from .take()
+        let mut response = db
             .query("SELECT * FROM migration WHERE name = $name LIMIT 1")
             .bind(("name", name.clone()))
             .await
-            .map_err(|e| AppError::Database(format!("Migration check failed: {}", e)))?
-            .take(0)
-            .map_err(|e| AppError::Database(format!("Migration check failed: {}", e)))?;
+            .map_err(|e| AppError::Database(format!("Migration query failed: {}", e)))?;
 
-        if applied.is_some() {
-            tracing::info!("Migration {} already applied, skipping", name);
-            continue;
+        // Extract any query-level errors (SurrealDB returns errors per-statement)
+        let errors = response.take_errors();
+        if !errors.is_empty() {
+            tracing::warn!("Migration check query returned errors: {:?}", errors);
+            // On first run, the migration table doesn't exist yet — treat errors as "not applied"
+            tracing::info!("Treating migration {} as not yet applied (table may not exist)", name);
+        } else {
+            let applied: Option<MigrationRecord> = response.take(0)
+                .map_err(|e| AppError::Database(format!("Migration deserialize failed: {}", e)))?;
+
+            if applied.is_some() {
+                tracing::info!("Migration {} already applied, skipping", name);
+                continue;
+            }
         }
 
         // Read and execute
@@ -127,6 +100,8 @@ pub async fn run_migrations() -> Result<(), AppError> {
             .bind(("name", name.clone()))
             .await
             .map_err(|e| AppError::Database(format!("Failed to record migration {}: {}", name, e)))?;
+
+        tracing::info!("Migration {} applied successfully", name);
     }
 
     Ok(())
