@@ -420,5 +420,18 @@
     "temperature_range": "15-32C",
     "conservation_status": "CITES II",
     "history": []
+  },
+  {
+    "id": 1771287195956000,
+    "name": "Laella flavasulina",
+    "species": "Laella flavasulina",
+    "water_frequency_days": 3,
+    "light_requirement": "High",
+    "notes": "",
+    "placement": "Patio",
+    "light_lux": "",
+    "temperature_range": "15-30C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
