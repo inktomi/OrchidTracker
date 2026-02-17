@@ -407,5 +407,18 @@
     "temperature_range": "24/17°C, - 30/22°C,",
     "conservation_status": null,
     "history": []
+  },
+  {
+    "id": 1771286848765000,
+    "name": "Laelia sanguiloba",
+    "species": "Laelia sanguiloba",
+    "water_frequency_days": 3,
+    "light_requirement": "High",
+    "notes": "This rupicolous orchid thrives in high light and requires excellent air circulation with quick-drying substrate. The Outdoor Rack with shade cloth provides the high light levels this species needs to bloom, which are difficult to achieve in a standard orchidarium. It is well-suited for the Southern California climate.",
+    "placement": "Patio",
+    "light_lux": "",
+    "temperature_range": "15-32C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
