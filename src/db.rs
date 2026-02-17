@@ -4,33 +4,32 @@ use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::types::SurrealValue;
 use surrealdb::Surreal;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
-static DB: OnceLock<Surreal<Client>> = OnceLock::new();
+static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
 pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
-    let db = Surreal::new::<Ws>(&config.surreal_url)
+    DB.connect::<Ws>(&config.surreal_url)
         .await
         .map_err(|e| AppError::Database(format!("Connection failed: {}", e)))?;
 
-    db.signin(Root {
+    DB.signin(Root {
         username: config.surreal_user.clone(),
         password: config.surreal_pass.clone(),
     })
     .await
     .map_err(|e| AppError::Database(format!("Auth failed: {}", e)))?;
 
-    db.use_ns(&config.surreal_ns)
+    DB.use_ns(&config.surreal_ns)
         .use_db(&config.surreal_db)
         .await
         .map_err(|e| AppError::Database(format!("Namespace/DB selection failed: {}", e)))?;
 
-    DB.set(db).map_err(|_| AppError::Database("DB already initialized".into()))?;
     Ok(())
 }
 
 pub fn db() -> &'static Surreal<Client> {
-    DB.get().expect("DB not initialized — call init_db() first")
+    &DB
 }
 
 /// Run all pending migrations from the migrations/ directory
