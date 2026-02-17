@@ -1,7 +1,12 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "ssr")]
+use surrealdb::types::SurrealValue;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct UserInfo {
     pub id: String,
     pub username: String,
@@ -45,8 +50,10 @@ pub async fn register(
 pub async fn login(username: String, password: String) -> Result<UserInfo, ServerFnError> {
     use crate::auth::verify_password;
     use crate::db::db;
+    use surrealdb::types::SurrealValue;
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, surrealdb::types::SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
     struct UserRow {
         id: String,
         username: String,

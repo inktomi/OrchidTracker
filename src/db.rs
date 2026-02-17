@@ -2,6 +2,7 @@ use crate::config::AppConfig;
 use crate::error::AppError;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
+use surrealdb::types::SurrealValue;
 use surrealdb::Surreal;
 use std::sync::OnceLock;
 
@@ -13,8 +14,8 @@ pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
         .map_err(|e| AppError::Database(format!("Connection failed: {}", e)))?;
 
     db.signin(Root {
-        username: &config.surreal_user,
-        password: &config.surreal_pass,
+        username: config.surreal_user.clone(),
+        password: config.surreal_pass.clone(),
     })
     .await
     .map_err(|e| AppError::Database(format!("Auth failed: {}", e)))?;
@@ -83,7 +84,8 @@ pub async fn run_migrations() -> Result<(), AppError> {
     Ok(())
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, surrealdb::types::SurrealValue)]
+#[surreal(crate = "surrealdb::types")]
 struct MigrationRecord {
     #[allow(dead_code)]
     name: String,

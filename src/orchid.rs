@@ -2,7 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use chrono::{DateTime, Utc};
 
+#[cfg(feature = "ssr")]
+use surrealdb::types::SurrealValue;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum FitCategory {
     #[serde(rename = "Good Fit")]
     GoodFit,
@@ -23,6 +28,8 @@ impl fmt::Display for FitCategory {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum LightRequirement {
     #[serde(alias = "low", alias = "Low Light")]
     Low,
@@ -43,6 +50,8 @@ impl fmt::Display for LightRequirement {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum Placement {
     Low,
     Medium,
@@ -78,14 +87,19 @@ impl Placement {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct LogEntry {
     pub id: String,
     pub timestamp: DateTime<Utc>,
     pub note: String,
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub image_filename: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct Orchid {
     pub id: String,
     pub name: String,
@@ -97,8 +111,10 @@ pub struct Orchid {
     pub light_lux: String,
     pub temperature_range: String,
     #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub conservation_status: Option<String>,
     #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub history: Vec<LogEntry>,
 }
 
