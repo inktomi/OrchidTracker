@@ -1,5 +1,5 @@
 use crate::db::get_image_blob;
-use crate::github::{sync_orchids_to_github, upload_image_to_github};
+use crate::github::{bidirectional_sync, upload_image_to_github};
 use crate::model::{Cmd, Model, Msg};
 use gloo_storage::{LocalStorage, Storage};
 use leptos::prelude::*;
@@ -146,8 +146,9 @@ fn execute_cmd(cmd: Cmd, set_model: WriteSignal<Model>, model: ReadSignal<Model>
                     dispatch(set_model, model, Msg::SetOrchids(updated_orchids.clone()));
                 }
 
-                match sync_orchids_to_github(updated_orchids).await {
-                    Ok(_) => {
+                match bidirectional_sync(updated_orchids).await {
+                    Ok(merged_orchids) => {
+                        dispatch(set_model, model, Msg::SetOrchids(merged_orchids));
                         dispatch(set_model, model, Msg::SetSyncStatus("Synced!".into()));
                     }
                     Err(e) => {

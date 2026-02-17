@@ -6,9 +6,10 @@ use crate::error::AppError;
 use gloo_storage::{LocalStorage, Storage};
 use sha2::{Sha256, Digest};
 
-#[derive(Serialize, Deserialize, Debug)]
-struct GithubFile {
+#[derive(Deserialize, Debug)]
+struct GithubFileWithContent {
     sha: String,
+    content: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -159,41 +160,79 @@ async fn upload_image_via_lfs(file_name: String, file_data: Vec<u8>) -> Result<S
     Ok(file_name)
 }
 
-pub async fn sync_orchids_to_github(orchids: Vec<Orchid>) -> Result<(), AppError> {
-    let (token, owner, repo) = get_config()?;
+/// Fetch remote orchids.json from GitHub. Returns (orchids, sha).
+/// Returns (vec![], None) if the file doesn't exist yet (404).
+async fn fetch_remote_orchids(
+    client: &Client,
+    token: &str,
+    owner: &str,
+    repo: &str,
+) -> Result<(Vec<Orchid>, Option<String>), AppError> {
     let path = "src/data/orchids.json";
     let url = format!("{}/repos/{}/{}/contents/{}", API_BASE, owner, repo, path);
 
-    let client = Client::new();
-
-    // 1. Get current SHA
-    let get_resp = client.get(&url)
+    let resp = client
+        .get(&url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/vnd.github.v3+json")
         .send()
         .await
         .map_err(|e| AppError::Network(e.to_string()))?;
 
-    if !get_resp.status().is_success() {
-        return Err(AppError::GithubApi(format!("Failed to fetch orchids.json: {}", get_resp.status())));
+    if resp.status() == 404 {
+        return Ok((vec![], None));
     }
 
-    let file_info: GithubFile = get_resp.json().await
+    if !resp.status().is_success() {
+        return Err(AppError::GithubApi(format!(
+            "Failed to fetch orchids.json: {}",
+            resp.status()
+        )));
+    }
+
+    let file_info: GithubFileWithContent = resp
+        .json()
+        .await
         .map_err(|e| AppError::Serialization(e.to_string()))?;
 
-    // 2. Update content
-    let new_content = serde_json::to_string_pretty(&orchids)
+    let content_b64 = file_info.content.unwrap_or_default();
+    // GitHub's base64 embeds newlines — strip them before decoding
+    let cleaned: String = content_b64.chars().filter(|c| !c.is_whitespace()).collect();
+    let bytes = general_purpose::STANDARD
+        .decode(cleaned)
+        .map_err(|e| AppError::Serialization(format!("base64 decode: {}", e)))?;
+
+    let orchids: Vec<Orchid> = serde_json::from_slice(&bytes)
+        .map_err(|e| AppError::Serialization(format!("JSON parse: {}", e)))?;
+
+    Ok((orchids, Some(file_info.sha)))
+}
+
+/// Push orchids as JSON to GitHub. Returns GithubConflict on 409.
+async fn push_orchids(
+    client: &Client,
+    token: &str,
+    owner: &str,
+    repo: &str,
+    orchids: &[Orchid],
+    sha: Option<String>,
+) -> Result<(), AppError> {
+    let path = "src/data/orchids.json";
+    let url = format!("{}/repos/{}/{}/contents/{}", API_BASE, owner, repo, path);
+
+    let json_content = serde_json::to_string_pretty(orchids)
         .map_err(|e| AppError::Serialization(e.to_string()))?;
-    let new_content_base64 = general_purpose::STANDARD.encode(new_content);
+    let content_base64 = general_purpose::STANDARD.encode(json_content);
 
     let payload = UpdateFilePayload {
         message: "Sync orchids from web app".into(),
-        content: new_content_base64,
-        sha: Some(file_info.sha),
+        content: content_base64,
+        sha,
         branch: "main".into(),
     };
 
-    let put_resp = client.put(&url)
+    let resp = client
+        .put(&url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/vnd.github.v3+json")
         .json(&payload)
@@ -201,10 +240,45 @@ pub async fn sync_orchids_to_github(orchids: Vec<Orchid>) -> Result<(), AppError
         .await
         .map_err(|e| AppError::Network(e.to_string()))?;
 
-    if !put_resp.status().is_success() {
-        let text = put_resp.text().await.unwrap_or_default();
-        return Err(AppError::GithubApi(format!("Failed to commit orchids.json: {}", text)));
+    if resp.status() == 409 {
+        return Err(AppError::GithubConflict);
+    }
+
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(AppError::GithubApi(format!(
+            "Failed to commit orchids.json: {}",
+            text
+        )));
     }
 
     Ok(())
+}
+
+/// Bidirectional sync: pull remote, merge with local, push merged result.
+/// Retries up to 3 times on conflict (409).
+/// Returns the merged orchid list on success.
+pub async fn bidirectional_sync(local_orchids: Vec<Orchid>) -> Result<Vec<Orchid>, AppError> {
+    use crate::merge::merge_orchids;
+
+    let (token, owner, repo) = get_config()?;
+    let client = Client::new();
+
+    for _ in 0..3 {
+        let (remote, sha) = fetch_remote_orchids(&client, &token, &owner, &repo).await?;
+        let merged = merge_orchids(local_orchids.clone(), remote);
+
+        match push_orchids(&client, &token, &owner, &repo, &merged, sha).await {
+            Ok(()) => return Ok(merged),
+            Err(AppError::GithubConflict) => {
+                log::warn!("Sync conflict, retrying...");
+                continue;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Err(AppError::GithubApi(
+        "Sync failed after 3 retries due to conflicts".into(),
+    ))
 }

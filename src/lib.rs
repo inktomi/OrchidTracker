@@ -3,6 +3,7 @@ pub mod components;
 pub mod db;
 pub mod error;
 pub mod github;
+pub mod merge;
 pub mod model;
 pub mod orchid;
 pub mod update;
