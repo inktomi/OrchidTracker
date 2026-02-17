@@ -446,5 +446,18 @@
     "temperature_range": "15-30C",
     "conservation_status": "CITES II",
     "history": []
+  },
+  {
+    "id": 1771289559114002,
+    "name": "Dryadella lilliputiana",
+    "species": "Dryadella lilliputiana",
+    "water_frequency_days": 7,
+    "light_requirement": "Medium",
+    "notes": "AI Analysis: Good Fit\nReason: The orchidarium's controlled environment (25.4C, 75% humidity) is nearly ideal for this Brazilian miniature, which thrives in intermediate temperatures and high humidity. It is not currently in your collection (you own D. litoralis instead).",
+    "placement": "Medium",
+    "light_lux": "",
+    "temperature_range": "12-26C",
+    "conservation_status": "CITES II",
+    "history": []
   }
 ]
