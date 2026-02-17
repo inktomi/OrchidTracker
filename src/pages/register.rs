@@ -97,7 +97,7 @@ pub fn RegisterPage() -> impl IntoView {
 
                 <p class="mt-4 text-sm text-center text-stone-500">
                     "Already have an account? "
-                    <a href="/login" class="font-medium text-primary hover:underline">"Sign in"</a>
+                    <a href="/login" class="font-medium hover:underline text-primary">"Sign in"</a>
                 </p>
             </div>
         </div>

@@ -13,9 +13,15 @@ pub mod handlers {
     use std::path::PathBuf;
 
     pub async fn upload_image(
+        session: tower_sessions::Session,
         mut multipart: Multipart,
     ) -> Result<Json<serde_json::Value>, StatusCode> {
         use crate::config::config;
+
+        // Require authentication
+        let user_id: String = session.get("user_id").await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::UNAUTHORIZED)?;
 
         while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
             let name = field.name().unwrap_or("").to_string();
@@ -40,13 +46,16 @@ pub mod handlers {
             let ext = if is_jpeg { "jpg" } else { "png" };
             let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
 
-            let storage_path = PathBuf::from(&config().image_storage_path);
+            // Store in per-user subdirectory
+            let storage_path = PathBuf::from(&config().image_storage_path).join(&user_id);
             tokio::fs::create_dir_all(&storage_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             let file_path = storage_path.join(&filename);
             tokio::fs::write(&file_path, &data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-            return Ok(Json(json!({ "filename": filename })));
+            // Return path relative to storage root (user_id/filename)
+            let relative_path = format!("{}/{}", user_id, filename);
+            return Ok(Json(json!({ "filename": relative_path })));
         }
 
         Err(StatusCode::BAD_REQUEST)

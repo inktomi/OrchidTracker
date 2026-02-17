@@ -22,8 +22,20 @@ pub async fn register(
     use crate::auth::{hash_password, create_session};
     use crate::db::db;
 
-    if username.is_empty() || email.is_empty() || password.len() < 8 {
-        return Err(ServerFnError::new("Invalid input: username/email required, password min 8 chars"));
+    // Username: 1-50 chars, alphanumeric + underscore/hyphen
+    if username.is_empty() || username.len() > 50 {
+        return Err(ServerFnError::new("Username must be 1-50 characters"));
+    }
+    if !username.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        return Err(ServerFnError::new("Username may only contain letters, numbers, underscores, and hyphens"));
+    }
+    // Email: 1-254 chars, must contain @
+    if email.is_empty() || email.len() > 254 || !email.contains('@') {
+        return Err(ServerFnError::new("A valid email address is required (max 254 characters)"));
+    }
+    // Password: 8-128 chars
+    if password.len() < 8 || password.len() > 128 {
+        return Err(ServerFnError::new("Password must be 8-128 characters"));
     }
 
     let password_hash = hash_password(&password)
@@ -51,6 +63,13 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
     use crate::auth::verify_password;
     use crate::db::db;
     use surrealdb::types::SurrealValue;
+
+    if username.is_empty() || username.len() > 50 {
+        return Err(ServerFnError::new("Invalid credentials"));
+    }
+    if password.is_empty() || password.len() > 128 {
+        return Err(ServerFnError::new("Invalid credentials"));
+    }
 
     #[derive(Deserialize, surrealdb::types::SurrealValue)]
     #[surreal(crate = "surrealdb::types")]

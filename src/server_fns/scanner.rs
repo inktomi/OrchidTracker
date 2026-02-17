@@ -7,7 +7,15 @@ pub async fn analyze_orchid_image(
     existing_species: Vec<String>,
     climate_summary: String,
 ) -> Result<AnalysisResult, ServerFnError> {
+    use crate::auth::require_auth;
     use crate::config::config;
+
+    require_auth().await?;
+
+    // Cap base64 payload at ~15MB to prevent abuse
+    if image_base64.len() > 15 * 1024 * 1024 {
+        return Err(ServerFnError::new("Image too large (max 15MB)"));
+    }
 
     let cfg = config();
     let api_key = &cfg.gemini_api_key;
@@ -46,12 +54,13 @@ pub async fn analyze_orchid_image(
     });
 
     let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-        model, api_key
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+        model
     );
 
     let client = reqwest::Client::new();
     let resp = client.post(&url)
+        .header("x-goog-api-key", api_key)
         .json(&request_body)
         .send()
         .await
