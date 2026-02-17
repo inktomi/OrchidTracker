@@ -300,7 +300,12 @@ pub fn ScannerModal(
                                     <button class="py-2 px-3 font-bold text-white bg-transparent rounded border cursor-pointer border-white/80 hover:bg-white/20" on:click=flip_camera>"Flip"</button>
                                     {move || {
                                         if is_scanning.get() {
-                                            view! { <button class="py-3 px-6 text-white rounded border-none cursor-pointer bg-primary" disabled>"Analyzing..."</button> }.into_any()
+                                            view! {
+                                                <button class="flex gap-2 items-center py-3 px-6 text-white rounded border-none cursor-not-allowed bg-primary/70" disabled>
+                                                    <div class="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
+                                                    "Thinking..."
+                                                </button>
+                                            }.into_any()
                                         } else {
                                             view! { <button class="py-3 px-6 text-white rounded border-none cursor-pointer bg-primary hover:bg-primary-dark" on:click=capture_and_analyze>"Capture"</button> }.into_any()
                                         }
