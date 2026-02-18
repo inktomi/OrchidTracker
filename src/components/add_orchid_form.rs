@@ -52,8 +52,7 @@ pub fn AddOrchidForm(
                 set_conservation.set(status);
             }
 
-            let note_text = format!("AI Analysis: {}\nReason: {}", data.fit_category, data.reason);
-            set_notes.set(note_text);
+            set_notes.set(data.reason);
         }
     });
 
