@@ -17,7 +17,7 @@ impl session_store::SessionStore for SurrealSessionStore {
         let expiry = record.expiry_date.unix_timestamp();
 
         db()
-            .query("UPSERT type::thing('session', $id) SET data = $data, expiry = $expiry")
+            .query("UPSERT type::record('session', $id) SET data = $data, expiry = $expiry")
             .bind(("id", id))
             .bind(("data", data))
             .bind(("expiry", expiry))
@@ -32,7 +32,7 @@ impl session_store::SessionStore for SurrealSessionStore {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
 
         let mut response = db()
-            .query("SELECT * FROM type::thing('session', $id) WHERE expiry > $now")
+            .query("SELECT * FROM type::record('session', $id) WHERE expiry > $now")
             .bind(("id", id.clone()))
             .bind(("now", now))
             .await
@@ -62,7 +62,7 @@ impl session_store::SessionStore for SurrealSessionStore {
             None => {
                 // Clean up expired session if it exists
                 let _ = db()
-                    .query("DELETE type::thing('session', $id)")
+                    .query("DELETE type::record('session', $id)")
                     .bind(("id", id))
                     .await;
                 Ok(None)
@@ -74,7 +74,7 @@ impl session_store::SessionStore for SurrealSessionStore {
         let id = session_id.to_string();
 
         db()
-            .query("DELETE type::thing('session', $id)")
+            .query("DELETE type::record('session', $id)")
             .bind(("id", id))
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
