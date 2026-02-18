@@ -361,90 +361,122 @@ pub fn OnboardingPage() -> impl IntoView {
                                     None
                                 }}
 
-                                // Add custom zone form
-                                {move || if show_add_form.get() {
-                                    view! {
-                                        <div class="p-4 mb-6 rounded-xl border bg-secondary/30 border-stone-200/60 dark:border-stone-700">
-                                            <h4 class="mb-4 text-sm font-semibold text-stone-700 dark:text-stone-300">"Add Custom Zone"</h4>
-                                            <div class="mb-3">
-                                                <label class=LABEL_CLASS>"Name"</label>
-                                                <input type="text" class=INPUT_CLASS
-                                                    placeholder="e.g. Kitchen Windowsill"
-                                                    prop:value=add_name
-                                                    on:input=move |ev| set_add_name.set(event_target_value(&ev))
-                                                />
-                                            </div>
-                                            <div class="flex gap-3 mb-3">
-                                                <div class="flex-1">
-                                                    <label class=LABEL_CLASS>"Light Level"</label>
-                                                    <select class=INPUT_CLASS
-                                                        prop:value=add_light
-                                                        on:change=move |ev| set_add_light.set(event_target_value(&ev))
-                                                    >
-                                                        <option value="Low">"Low"</option>
-                                                        <option value="Medium">"Medium"</option>
-                                                        <option value="High">"High"</option>
-                                                    </select>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <label class=LABEL_CLASS>"Location"</label>
-                                                    <select class=INPUT_CLASS
-                                                        prop:value=add_location
-                                                        on:change=move |ev| set_add_location.set(event_target_value(&ev))
-                                                    >
-                                                        <option value="Indoor">"Indoor"</option>
-                                                        <option value="Outdoor">"Outdoor"</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="flex gap-3 mb-3">
-                                                <div class="flex-1">
-                                                    <label class=LABEL_CLASS>"Temp Range"</label>
+                                // Collapsible custom zone section
+                                <div class="overflow-hidden mb-6 rounded-xl border transition-colors duration-300"
+                                    class=(
+                                        "border-primary/30 bg-primary/[0.03] dark:border-primary-light/20 dark:bg-primary-light/[0.03]",
+                                        move || show_add_form.get()
+                                    )
+                                    class=(
+                                        "border-stone-200/60 dark:border-stone-700 border-dashed",
+                                        move || !show_add_form.get()
+                                    )
+                                >
+                                    // Toggle trigger — always visible
+                                    <button
+                                        class="flex gap-3 justify-between items-center py-3 px-4 w-full text-sm font-medium text-left bg-transparent border-none transition-colors duration-200 cursor-pointer"
+                                        class=(
+                                            "text-primary dark:text-primary-light",
+                                            move || show_add_form.get()
+                                        )
+                                        class=(
+                                            "text-stone-400 hover:text-primary dark:hover:text-primary-light",
+                                            move || !show_add_form.get()
+                                        )
+                                        on:click=move |_| set_show_add_form.update(|v| *v = !*v)
+                                    >
+                                        <div class="flex gap-2.5 items-center">
+                                            <span
+                                                class="text-lg"
+                                                class=("zone-sprout-open", move || show_add_form.get())
+                                                class=("zone-sprout", true)
+                                            >"🌱"</span>
+                                            <span>"Add Custom Zone"</span>
+                                        </div>
+                                        <span
+                                            class="text-xs opacity-60 zone-chevron"
+                                            class=("zone-chevron-open", move || show_add_form.get())
+                                        >"▼"</span>
+                                    </button>
+
+                                    // Collapsible body — always in DOM, height animated via CSS grid
+                                    <div
+                                        class="zone-collapse"
+                                        class=("zone-collapse-open", move || show_add_form.get())
+                                    >
+                                        <div>
+                                            <div class="px-4 pt-1 pb-4">
+                                                <div class="mb-3 zone-field">
+                                                    <label class=LABEL_CLASS>"Name"</label>
                                                     <input type="text" class=INPUT_CLASS
-                                                        placeholder="e.g. 18-28C"
-                                                        prop:value=add_temp
-                                                        on:input=move |ev| set_add_temp.set(event_target_value(&ev))
+                                                        placeholder="e.g. Kitchen Windowsill"
+                                                        prop:value=add_name
+                                                        on:input=move |ev| set_add_name.set(event_target_value(&ev))
                                                     />
                                                 </div>
-                                                <div class="flex-1">
-                                                    <label class=LABEL_CLASS>"Humidity"</label>
-                                                    <input type="text" class=INPUT_CLASS
-                                                        placeholder="e.g. 50-70%"
-                                                        prop:value=add_humidity
-                                                        on:input=move |ev| set_add_humidity.set(event_target_value(&ev))
-                                                    />
+                                                <div class="flex gap-3 mb-3 zone-field">
+                                                    <div class="flex-1">
+                                                        <label class=LABEL_CLASS>"Light Level"</label>
+                                                        <select class=INPUT_CLASS
+                                                            prop:value=add_light
+                                                            on:change=move |ev| set_add_light.set(event_target_value(&ev))
+                                                        >
+                                                            <option value="Low">"Low"</option>
+                                                            <option value="Medium">"Medium"</option>
+                                                            <option value="High">"High"</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <label class=LABEL_CLASS>"Location"</label>
+                                                        <select class=INPUT_CLASS
+                                                            prop:value=add_location
+                                                            on:change=move |ev| set_add_location.set(event_target_value(&ev))
+                                                        >
+                                                            <option value="Indoor">"Indoor"</option>
+                                                            <option value="Outdoor">"Outdoor"</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="mb-4">
-                                                <label class=LABEL_CLASS>"Description"</label>
-                                                <textarea class=INPUT_CLASS rows="2"
-                                                    placeholder="Optional notes about this zone"
-                                                    prop:value=add_desc
-                                                    on:input=move |ev| set_add_desc.set(event_target_value(&ev))
-                                                ></textarea>
-                                            </div>
-                                            <div class="flex gap-2">
-                                                <button
-                                                    class="flex-1 py-2 text-sm font-semibold text-white rounded-xl border-none transition-colors cursor-pointer bg-primary hover:bg-primary-dark"
-                                                    on:click=add_custom_zone
-                                                >"Add Zone"</button>
-                                                <button
-                                                    class="py-2 px-4 text-sm font-medium rounded-xl border-none transition-colors cursor-pointer text-stone-500 bg-stone-100 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 hover:bg-stone-200"
-                                                    on:click=move |_| reset_add_form()
-                                                >"Cancel"</button>
+                                                <div class="flex gap-3 mb-3 zone-field">
+                                                    <div class="flex-1">
+                                                        <label class=LABEL_CLASS>"Temp Range"</label>
+                                                        <input type="text" class=INPUT_CLASS
+                                                            placeholder="e.g. 18-28C"
+                                                            prop:value=add_temp
+                                                            on:input=move |ev| set_add_temp.set(event_target_value(&ev))
+                                                        />
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <label class=LABEL_CLASS>"Humidity"</label>
+                                                        <input type="text" class=INPUT_CLASS
+                                                            placeholder="e.g. 50-70%"
+                                                            prop:value=add_humidity
+                                                            on:input=move |ev| set_add_humidity.set(event_target_value(&ev))
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div class="mb-4 zone-field">
+                                                    <label class=LABEL_CLASS>"Description"</label>
+                                                    <textarea class=INPUT_CLASS rows="2"
+                                                        placeholder="Optional notes about this zone"
+                                                        prop:value=add_desc
+                                                        on:input=move |ev| set_add_desc.set(event_target_value(&ev))
+                                                    ></textarea>
+                                                </div>
+                                                <div class="flex gap-2 zone-field">
+                                                    <button
+                                                        class="flex-1 py-2 text-sm font-semibold text-white rounded-xl border-none transition-colors cursor-pointer bg-primary hover:bg-primary-dark"
+                                                        on:click=add_custom_zone
+                                                    >"Add Zone"</button>
+                                                    <button
+                                                        class="py-2 px-4 text-sm font-medium rounded-xl border-none transition-colors cursor-pointer text-stone-500 bg-stone-100 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700 hover:bg-stone-200"
+                                                        on:click=move |_| reset_add_form()
+                                                    >"Cancel"</button>
+                                                </div>
                                             </div>
                                         </div>
-                                    }.into_any()
-                                } else {
-                                    view! {
-                                        <button
-                                            class="flex gap-2 justify-center items-center py-2.5 mb-6 w-full text-sm font-medium rounded-xl border border-dashed transition-colors cursor-pointer text-stone-400 border-stone-300 dark:border-stone-600 dark:hover:text-primary-light dark:hover:border-primary-light/40 hover:text-primary hover:border-primary/40"
-                                            on:click=move |_| set_show_add_form.set(true)
-                                        >
-                                            <span class="text-lg">"+  "</span>"Add Custom Zone"
-                                        </button>
-                                    }.into_any()
-                                }}
+                                    </div>
+                                </div>
 
                                 // Navigation
                                 <div class="flex gap-3">
