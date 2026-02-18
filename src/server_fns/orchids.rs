@@ -21,7 +21,8 @@ mod ssr_types {
         pub name: String,
         pub species: String,
         pub water_frequency_days: u32,
-        pub light_requirement: LightRequirement,
+        /// Stored as plain string in DB; SurrealValue untagged enum can't round-trip
+        pub light_requirement: String,
         pub notes: String,
         pub placement: String,
         pub light_lux: String,
@@ -44,12 +45,17 @@ mod ssr_types {
 
     impl OrchidDbRow {
         pub fn into_orchid(self) -> Orchid {
+            let light_requirement = match self.light_requirement.as_str() {
+                "Low" => LightRequirement::Low,
+                "High" => LightRequirement::High,
+                _ => LightRequirement::Medium,
+            };
             Orchid {
                 id: record_id_to_string(&self.id),
                 name: self.name,
                 species: self.species,
                 water_frequency_days: self.water_frequency_days,
-                light_requirement: self.light_requirement,
+                light_requirement,
                 notes: self.notes,
                 placement: self.placement,
                 light_lux: self.light_lux,
@@ -146,10 +152,11 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    let owner = parse_record_id(&user_id)?;
 
     let mut response = db()
         .query("SELECT * FROM orchid WHERE owner = $owner ORDER BY created_at DESC")
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Get orchids query failed", e))?;
 
@@ -184,6 +191,7 @@ pub async fn create_orchid(
     validate_orchid_fields(&name, &species, &notes, water_frequency_days, &light_requirement, &placement, &light_lux, &temperature_range, &conservation_status)?;
 
     let user_id = require_auth().await?;
+    let owner = parse_record_id(&user_id)?;
 
     let mut response = db()
         .query(
@@ -194,7 +202,7 @@ pub async fn create_orchid(
              temperature_range = $temp_range, conservation_status = $conservation \
              RETURN *"
         )
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .bind(("name", name))
         .bind(("species", species))
         .bind(("water_freq", water_frequency_days as i64))
@@ -226,13 +234,18 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
 
-    let light_req_str = orchid.light_requirement.to_string();
+    let light_req_str = match orchid.light_requirement {
+        crate::orchid::LightRequirement::Low => "Low",
+        crate::orchid::LightRequirement::Medium => "Medium",
+        crate::orchid::LightRequirement::High => "High",
+    };
     let placement_str = orchid.placement.clone();
 
-    validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, &light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
+    validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
 
     let user_id = require_auth().await?;
     let orchid_id = parse_record_id(&orchid.id)?;
+    let owner = parse_record_id(&user_id)?;
 
     let mut response = db()
         .query(
@@ -246,11 +259,11 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              RETURN *"
         )
         .bind(("id", orchid_id))
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .bind(("name", orchid.name))
         .bind(("species", orchid.species))
         .bind(("water_freq", orchid.water_frequency_days as i64))
-        .bind(("light_req", light_req_str))
+        .bind(("light_req", light_req_str.to_string()))
         .bind(("notes", orchid.notes))
         .bind(("placement", placement_str))
         .bind(("light_lux", orchid.light_lux))
@@ -280,11 +293,12 @@ pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
 
     let user_id = require_auth().await?;
     let orchid_id = parse_record_id(&id)?;
+    let owner = parse_record_id(&user_id)?;
 
     db()
         .query("DELETE $id WHERE owner = $owner")
         .bind(("id", orchid_id))
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Delete orchid query failed", e))?;
 
@@ -309,6 +323,8 @@ pub async fn add_log_entry(
     }
 
     let user_id = require_auth().await?;
+    let orchid_record = parse_record_id(&orchid_id)?;
+    let owner = parse_record_id(&user_id)?;
 
     let mut response = db()
         .query(
@@ -317,8 +333,8 @@ pub async fn add_log_entry(
              note = $note, image_filename = $image_filename \
              RETURN *"
         )
-        .bind(("orchid_id", orchid_id))
-        .bind(("owner", user_id))
+        .bind(("orchid_id", orchid_record))
+        .bind(("owner", owner))
         .bind(("note", note))
         .bind(("image_filename", image_filename))
         .await
@@ -344,11 +360,13 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    let orchid_record = parse_record_id(&orchid_id)?;
+    let owner = parse_record_id(&user_id)?;
 
     let mut response = db()
         .query("SELECT * FROM log_entry WHERE orchid = $orchid_id AND owner = $owner ORDER BY timestamp DESC")
-        .bind(("orchid_id", orchid_id))
-        .bind(("owner", user_id))
+        .bind(("orchid_id", orchid_record))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Get log entries query failed", e))?;
 

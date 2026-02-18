@@ -21,8 +21,9 @@ mod ssr_types {
     pub struct GrowingZoneDbRow {
         pub id: surrealdb::types::RecordId,
         pub name: String,
-        pub light_level: LightRequirement,
-        pub location_type: LocationType,
+        /// Stored as plain string in DB; SurrealValue untagged enum can't round-trip
+        pub light_level: String,
+        pub location_type: String,
         #[surreal(default)]
         pub temperature_range: String,
         #[surreal(default)]
@@ -42,8 +43,8 @@ mod ssr_types {
             GrowingZone {
                 id: record_id_to_string(&self.id),
                 name: self.name,
-                light_level: self.light_level,
-                location_type: self.location_type,
+                light_level: parse_light_level(&self.light_level),
+                location_type: parse_location_type(&self.location_type),
                 temperature_range: self.temperature_range,
                 humidity: self.humidity,
                 description: self.description,
@@ -51,6 +52,21 @@ mod ssr_types {
                 data_source_type: self.data_source_type,
                 data_source_config: self.data_source_config,
             }
+        }
+    }
+
+    pub fn parse_light_level(s: &str) -> LightRequirement {
+        match s {
+            "Low" => LightRequirement::Low,
+            "High" => LightRequirement::High,
+            _ => LightRequirement::Medium,
+        }
+    }
+
+    pub fn parse_location_type(s: &str) -> LocationType {
+        match s {
+            "Outdoor" => LocationType::Outdoor,
+            _ => LocationType::Indoor,
         }
     }
 }
