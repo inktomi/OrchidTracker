@@ -137,3 +137,33 @@ html.dark {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Empty collection — gentle organic motion */
+.empty-plant {
+  animation: plant-sway 4s ease-in-out infinite;
+}
+@keyframes plant-sway {
+  0%, 100% { transform: rotate(-2deg) scale(1); }
+  50%      { transform: rotate(2deg) scale(1.03); }
+}
+
+.empty-ring {
+  animation: ring-breathe 5s ease-in-out infinite;
+}
+@keyframes ring-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.25; }
+  50%      { transform: scale(1.06); opacity: 0.4; }
+}
+
+.empty-dot {
+  animation: dot-float 3s ease-in-out infinite;
+}
+.empty-dot:nth-child(1) { animation-delay: 0s; }
+.empty-dot:nth-child(2) { animation-delay: 0.6s; }
+.empty-dot:nth-child(3) { animation-delay: 1.2s; }
+.empty-dot:nth-child(4) { animation-delay: 1.8s; }
+.empty-dot:nth-child(5) { animation-delay: 2.4s; }
+@keyframes dot-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.35; }
+  50%      { transform: translateY(-6px) scale(1.15); opacity: 0.6; }
+}

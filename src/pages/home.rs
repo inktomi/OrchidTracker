@@ -166,6 +166,8 @@ pub fn HomePage() -> impl IntoView {
                 on_delete=on_delete
                 on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
                 on_update=on_update
+                on_add=move || send(Msg::ShowAddModal(true))
+                on_scan=move || send(Msg::ShowScanner(true))
             />
 
             {move || show_add_modal.get().then(|| {
