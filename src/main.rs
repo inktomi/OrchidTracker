@@ -3,9 +3,11 @@
 async fn main() {
     use axum::Router;
     use axum::http::HeaderValue;
+    use clap::Parser;
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use orchid_tracker::app::App;
+    use orchid_tracker::cli::{Cli, Command};
     use tower_http::services::ServeDir;
     use tower_http::limit::RequestBodyLimitLayer;
     use tower_http::set_header::SetResponseHeaderLayer;
@@ -22,6 +24,9 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
+    // Parse CLI args
+    let cli = Cli::parse();
+
     // Init config
     orchid_tracker::config::init_config();
     let cfg = orchid_tracker::config::config();
@@ -30,6 +35,17 @@ async fn main() {
     orchid_tracker::db::init_db(cfg).await.expect("Failed to connect to SurrealDB");
 
     tracing::info!("SurrealDB connected and migrations applied");
+
+    // Handle CLI subcommands
+    if let Some(Command::ResetPassword { username, password }) = cli.command {
+        match orchid_tracker::cli::run_reset_password(&username, &password).await {
+            Ok(()) => std::process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
 
     // Session layer
     let session_store = MemoryStore::default();
