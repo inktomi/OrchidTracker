@@ -16,6 +16,8 @@ pub mod auth;
 #[cfg(feature = "ssr")]
 pub mod cli;
 #[cfg(feature = "ssr")]
+pub mod climate;
+#[cfg(feature = "ssr")]
 pub mod config;
 
 #[cfg(feature = "hydrate")]

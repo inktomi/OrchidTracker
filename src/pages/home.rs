@@ -49,10 +49,17 @@ pub fn HomePage() -> impl IntoView {
     let temp_unit = Memo::new(move |_| model.get().temp_unit.clone());
     let dark_mode = Memo::new(move |_| model.get().dark_mode);
 
-    // Static climate data (included at compile time)
-    let climate_data: Vec<crate::app::ClimateData> =
-        serde_json::from_str(include_str!("../data/climate.json")).unwrap_or_default();
-    let climate_data = StoredValue::new(climate_data);
+    // Dynamic climate readings from configured data sources
+    let climate_resource = Resource::new(
+        move || zones_version.get(),
+        |_| crate::server_fns::climate::get_current_readings(),
+    );
+
+    let climate_readings = Memo::new(move |_| {
+        climate_resource.get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+    });
 
     // Orchid operations via server functions (async I/O — not TEA state)
     let on_add = move |orchid: Orchid| {
@@ -144,7 +151,12 @@ pub fn HomePage() -> impl IntoView {
         />
 
         <main class="py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
-            <ClimateDashboard data=climate_data unit=temp_unit />
+            <Suspense fallback=|| ()>
+                {move || {
+                    let readings = climate_readings.get();
+                    view! { <ClimateDashboard readings=readings unit=temp_unit /> }
+                }}
+            </Suspense>
 
             <OrchidCollection
                 orchids_resource=orchids_resource
@@ -194,12 +206,13 @@ pub fn HomePage() -> impl IntoView {
             {move || show_scanner.get().then(|| {
                 let orchids = orchids_resource.get().and_then(|r| r.ok()).unwrap_or_default();
                 let current_zones = zones_memo.get();
+                let current_readings = climate_readings.get();
                 view! {
                     <ScannerModal
                         on_close=move || send(Msg::ShowScanner(false))
                         on_add_to_collection=move |result| send(Msg::HandleScanResult(result))
                         existing_orchids=orchids
-                        climate_data=climate_data.get_value()
+                        climate_readings=current_readings
                         zones=current_zones
                     />
                 }.into_any()

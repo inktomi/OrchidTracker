@@ -86,6 +86,27 @@ pub struct GrowingZone {
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub sort_order: i32,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub data_source_type: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub data_source_config: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
+pub struct ClimateReading {
+    pub id: String,
+    pub zone_id: String,
+    pub zone_name: String,
+    pub temperature: f64,
+    pub humidity: f64,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub vpd: Option<f64>,
+    pub recorded_at: DateTime<Utc>,
 }
 
 /// Check if an orchid's placement zone provides compatible light for its requirements.
@@ -145,6 +166,8 @@ mod tests {
                 humidity: String::new(),
                 description: String::new(),
                 sort_order: 0,
+                data_source_type: None,
+                data_source_config: String::new(),
             },
             GrowingZone {
                 id: "2".into(),
@@ -155,6 +178,8 @@ mod tests {
                 humidity: String::new(),
                 description: String::new(),
                 sort_order: 1,
+                data_source_type: None,
+                data_source_config: String::new(),
             },
         ];
 

@@ -2,22 +2,11 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::path;
-use serde::{Deserialize, Serialize};
 
 use crate::pages::home::HomePage;
 use crate::pages::login::LoginPage;
 use crate::pages::register::RegisterPage;
 use crate::pages::onboarding::OnboardingPage;
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ClimateData {
-    pub name: String,
-    pub type_str: Option<String>,
-    pub temperature: f64,
-    pub humidity: f64,
-    pub vpd: f64,
-    pub updated: String,
-}
 
 /// SSR shell function — renders the outer HTML document
 pub fn shell(options: LeptosOptions) -> impl IntoView {

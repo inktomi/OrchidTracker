@@ -1,7 +1,6 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::orchid::{Orchid, FitCategory, LightRequirement, GrowingZone};
-use crate::app::ClimateData;
+use crate::orchid::{Orchid, FitCategory, LightRequirement, GrowingZone, ClimateReading};
 use super::{MODAL_OVERLAY, BTN_PRIMARY, BTN_GHOST};
 
 const SCANNER_CONTENT: &str = "bg-stone-900 text-stone-200 p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-700/60";
@@ -26,7 +25,7 @@ pub fn ScannerModal(
     on_close: impl Fn() + 'static + Copy + Send + Sync,
     on_add_to_collection: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
     existing_orchids: Vec<Orchid>,
-    climate_data: Vec<ClimateData>,
+    climate_readings: Vec<ClimateReading>,
     zones: Vec<GrowingZone>,
 ) -> impl IntoView {
     let (is_scanning, set_is_scanning) = signal(false);
@@ -39,13 +38,13 @@ pub fn ScannerModal(
     #[cfg(not(feature = "hydrate"))]
     {
         drop(existing_orchids);
-        drop(climate_data);
+        drop(climate_readings);
         drop(zones);
     }
     #[cfg(feature = "hydrate")]
     let existing_orchids = StoredValue::new(existing_orchids);
     #[cfg(feature = "hydrate")]
-    let climate_data = StoredValue::new(climate_data);
+    let climate_readings = StoredValue::new(climate_readings);
     #[cfg(feature = "hydrate")]
     let zones = StoredValue::new(zones);
 
@@ -155,12 +154,13 @@ pub fn ScannerModal(
                 z.iter().map(|zone| zone.name.clone()).collect()
             });
 
-            let summary = climate_data.with_value(|cd| {
-                if cd.is_empty() {
-                    "Unknown climate".to_string()
+            let summary = climate_readings.with_value(|readings| {
+                if readings.is_empty() {
+                    "No live climate data available".to_string()
                 } else {
-                    cd.iter().map(|d| {
-                        format!("{}: {}C, {}% Humid, {}kPa VPD", d.name, d.temperature, d.humidity, d.vpd)
+                    readings.iter().map(|r| {
+                        let vpd_str = r.vpd.map(|v| format!(", {:.2} kPa VPD", v)).unwrap_or_default();
+                        format!("{}: {:.1}C, {:.1}% Humidity{}", r.zone_name, r.temperature, r.humidity, vpd_str)
                     }).collect::<Vec<_>>().join(" | ")
                 }
             });
