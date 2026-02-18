@@ -63,9 +63,7 @@ async fn main() {
         .finish()
         .expect("Failed to build rate limiter config");
     let governor_limiter = governor_conf.limiter().clone();
-    let governor_layer = GovernorLayer {
-        config: governor_conf.into(),
-    };
+    let governor_layer = GovernorLayer::new(governor_conf);
 
     // Leptos config
     let site_addr: std::net::SocketAddr = cfg.site_addr.parse()
