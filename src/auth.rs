@@ -65,6 +65,7 @@ pub async fn get_session_user() -> Result<Option<UserInfo>, ServerFnError> {
     use leptos_axum::extract;
     use tower_sessions::Session;
     use crate::db::db;
+    use crate::server_fns::auth::UserDbRow;
 
     let session: Session = extract().await?;
     let user_id: Option<String> = session.get("user_id").await
@@ -74,13 +75,17 @@ pub async fn get_session_user() -> Result<Option<UserInfo>, ServerFnError> {
         return Ok(None);
     };
 
-    let user: Option<UserInfo> = db()
+    // Parse the stored "table:key" string back to a RecordId for the query
+    let record_id = surrealdb::types::RecordId::parse_simple(&uid)
+        .map_err(|e| ServerFnError::new(format!("Invalid user ID format: {}", e)))?;
+
+    let row: Option<UserDbRow> = db()
         .query("SELECT id, username, email FROM user WHERE id = $id LIMIT 1")
-        .bind(("id", uid))
+        .bind(("id", record_id))
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
         .take(0)
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    Ok(user)
+    Ok(row.map(|r| r.into_user_info()))
 }

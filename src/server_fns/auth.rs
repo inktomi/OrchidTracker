@@ -5,12 +5,43 @@ use serde::{Deserialize, Serialize};
 use surrealdb::types::SurrealValue;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
-#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct UserInfo {
     pub id: String,
     pub username: String,
     pub email: String,
+}
+
+/// Convert a SurrealDB RecordId to a "table:key" string for session storage and UserInfo.
+#[cfg(feature = "ssr")]
+pub fn record_id_to_string(id: &surrealdb::types::RecordId) -> String {
+    use surrealdb::types::RecordIdKey;
+    let key = match &id.key {
+        RecordIdKey::String(s) => s.clone(),
+        RecordIdKey::Number(n) => n.to_string(),
+        other => format!("{:?}", other),
+    };
+    format!("{}:{}", id.table, key)
+}
+
+/// SSR-only struct matching SurrealDB's record shape (id is a RecordId, not a String).
+#[cfg(feature = "ssr")]
+#[derive(Deserialize, SurrealValue)]
+#[surreal(crate = "surrealdb::types")]
+pub struct UserDbRow {
+    pub id: surrealdb::types::RecordId,
+    pub username: String,
+    pub email: String,
+}
+
+#[cfg(feature = "ssr")]
+impl UserDbRow {
+    pub fn into_user_info(self) -> UserInfo {
+        UserInfo {
+            id: record_id_to_string(&self.id),
+            username: self.username,
+            email: self.email,
+        }
+    }
 }
 
 #[server]
@@ -41,7 +72,7 @@ pub async fn register(
     let password_hash = hash_password(&password)
         .map_err(|e| ServerFnError::new(format!("Password hash error: {}", e)))?;
 
-    let result: Option<UserInfo> = db()
+    let result: Option<UserDbRow> = db()
         .query("CREATE user SET username = $username, email = $email, password_hash = $hash RETURN id, username, email")
         .bind(("username", username))
         .bind(("email", email))
@@ -51,7 +82,7 @@ pub async fn register(
         .take(0)
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    let user = result.ok_or_else(|| ServerFnError::new("Failed to create user"))?;
+    let user = result.ok_or_else(|| ServerFnError::new("Failed to create user"))?.into_user_info();
 
     create_session(&user.id).await?;
 
@@ -62,7 +93,6 @@ pub async fn register(
 pub async fn login(username: String, password: String) -> Result<UserInfo, ServerFnError> {
     use crate::auth::verify_password;
     use crate::db::db;
-    use surrealdb::types::SurrealValue;
 
     if username.is_empty() || username.len() > 50 {
         return Err(ServerFnError::new("Invalid credentials"));
@@ -71,16 +101,16 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
         return Err(ServerFnError::new("Invalid credentials"));
     }
 
-    #[derive(Deserialize, surrealdb::types::SurrealValue)]
+    #[derive(Deserialize, SurrealValue)]
     #[surreal(crate = "surrealdb::types")]
-    struct UserRow {
-        id: String,
+    struct UserLoginRow {
+        id: surrealdb::types::RecordId,
         username: String,
         email: String,
         password_hash: String,
     }
 
-    let result: Option<UserRow> = db()
+    let result: Option<UserLoginRow> = db()
         .query("SELECT id, username, email, password_hash FROM user WHERE username = $username LIMIT 1")
         .bind(("username", username))
         .await
@@ -96,10 +126,11 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
         return Err(ServerFnError::new("Invalid credentials"));
     }
 
-    crate::auth::create_session(&user_row.id).await?;
+    let user_id = record_id_to_string(&user_row.id);
+    crate::auth::create_session(&user_id).await?;
 
     Ok(UserInfo {
-        id: user_row.id,
+        id: user_id,
         username: user_row.username,
         email: user_row.email,
     })
@@ -113,4 +144,49 @@ pub async fn logout() -> Result<(), ServerFnError> {
 #[server]
 pub async fn get_current_user() -> Result<Option<UserInfo>, ServerFnError> {
     crate::auth::get_session_user().await
+}
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+    use surrealdb::types::{RecordId, RecordIdKey};
+
+    #[test]
+    fn test_record_id_string_key_to_string() {
+        let id = RecordId::new("user", "abc123");
+        let result = record_id_to_string(&id);
+        assert_eq!(result, "user:abc123");
+    }
+
+    #[test]
+    fn test_record_id_numeric_key_to_string() {
+        let id = RecordId {
+            table: "user".into(),
+            key: RecordIdKey::Number(42),
+        };
+        let result = record_id_to_string(&id);
+        assert_eq!(result, "user:42");
+    }
+
+    #[test]
+    fn test_record_id_roundtrip_via_parse() {
+        let original = RecordId::new("user", "test123");
+        let as_string = record_id_to_string(&original);
+        let parsed = RecordId::parse_simple(&as_string).expect("should parse");
+        assert_eq!(parsed.table, original.table);
+        assert_eq!(parsed.key, original.key);
+    }
+
+    #[test]
+    fn test_user_db_row_into_user_info() {
+        let row = UserDbRow {
+            id: RecordId::new("user", "xyz789"),
+            username: "alice".to_string(),
+            email: "alice@example.com".to_string(),
+        };
+        let info = row.into_user_info();
+        assert_eq!(info.id, "user:xyz789");
+        assert_eq!(info.username, "alice");
+        assert_eq!(info.email, "alice@example.com");
+    }
 }
