@@ -35,10 +35,20 @@ pub fn ScannerModal(
     let video_element: NodeRef<leptos::html::Video> = NodeRef::new();
     let canvas_element: NodeRef<leptos::html::Canvas> = NodeRef::new();
 
+    #[cfg(not(feature = "hydrate"))]
+    {
+        drop(existing_orchids);
+        drop(climate_data);
+    }
+    #[cfg(feature = "hydrate")]
     let existing_orchids = StoredValue::new(existing_orchids);
+    #[cfg(feature = "hydrate")]
     let climate_data = StoredValue::new(climate_data);
 
+    #[cfg(feature = "hydrate")]
     let (facing_mode, set_facing_mode) = signal("environment".to_string());
+    #[cfg(not(feature = "hydrate"))]
+    let (_, set_facing_mode) = signal("environment".to_string());
 
     #[cfg(feature = "hydrate")]
     {

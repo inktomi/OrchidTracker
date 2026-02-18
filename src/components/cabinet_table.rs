@@ -22,7 +22,6 @@ pub fn OrchidCabinetTable(
 
     let (drag_target, set_drag_target) = signal::<Option<Placement>>(None);
 
-    #[allow(unused_variables)]
     let handle_drop = move |ev: leptos::ev::DragEvent, new_placement: Placement| {
         ev.prevent_default();
         set_drag_target.set(None);
@@ -38,6 +37,10 @@ pub fn OrchidCabinetTable(
                     }
                 }
             }
+        }
+        #[cfg(not(feature = "hydrate"))]
+        {
+            let _ = (&on_update, &new_placement);
         }
     };
 
@@ -206,6 +209,10 @@ fn OrchidTableSection(
                                                     if let Some(data) = ev.data_transfer() {
                                                         let _ = data.set_data("text/plain", &id);
                                                     }
+                                                }
+                                                #[cfg(not(feature = "hydrate"))]
+                                                {
+                                                    let _ = (&ev, &id);
                                                 }
                                             }
                                         }
