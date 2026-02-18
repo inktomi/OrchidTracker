@@ -1,6 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::GrowingZone;
 
+/// Parse the "table:key" user_id string into a SurrealDB RecordId
+#[cfg(feature = "ssr")]
+fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
+    use crate::error::internal_error;
+    surrealdb::types::RecordId::parse_simple(user_id)
+        .map_err(|e| internal_error("Owner ID parse failed", e))
+}
+
 #[server]
 pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::auth::require_auth;
@@ -8,10 +16,11 @@ pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
 
     let mut response = db()
         .query("SELECT * FROM growing_zone WHERE owner = $owner ORDER BY sort_order ASC")
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Get zones query failed", e))?;
 
@@ -61,6 +70,7 @@ pub async fn create_zone(
     }
 
     let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
 
     let mut response = db()
         .query(
@@ -70,7 +80,7 @@ pub async fn create_zone(
              humidity = $humidity, description = $description, sort_order = $sort_order \
              RETURN *"
         )
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .bind(("name", name))
         .bind(("light_level", light_level))
         .bind(("location_type", location_type))
@@ -104,6 +114,7 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
     }
 
     let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
 
     let light_level_str = match zone.light_level {
         crate::orchid::LightRequirement::Low => "Low",
@@ -125,7 +136,7 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
              RETURN *"
         )
         .bind(("id", zone.id))
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .bind(("name", zone.name))
         .bind(("light_level", light_level_str.to_string()))
         .bind(("location_type", location_type_str.to_string()))
@@ -155,11 +166,12 @@ pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
 
     db()
         .query("DELETE $id WHERE owner = $owner")
         .bind(("id", id))
-        .bind(("owner", user_id))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Delete zone query failed", e))?;
 
@@ -174,11 +186,12 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
     use crate::orchid::Orchid;
 
     let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
 
     // Check if user already has zones
     let mut response = db()
         .query("SELECT count() as total FROM growing_zone WHERE owner = $owner GROUP ALL")
-        .bind(("owner", user_id.clone()))
+        .bind(("owner", owner.clone()))
         .await
         .map_err(|e| internal_error("Check zones count failed", e))?;
 
@@ -199,7 +212,7 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
     // Check if user has any orchids to migrate from
     let mut response = db()
         .query("SELECT * FROM orchid WHERE owner = $owner")
-        .bind(("owner", user_id.clone()))
+        .bind(("owner", owner.clone()))
         .await
         .map_err(|e| internal_error("Get orchids for migration failed", e))?;
 
@@ -233,7 +246,7 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
                      location_type = $location_type, temperature_range = '', \
                      humidity = '', description = '', sort_order = $sort_order"
                 )
-                .bind(("owner", user_id.clone()))
+                .bind(("owner", owner.clone()))
                 .bind(("name", new_name.to_string()))
                 .bind(("light_level", light.to_string()))
                 .bind(("location_type", location.to_string()))
@@ -243,7 +256,7 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
             // Update orchid placement strings
             let _ = db()
                 .query("UPDATE orchid SET placement = $new_name WHERE owner = $owner AND placement = $old_val")
-                .bind(("owner", user_id.clone()))
+                .bind(("owner", owner.clone()))
                 .bind(("new_name", new_name.to_string()))
                 .bind(("old_val", old_val.to_string()))
                 .await;
