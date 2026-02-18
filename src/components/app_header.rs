@@ -18,7 +18,7 @@ pub fn AppHeader(
                         {move || if dark_mode.get() { "\u{2600}" } else { "\u{263E}" }}
                     </button>
                     <button class=BTN_GHOST on:click=move |_| on_add()>"Add"</button>
-                    <button class=BTN_GHOST on:click=move |_| on_scan()>"Scan"</button>
+                    <button class=BTN_GHOST on:click=move |_| on_scan()>"Read Tag"</button>
                     <button class=BTN_GHOST on:click=move |_| on_settings()>"Settings"</button>
                 </div>
             </div>

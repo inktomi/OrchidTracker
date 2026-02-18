@@ -122,7 +122,7 @@ fn EmptyCollection(
             <h2 class="mb-3 text-2xl sm:text-3xl text-stone-800 dark:text-stone-100">"Your collection awaits"</h2>
             <p class="mb-8 max-w-sm text-sm leading-relaxed text-stone-400 dark:text-stone-500">
                 "Your growing zones are all set up. Now add your first orchid \u{2014} "
-                "enter it by hand or point your camera at one to have the AI identify it."
+                "enter it by hand, or snap a photo of a plant tag and let AI look it up for you."
             </p>
 
             // CTAs
@@ -141,15 +141,15 @@ fn EmptyCollection(
                     on:click=move |_| on_scan()
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                        <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
                     </svg>
-                    "Scan with Camera"
+                    "Read a Tag"
                 </button>
             </div>
 
             // Subtle hint
             <p class="mt-6 text-xs text-stone-300 dark:text-stone-600">
-                "Tip: The scanner uses AI to identify species and check zone compatibility"
+                "Tip: Point your camera at a plant tag or label \u{2014} AI reads it and checks zone compatibility"
             </p>
         </div>
     }.into_any()

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, FitCategory, LightRequirement, GrowingZone, ClimateReading};
 use super::{MODAL_OVERLAY, BTN_PRIMARY, BTN_GHOST};
 
-const SCANNER_CONTENT: &str = "bg-stone-900 text-stone-200 p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-700/60";
+const SCANNER_CONTENT: &str = "scanner-bloom bg-stone-900 text-stone-200 p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-700/60";
 const SCANNER_HEADER: &str = "flex justify-between items-center mb-5 pb-4 border-b border-stone-700";
 const SCANNER_CLOSE: &str = "py-2 px-3 text-sm text-stone-400 bg-stone-800 rounded-lg border-none cursor-pointer hover:bg-stone-700 hover:text-stone-200 transition-colors";
 
@@ -183,16 +183,26 @@ pub fn ScannerModal(
     view! {
         <div class=MODAL_OVERLAY>
             <div class=SCANNER_CONTENT>
-                 <div class=SCANNER_HEADER>
-                    <h2 class="m-0 text-white">"Orchid Scanner"</h2>
+                // Decorative drifting leaves
+                <div class="overflow-hidden absolute inset-0 pointer-events-none">
+                    <div class="absolute top-3 right-6 text-lg scanner-leaf-drift opacity-15">{"\u{1F33F}"}</div>
+                    <div class="absolute bottom-4 left-5 text-sm opacity-10 scanner-leaf-drift">{"\u{1F343}"}</div>
+                    <div class="absolute right-3 top-1/2 text-xs opacity-10 scanner-leaf-drift">{"\u{1FAB4}"}</div>
+                </div>
+
+                <div class=SCANNER_HEADER>
+                    <div>
+                        <h2 class="m-0 text-white">"Tag Reader"</h2>
+                        <p class="mt-1 mb-0 text-xs text-stone-500">"Point at a plant tag or label"</p>
+                    </div>
                     <button class=SCANNER_CLOSE on:click=move |_| on_close()>"Close"</button>
                 </div>
-                <div>
+                <div class="relative">
                     {move || error_msg.get().map(|err| {
                         view! { <div class="p-3 mb-4 text-sm text-red-300 rounded-lg bg-danger/20">{err}</div> }
                     })}
 
-                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-xl h-[300px]">
+                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-xl scanner-viewfinder h-[300px]">
                         <video
                             node_ref=video_element
                             autoplay
@@ -203,7 +213,7 @@ pub fn ScannerModal(
                         <canvas node_ref=canvas_element class="hidden"></canvas>
                     </div>
 
-                    <div>
+                    <div class="scanner-controls-rise">
                     {move || {
                         if let Some(result) = analysis_result.get() {
                             let fit_class = match result.fit_category {
@@ -228,7 +238,7 @@ pub fn ScannerModal(
                                         <button class="py-3 text-sm font-medium rounded-lg border-none transition-colors cursor-pointer text-stone-300 bg-stone-700 hover:bg-stone-600" on:click=move |_| {
                                             set_analysis_result.set(None);
                                             set_error_msg.set(None);
-                                        }>"Scan Another"</button>
+                                        }>"Read Another"</button>
                                     </div>
                                 </div>
                             }.into_any()
@@ -241,11 +251,11 @@ pub fn ScannerModal(
                                             view! {
                                                 <button class="flex gap-2 items-center py-3 px-6 text-sm font-semibold text-white rounded-lg border-none cursor-not-allowed bg-primary/70" disabled>
                                                     <div class="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
-                                                    "Thinking..."
+                                                    "Looking it up..."
                                                 </button>
                                             }.into_any()
                                         } else {
-                                            view! { <button class=BTN_PRIMARY on:click=capture_and_analyze>"Capture"</button> }.into_any()
+                                            view! { <button class=BTN_PRIMARY on:click=capture_and_analyze>"Snap"</button> }.into_any()
                                         }
                                     }}
                                 </div>
