@@ -126,7 +126,7 @@ pub fn HomePage() -> impl IntoView {
                         on_close=move || send(Msg::ShowAddModal(false))
                         prefill_data=prefill_data
                     />
-                }
+                }.into_any()
             })}
 
             {move || selected_orchid.get().map(|orchid| {
@@ -136,13 +136,13 @@ pub fn HomePage() -> impl IntoView {
                         on_close=move || send(Msg::SelectOrchid(None))
                         on_update=on_update
                     />
-                }
+                }.into_any()
             })}
 
             {move || show_settings.get().then(|| {
                 view! {
                     <SettingsModal on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit }) />
-                }
+                }.into_any()
             })}
 
             {move || show_scanner.get().then(|| {
@@ -154,7 +154,7 @@ pub fn HomePage() -> impl IntoView {
                         existing_orchids=orchids
                         climate_data=climate_data.get_value()
                     />
-                }
+                }.into_any()
             })}
         </main>
     }

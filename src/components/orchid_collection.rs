@@ -68,5 +68,5 @@ pub fn OrchidCollection(
                 }
             })}
         </Suspense>
-    }
+    }.into_any()
 }

@@ -23,5 +23,5 @@ pub fn AppHeader(
                 </div>
             </div>
         </header>
-    }
+    }.into_any()
 }
