@@ -5,6 +5,8 @@ pub mod climate_dashboard;
 pub mod cabinet_table;
 pub mod orchid_card;
 pub mod add_orchid_form;
+pub mod app_header;
+pub mod orchid_collection;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 
