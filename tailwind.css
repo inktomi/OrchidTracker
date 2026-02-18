@@ -55,6 +55,25 @@ html.dark {
   html.dark label { color: #a8a29e; }
 }
 
+/* Auth page decorative backgrounds */
+.auth-glow-green {
+  background: radial-gradient(ellipse at 20% 50%, rgba(45,106,79,0.6), transparent 70%);
+}
+.auth-glow-gold {
+  background: radial-gradient(ellipse at 80% 20%, rgba(182,141,64,0.15), transparent 50%);
+}
+.auth-glow-green-alt {
+  background: radial-gradient(ellipse at 70% 60%, rgba(45,106,79,0.5), transparent 70%);
+}
+.auth-glow-gold-alt {
+  background: radial-gradient(ellipse at 30% 80%, rgba(182,141,64,0.12), transparent 50%);
+}
+.auth-grid {
+  background-image: linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

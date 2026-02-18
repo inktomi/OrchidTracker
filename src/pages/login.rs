@@ -36,17 +36,10 @@ pub fn LoginPage() -> impl IntoView {
         <div class="flex min-h-screen bg-cream">
             // Left panel — botanical atmosphere (hidden on mobile)
             <div class="hidden overflow-hidden relative lg:flex lg:w-1/2 xl:w-3/5 bg-primary">
-                // Layered gradient background
                 <div class="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-primary-dark"></div>
-                <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(45,106,79,0.6),transparent_70%)]"></div>
-                <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(182,141,64,0.15),transparent_50%)]"></div>
-
-                // Decorative grid pattern
-                <div class="absolute inset-0 opacity-[0.04]"
-                     style="background-image: linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px); background-size: 60px 60px;">
-                </div>
-
-                // Content
+                <div class="absolute inset-0 auth-glow-green"></div>
+                <div class="absolute inset-0 auth-glow-gold"></div>
+                <div class="absolute inset-0 auth-grid opacity-[0.04]"></div>
                 <div class="flex relative z-10 flex-col justify-between p-12 xl:p-16">
                     // Top — brand
                     <div>
