@@ -40,28 +40,31 @@ pub async fn require_auth() -> Result<String, ServerFnError> {
 
 /// Create a session for the given user_id (store in tower-sessions)
 pub async fn create_session(user_id: &str) -> Result<(), ServerFnError> {
+    use crate::error::internal_error;
     use leptos_axum::extract;
     use tower_sessions::Session;
 
     let session: Session = extract().await?;
     session.insert("user_id", user_id).await
-        .map_err(|e| ServerFnError::new(format!("Session error: {}", e)))?;
+        .map_err(|e| internal_error("Session insert failed", e))?;
     Ok(())
 }
 
 /// Destroy the current session
 pub async fn destroy_session() -> Result<(), ServerFnError> {
+    use crate::error::internal_error;
     use leptos_axum::extract;
     use tower_sessions::Session;
 
     let session: Session = extract().await?;
     session.flush().await
-        .map_err(|e| ServerFnError::new(format!("Session error: {}", e)))?;
+        .map_err(|e| internal_error("Session flush failed", e))?;
     Ok(())
 }
 
 /// Get the current user from the session
 pub async fn get_session_user() -> Result<Option<UserInfo>, ServerFnError> {
+    use crate::error::internal_error;
     use leptos_axum::extract;
     use tower_sessions::Session;
     use crate::db::db;
@@ -69,7 +72,7 @@ pub async fn get_session_user() -> Result<Option<UserInfo>, ServerFnError> {
 
     let session: Session = extract().await?;
     let user_id: Option<String> = session.get("user_id").await
-        .map_err(|e| ServerFnError::new(format!("Session error: {}", e)))?;
+        .map_err(|e| internal_error("Session read failed", e))?;
 
     let Some(uid) = user_id else {
         return Ok(None);
@@ -77,15 +80,22 @@ pub async fn get_session_user() -> Result<Option<UserInfo>, ServerFnError> {
 
     // Parse the stored "table:key" string back to a RecordId for the query
     let record_id = surrealdb::types::RecordId::parse_simple(&uid)
-        .map_err(|e| ServerFnError::new(format!("Invalid user ID format: {}", e)))?;
+        .map_err(|e| internal_error("User ID parse failed", e))?;
 
-    let row: Option<UserDbRow> = db()
+    let mut response = db()
         .query("SELECT id, username, email FROM user WHERE id = $id LIMIT 1")
         .bind(("id", record_id))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Session user query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Session user query error", err_msg));
+    }
+
+    let row: Option<UserDbRow> = response.take(0)
+        .map_err(|e| internal_error("Session user parse failed", e))?;
 
     Ok(row.map(|r| r.into_user_info()))
 }

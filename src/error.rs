@@ -24,3 +24,11 @@ impl fmt::Display for AppError {
 }
 
 impl std::error::Error for AppError {}
+
+/// Log an internal error and return a generic ServerFnError safe for the UI.
+/// The real error details go to the server logs only.
+#[cfg(feature = "ssr")]
+pub fn internal_error(context: &str, err: impl std::fmt::Display) -> leptos::prelude::ServerFnError {
+    tracing::error!("{context}: {err}");
+    leptos::prelude::ServerFnError::new("An internal error occurred. Please try again later.")
+}

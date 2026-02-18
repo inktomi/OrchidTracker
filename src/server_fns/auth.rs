@@ -52,6 +52,7 @@ pub async fn register(
 ) -> Result<UserInfo, ServerFnError> {
     use crate::auth::{hash_password, create_session};
     use crate::db::db;
+    use crate::error::internal_error;
 
     // Username: 1-50 chars, alphanumeric + underscore/hyphen
     if username.is_empty() || username.len() > 50 {
@@ -70,17 +71,24 @@ pub async fn register(
     }
 
     let password_hash = hash_password(&password)
-        .map_err(|e| ServerFnError::new(format!("Password hash error: {}", e)))?;
+        .map_err(|e| internal_error("Password hashing failed", e))?;
 
-    let result: Option<UserDbRow> = db()
+    let mut response = db()
         .query("CREATE user SET username = $username, email = $email, password_hash = $hash RETURN id, username, email")
         .bind(("username", username))
         .bind(("email", email))
         .bind(("hash", password_hash))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Registration query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Registration query error", err_msg));
+    }
+
+    let result: Option<UserDbRow> = response.take(0)
+        .map_err(|e| internal_error("Registration result parse failed", e))?;
 
     let user = result.ok_or_else(|| ServerFnError::new("Failed to create user"))?.into_user_info();
 
@@ -93,6 +101,7 @@ pub async fn register(
 pub async fn login(username: String, password: String) -> Result<UserInfo, ServerFnError> {
     use crate::auth::verify_password;
     use crate::db::db;
+    use crate::error::internal_error;
 
     if username.is_empty() || username.len() > 50 {
         return Err(ServerFnError::new("Invalid credentials"));
@@ -110,18 +119,25 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
         password_hash: String,
     }
 
-    let result: Option<UserLoginRow> = db()
+    let mut response = db()
         .query("SELECT id, username, email, password_hash FROM user WHERE username = $username LIMIT 1")
         .bind(("username", username))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Login query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Login query error", err_msg));
+    }
+
+    let result: Option<UserLoginRow> = response.take(0)
+        .map_err(|e| internal_error("Login result parse failed", e))?;
 
     let user_row = result.ok_or_else(|| ServerFnError::new("Invalid credentials"))?;
 
     if !verify_password(&password, &user_row.password_hash)
-        .map_err(|e| ServerFnError::new(format!("Auth error: {}", e)))?
+        .map_err(|e| internal_error("Password verification failed", e))?
     {
         return Err(ServerFnError::new("Invalid credentials"));
     }

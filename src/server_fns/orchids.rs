@@ -69,16 +69,24 @@ fn validate_filename(filename: &str) -> Result<(), ServerFnError> {
 pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     let user_id = require_auth().await?;
 
-    let orchids: Vec<Orchid> = db()
+    let mut response = db()
         .query("SELECT * FROM orchid WHERE owner = $owner ORDER BY created_at DESC")
         .bind(("owner", user_id))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Get orchids query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Get orchids query error", err_msg));
+    }
+
+    let orchids: Vec<Orchid> = response.take(0)
+        .map_err(|e| internal_error("Get orchids parse failed", e))?;
 
     Ok(orchids)
 }
@@ -97,12 +105,13 @@ pub async fn create_orchid(
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     validate_orchid_fields(&name, &species, &notes, water_frequency_days, &light_requirement, &placement, &light_lux, &temperature_range, &conservation_status)?;
 
     let user_id = require_auth().await?;
 
-    let orchid: Option<Orchid> = db()
+    let mut response = db()
         .query(
             "CREATE orchid SET \
              owner = $owner, name = $name, species = $species, \
@@ -122,9 +131,16 @@ pub async fn create_orchid(
         .bind(("temp_range", temperature_range))
         .bind(("conservation", conservation_status))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Create orchid query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Create orchid query error", err_msg));
+    }
+
+    let orchid: Option<Orchid> = response.take(0)
+        .map_err(|e| internal_error("Create orchid parse failed", e))?;
 
     orchid.ok_or_else(|| ServerFnError::new("Failed to create orchid"))
 }
@@ -133,6 +149,7 @@ pub async fn create_orchid(
 pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     let light_req_str = orchid.light_requirement.to_string();
     let placement_str = orchid.placement.to_string();
@@ -141,7 +158,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
 
     let user_id = require_auth().await?;
 
-    let updated: Option<Orchid> = db()
+    let mut response = db()
         .query(
             "UPDATE $id SET \
              name = $name, species = $species, \
@@ -164,9 +181,16 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .bind(("temp_range", orchid.temperature_range))
         .bind(("conservation", orchid.conservation_status))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Update orchid query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Update orchid query error", err_msg));
+    }
+
+    let updated: Option<Orchid> = response.take(0)
+        .map_err(|e| internal_error("Update orchid parse failed", e))?;
 
     updated.ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
 }
@@ -175,6 +199,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
 pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     let user_id = require_auth().await?;
 
@@ -183,7 +208,7 @@ pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
         .bind(("id", id))
         .bind(("owner", user_id))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Delete orchid query failed", e))?;
 
     Ok(())
 }
@@ -196,6 +221,7 @@ pub async fn add_log_entry(
 ) -> Result<LogEntry, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     if note.len() > 5000 {
         return Err(ServerFnError::new("Note must be at most 5000 characters"));
@@ -206,7 +232,7 @@ pub async fn add_log_entry(
 
     let user_id = require_auth().await?;
 
-    let entry: Option<LogEntry> = db()
+    let mut response = db()
         .query(
             "CREATE log_entry SET \
              orchid = $orchid_id, owner = $owner, \
@@ -218,9 +244,16 @@ pub async fn add_log_entry(
         .bind(("note", note))
         .bind(("image_filename", image_filename))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Add log entry query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Add log entry query error", err_msg));
+    }
+
+    let entry: Option<LogEntry> = response.take(0)
+        .map_err(|e| internal_error("Add log entry parse failed", e))?;
 
     entry.ok_or_else(|| ServerFnError::new("Failed to create log entry"))
 }
@@ -229,17 +262,25 @@ pub async fn add_log_entry(
 pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
+    use crate::error::internal_error;
 
     let user_id = require_auth().await?;
 
-    let entries: Vec<LogEntry> = db()
+    let mut response = db()
         .query("SELECT * FROM log_entry WHERE orchid = $orchid_id AND owner = $owner ORDER BY timestamp DESC")
         .bind(("orchid_id", orchid_id))
         .bind(("owner", user_id))
         .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .take(0)
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        .map_err(|e| internal_error("Get log entries query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Get log entries query error", err_msg));
+    }
+
+    let entries: Vec<LogEntry> = response.take(0)
+        .map_err(|e| internal_error("Get log entries parse failed", e))?;
 
     Ok(entries)
 }
