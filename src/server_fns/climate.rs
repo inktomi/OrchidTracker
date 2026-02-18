@@ -58,13 +58,15 @@ pub async fn get_zone_history(zone_id: String, hours: u32) -> Result<Vec<Climate
 
     let _user_id = require_auth().await?;
 
+    let zone_record = surrealdb::types::RecordId::parse_simple(&zone_id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
     let duration_str = format!("{}h", hours);
 
     let mut response = db()
         .query(
             "SELECT * FROM climate_reading WHERE zone = $zone_id AND recorded_at > time::now() - $duration ORDER BY recorded_at ASC"
         )
-        .bind(("zone_id", zone_id))
+        .bind(("zone_id", zone_record))
         .bind(("duration", duration_str))
         .await
         .map_err(|e| internal_error("Get zone history query failed", e))?;
@@ -170,12 +172,14 @@ pub async fn configure_zone_data_source(
 
     let user_id = require_auth().await?;
     let owner = parse_owner(&user_id)?;
+    let zone_record = surrealdb::types::RecordId::parse_simple(&zone_id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
 
     let mut response = db()
         .query(
             "UPDATE $id SET data_source_type = $provider, data_source_config = $config WHERE owner = $owner RETURN *"
         )
-        .bind(("id", zone_id.clone()))
+        .bind(("id", zone_record))
         .bind(("owner", owner))
         .bind(("provider", provider))
         .bind(("config", config_json))
@@ -204,18 +208,20 @@ mod ssr_types {
     use surrealdb::types::SurrealValue;
     use crate::orchid::ClimateReading;
 
+    use crate::server_fns::auth::record_id_to_string;
+
     #[derive(serde::Deserialize, SurrealValue)]
     #[surreal(crate = "surrealdb::types")]
     pub struct ZoneIdRow {
-        pub id: String,
+        pub id: surrealdb::types::RecordId,
         pub name: String,
     }
 
     #[derive(serde::Deserialize, SurrealValue)]
     #[surreal(crate = "surrealdb::types")]
     pub struct ReadingDbRow {
-        pub id: String,
-        pub zone: String,
+        pub id: surrealdb::types::RecordId,
+        pub zone: surrealdb::types::RecordId,
         pub zone_name: String,
         pub temperature: f64,
         pub humidity: f64,
@@ -227,8 +233,8 @@ mod ssr_types {
     impl ReadingDbRow {
         pub fn into_climate_reading(self) -> ClimateReading {
             ClimateReading {
-                id: self.id,
-                zone_id: self.zone,
+                id: record_id_to_string(&self.id),
+                zone_id: record_id_to_string(&self.zone),
                 zone_name: self.zone_name,
                 temperature: self.temperature,
                 humidity: self.humidity,

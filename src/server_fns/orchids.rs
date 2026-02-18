@@ -2,6 +2,80 @@ use leptos::prelude::*;
 use crate::orchid::{Orchid, LogEntry};
 
 #[cfg(feature = "ssr")]
+fn parse_record_id(id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
+    use crate::error::internal_error;
+    surrealdb::types::RecordId::parse_simple(id)
+        .map_err(|e| internal_error("Record ID parse failed", e))
+}
+
+#[cfg(feature = "ssr")]
+mod ssr_types {
+    use surrealdb::types::SurrealValue;
+    use crate::orchid::{Orchid, LogEntry, LightRequirement};
+    use crate::server_fns::auth::record_id_to_string;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    pub struct OrchidDbRow {
+        pub id: surrealdb::types::RecordId,
+        pub name: String,
+        pub species: String,
+        pub water_frequency_days: u32,
+        pub light_requirement: LightRequirement,
+        pub notes: String,
+        pub placement: String,
+        pub light_lux: String,
+        pub temperature_range: String,
+        #[surreal(default)]
+        pub conservation_status: Option<String>,
+        #[surreal(default)]
+        pub history: Vec<LogEntryDbRow>,
+    }
+
+    #[derive(serde::Deserialize, SurrealValue, Clone)]
+    #[surreal(crate = "surrealdb::types")]
+    pub struct LogEntryDbRow {
+        pub id: surrealdb::types::RecordId,
+        pub timestamp: chrono::DateTime<chrono::Utc>,
+        pub note: String,
+        #[surreal(default)]
+        pub image_filename: Option<String>,
+    }
+
+    impl OrchidDbRow {
+        pub fn into_orchid(self) -> Orchid {
+            Orchid {
+                id: record_id_to_string(&self.id),
+                name: self.name,
+                species: self.species,
+                water_frequency_days: self.water_frequency_days,
+                light_requirement: self.light_requirement,
+                notes: self.notes,
+                placement: self.placement,
+                light_lux: self.light_lux,
+                temperature_range: self.temperature_range,
+                conservation_status: self.conservation_status,
+                history: self.history.into_iter().map(|e| e.into_log_entry()).collect(),
+            }
+        }
+    }
+
+    impl LogEntryDbRow {
+        pub fn into_log_entry(self) -> LogEntry {
+            LogEntry {
+                id: record_id_to_string(&self.id),
+                timestamp: self.timestamp,
+                note: self.note,
+                image_filename: self.image_filename,
+            }
+        }
+    }
+}
+
+#[cfg(feature = "ssr")]
+use ssr_types::*;
+
+#[cfg(feature = "ssr")]
 fn validate_orchid_fields(
     name: &str,
     species: &str,
@@ -85,10 +159,10 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
         return Err(internal_error("Get orchids query error", err_msg));
     }
 
-    let orchids: Vec<Orchid> = response.take(0)
+    let db_rows: Vec<OrchidDbRow> = response.take(0)
         .map_err(|e| internal_error("Get orchids parse failed", e))?;
 
-    Ok(orchids)
+    Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
 #[server]
@@ -139,10 +213,11 @@ pub async fn create_orchid(
         return Err(internal_error("Create orchid query error", err_msg));
     }
 
-    let orchid: Option<Orchid> = response.take(0)
+    let db_row: Option<OrchidDbRow> = response.take(0)
         .map_err(|e| internal_error("Create orchid parse failed", e))?;
 
-    orchid.ok_or_else(|| ServerFnError::new("Failed to create orchid"))
+    db_row.map(|r| r.into_orchid())
+        .ok_or_else(|| ServerFnError::new("Failed to create orchid"))
 }
 
 #[server]
@@ -157,6 +232,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, &light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
 
     let user_id = require_auth().await?;
+    let orchid_id = parse_record_id(&orchid.id)?;
 
     let mut response = db()
         .query(
@@ -169,7 +245,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              WHERE owner = $owner \
              RETURN *"
         )
-        .bind(("id", orchid.id))
+        .bind(("id", orchid_id))
         .bind(("owner", user_id))
         .bind(("name", orchid.name))
         .bind(("species", orchid.species))
@@ -189,10 +265,11 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         return Err(internal_error("Update orchid query error", err_msg));
     }
 
-    let updated: Option<Orchid> = response.take(0)
+    let updated: Option<OrchidDbRow> = response.take(0)
         .map_err(|e| internal_error("Update orchid parse failed", e))?;
 
-    updated.ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
+    updated.map(|r| r.into_orchid())
+        .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
 }
 
 #[server]
@@ -202,10 +279,11 @@ pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    let orchid_id = parse_record_id(&id)?;
 
     db()
         .query("DELETE $id WHERE owner = $owner")
-        .bind(("id", id))
+        .bind(("id", orchid_id))
         .bind(("owner", user_id))
         .await
         .map_err(|e| internal_error("Delete orchid query failed", e))?;
@@ -252,10 +330,11 @@ pub async fn add_log_entry(
         return Err(internal_error("Add log entry query error", err_msg));
     }
 
-    let entry: Option<LogEntry> = response.take(0)
+    let db_row: Option<LogEntryDbRow> = response.take(0)
         .map_err(|e| internal_error("Add log entry parse failed", e))?;
 
-    entry.ok_or_else(|| ServerFnError::new("Failed to create log entry"))
+    db_row.map(|r| r.into_log_entry())
+        .ok_or_else(|| ServerFnError::new("Failed to create log entry"))
 }
 
 #[server]
@@ -279,8 +358,8 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
         return Err(internal_error("Get log entries query error", err_msg));
     }
 
-    let entries: Vec<LogEntry> = response.take(0)
+    let db_rows: Vec<LogEntryDbRow> = response.take(0)
         .map_err(|e| internal_error("Get log entries parse failed", e))?;
 
-    Ok(entries)
+    Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
 }

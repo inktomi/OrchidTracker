@@ -9,6 +9,55 @@ fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnErro
         .map_err(|e| internal_error("Owner ID parse failed", e))
 }
 
+/// SSR-only struct matching SurrealDB's record shape (id is a RecordId, not a String).
+#[cfg(feature = "ssr")]
+mod ssr_types {
+    use surrealdb::types::SurrealValue;
+    use crate::orchid::{GrowingZone, LightRequirement, LocationType};
+    use crate::server_fns::auth::record_id_to_string;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    pub struct GrowingZoneDbRow {
+        pub id: surrealdb::types::RecordId,
+        pub name: String,
+        pub light_level: LightRequirement,
+        pub location_type: LocationType,
+        #[surreal(default)]
+        pub temperature_range: String,
+        #[surreal(default)]
+        pub humidity: String,
+        #[surreal(default)]
+        pub description: String,
+        #[surreal(default)]
+        pub sort_order: i32,
+        #[surreal(default)]
+        pub data_source_type: Option<String>,
+        #[surreal(default)]
+        pub data_source_config: String,
+    }
+
+    impl GrowingZoneDbRow {
+        pub fn into_growing_zone(self) -> GrowingZone {
+            GrowingZone {
+                id: record_id_to_string(&self.id),
+                name: self.name,
+                light_level: self.light_level,
+                location_type: self.location_type,
+                temperature_range: self.temperature_range,
+                humidity: self.humidity,
+                description: self.description,
+                sort_order: self.sort_order,
+                data_source_type: self.data_source_type,
+                data_source_config: self.data_source_config,
+            }
+        }
+    }
+}
+
+#[cfg(feature = "ssr")]
+use ssr_types::*;
+
 #[server]
 pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::auth::require_auth;
@@ -30,10 +79,10 @@ pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
         return Err(internal_error("Get zones query error", err_msg));
     }
 
-    let zones: Vec<GrowingZone> = response.take(0)
+    let db_rows: Vec<GrowingZoneDbRow> = response.take(0)
         .map_err(|e| internal_error("Get zones parse failed", e))?;
 
-    Ok(zones)
+    Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
 }
 
 #[server]
@@ -97,10 +146,11 @@ pub async fn create_zone(
         return Err(internal_error("Create zone query error", err_msg));
     }
 
-    let zone: Option<GrowingZone> = response.take(0)
+    let db_row: Option<GrowingZoneDbRow> = response.take(0)
         .map_err(|e| internal_error("Create zone parse failed", e))?;
 
-    zone.ok_or_else(|| ServerFnError::new("Failed to create zone"))
+    db_row.map(|r| r.into_growing_zone())
+        .ok_or_else(|| ServerFnError::new("Failed to create zone"))
 }
 
 #[server]
@@ -115,6 +165,8 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
 
     let user_id = require_auth().await?;
     let owner = parse_owner(&user_id)?;
+    let zone_id = surrealdb::types::RecordId::parse_simple(&zone.id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
 
     let light_level_str = match zone.light_level {
         crate::orchid::LightRequirement::Low => "Low",
@@ -135,7 +187,7 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
              WHERE owner = $owner \
              RETURN *"
         )
-        .bind(("id", zone.id))
+        .bind(("id", zone_id))
         .bind(("owner", owner))
         .bind(("name", zone.name))
         .bind(("light_level", light_level_str.to_string()))
@@ -153,10 +205,11 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
         return Err(internal_error("Update zone query error", err_msg));
     }
 
-    let updated: Option<GrowingZone> = response.take(0)
+    let updated: Option<GrowingZoneDbRow> = response.take(0)
         .map_err(|e| internal_error("Update zone parse failed", e))?;
 
-    updated.ok_or_else(|| ServerFnError::new("Zone not found or not owned by you"))
+    updated.map(|r| r.into_growing_zone())
+        .ok_or_else(|| ServerFnError::new("Zone not found or not owned by you"))
 }
 
 #[server]
@@ -167,10 +220,12 @@ pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
 
     let user_id = require_auth().await?;
     let owner = parse_owner(&user_id)?;
+    let zone_id = surrealdb::types::RecordId::parse_simple(&id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
 
     db()
         .query("DELETE $id WHERE owner = $owner")
-        .bind(("id", id))
+        .bind(("id", zone_id))
         .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Delete zone query failed", e))?;

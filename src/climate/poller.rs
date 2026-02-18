@@ -132,7 +132,7 @@ pub async fn poll_all_zones() {
 #[derive(serde::Deserialize, surrealdb::types::SurrealValue)]
 #[surreal(crate = "surrealdb::types")]
 struct ZoneRow {
-    id: String,
+    id: surrealdb::types::RecordId,
     name: String,
     data_source_type: Option<String>,
     data_source_config: String,
