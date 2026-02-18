@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::orchid::ClimateReading;
+use crate::orchid::{ClimateReading, HabitatWeather, HabitatWeatherSummary};
 
 /// Get the latest climate reading per zone for the current user.
 #[server]
@@ -203,10 +203,88 @@ fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnErro
         .map_err(|e| internal_error("Owner ID parse failed", e))
 }
 
+/// Get the latest habitat weather reading for a coordinate pair.
+#[server]
+pub async fn get_habitat_current(
+    latitude: f64,
+    longitude: f64,
+) -> Result<Option<HabitatWeather>, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    require_auth().await?;
+
+    // Round to 2 decimals to match poller grouping
+    let lat = (latitude * 100.0).round() / 100.0;
+    let lon = (longitude * 100.0).round() / 100.0;
+
+    let mut response = db()
+        .query(
+            "SELECT temperature, humidity, precipitation, recorded_at \
+             FROM habitat_weather \
+             WHERE latitude = $lat AND longitude = $lon \
+             ORDER BY recorded_at DESC LIMIT 1"
+        )
+        .bind(("lat", lat))
+        .bind(("lon", lon))
+        .await
+        .map_err(|e| internal_error("Get habitat current query failed", e))?;
+
+    let _ = response.take_errors();
+
+    let row: Option<HabitatWeatherDbRow> = response.take(0).unwrap_or(None);
+    Ok(row.map(|r| r.into_habitat_weather()))
+}
+
+/// Get habitat weather history (summaries + recent raw) for a coordinate pair.
+#[server]
+pub async fn get_habitat_history(
+    latitude: f64,
+    longitude: f64,
+    days: u32,
+) -> Result<Vec<HabitatWeatherSummary>, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    require_auth().await?;
+
+    let lat = (latitude * 100.0).round() / 100.0;
+    let lon = (longitude * 100.0).round() / 100.0;
+    let duration_str = format!("{}d", days);
+
+    let mut response = db()
+        .query(
+            "SELECT period_type, period_start, avg_temperature, min_temperature, \
+                    max_temperature, avg_humidity, total_precipitation, sample_count \
+             FROM habitat_weather_summary \
+             WHERE latitude = $lat AND longitude = $lon \
+                   AND period_start > time::now() - $duration \
+             ORDER BY period_start DESC"
+        )
+        .bind(("lat", lat))
+        .bind(("lon", lon))
+        .bind(("duration", duration_str))
+        .await
+        .map_err(|e| internal_error("Get habitat history query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Get habitat history query error", err_msg));
+    }
+
+    let rows: Vec<HabitatSummaryDbRow> = response.take(0)
+        .map_err(|e| internal_error("Get habitat history parse failed", e))?;
+
+    Ok(rows.into_iter().map(|r| r.into_summary()).collect())
+}
+
 #[cfg(feature = "ssr")]
 mod ssr_types {
     use surrealdb::types::SurrealValue;
-    use crate::orchid::ClimateReading;
+    use crate::orchid::{ClimateReading, HabitatWeather, HabitatWeatherSummary};
 
     use crate::server_fns::auth::record_id_to_string;
 
@@ -240,6 +318,56 @@ mod ssr_types {
                 humidity: self.humidity,
                 vpd: self.vpd,
                 recorded_at: self.recorded_at,
+            }
+        }
+    }
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    pub struct HabitatWeatherDbRow {
+        pub temperature: f64,
+        pub humidity: f64,
+        #[surreal(default)]
+        pub precipitation: f64,
+        pub recorded_at: chrono::DateTime<chrono::Utc>,
+    }
+
+    impl HabitatWeatherDbRow {
+        pub fn into_habitat_weather(self) -> HabitatWeather {
+            HabitatWeather {
+                temperature: self.temperature,
+                humidity: self.humidity,
+                precipitation: self.precipitation,
+                recorded_at: self.recorded_at,
+            }
+        }
+    }
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    pub struct HabitatSummaryDbRow {
+        pub period_type: String,
+        pub period_start: chrono::DateTime<chrono::Utc>,
+        pub avg_temperature: f64,
+        pub min_temperature: f64,
+        pub max_temperature: f64,
+        pub avg_humidity: f64,
+        #[surreal(default)]
+        pub total_precipitation: f64,
+        pub sample_count: i64,
+    }
+
+    impl HabitatSummaryDbRow {
+        pub fn into_summary(self) -> HabitatWeatherSummary {
+            HabitatWeatherSummary {
+                period_type: self.period_type,
+                period_start: self.period_start,
+                avg_temperature: self.avg_temperature,
+                min_temperature: self.min_temperature,
+                max_temperature: self.max_temperature,
+                avg_humidity: self.avg_humidity,
+                total_precipitation: self.total_precipitation,
+                sample_count: self.sample_count as u32,
             }
         }
     }

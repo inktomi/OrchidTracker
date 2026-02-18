@@ -40,13 +40,16 @@ pub async fn analyze_orchid_image(
         3. Compare requirements against my conditions: {}. \
         4. Consider my growing zones: {}. \
         5. Check if I own it: {:?}. \
+        6. Determine the orchid's native habitat region and approximate center-point coordinates for its primary native range. \
         Then, evaluate the fit. \
         Finally, return ONLY valid JSON with this structure (no markdown): \
-        {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\" }} \
+        {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
         Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
         For light_req, choose from: 'High', 'Medium', 'Low'. \
         For placement_suggestion, choose from my zones: {}. \
-        For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common.",
+        For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common. \
+        For native_region, provide a brief description of where this species naturally grows. \
+        For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown.",
         climate_summary,
         zone_list,
         existing_species,

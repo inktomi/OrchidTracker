@@ -75,6 +75,9 @@ pub fn HomePage() -> impl IntoView {
                 orchid.light_lux,
                 orchid.temperature_range,
                 orchid.conservation_status,
+                orchid.native_region,
+                orchid.native_latitude,
+                orchid.native_longitude,
             ).await;
             orchids_resource.refetch();
         });
@@ -193,10 +196,12 @@ pub fn HomePage() -> impl IntoView {
 
             {move || selected_orchid.get().map(|orchid| {
                 let current_zones = zones_memo.get();
+                let current_readings = climate_readings.get();
                 view! {
                     <OrchidDetail
                         orchid=orchid
                         zones=current_zones
+                        climate_readings=current_readings
                         on_close=move || send(Msg::SelectOrchid(None))
                         on_update=on_update
                     />

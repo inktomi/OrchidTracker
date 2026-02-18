@@ -1,5 +1,6 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, GrowingZone};
+use crate::orchid::{Orchid, LightRequirement, GrowingZone, ClimateReading};
+use crate::components::habitat_weather::HabitatWeatherCard;
 use chrono::Local;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
 
@@ -17,6 +18,7 @@ fn light_req_to_key(lr: &LightRequirement) -> String {
 pub fn OrchidDetail(
     orchid: Orchid,
     zones: Vec<GrowingZone>,
+    climate_readings: Vec<ClimateReading>,
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
@@ -37,6 +39,15 @@ pub fn OrchidDetail(
     let (edit_conservation, set_edit_conservation) = signal(orchid.conservation_status.clone().unwrap_or_default());
 
     let zones_for_edit = zones;
+
+    // Habitat weather: find the matching zone reading for comparison
+    let habitat_zone_reading = {
+        let placement = orchid.placement.clone();
+        climate_readings.into_iter().find(|r| r.zone_name == placement)
+    };
+    let native_region = orchid.native_region.clone();
+    let native_lat = orchid.native_latitude;
+    let native_lon = orchid.native_longitude;
 
     let format_date = |dt: chrono::DateTime<chrono::Utc>| {
         dt.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()
@@ -86,6 +97,9 @@ pub fn OrchidDetail(
             light_lux: edit_light_lux.get(),
             temperature_range: edit_temp_range.get(),
             conservation_status: conservation_opt,
+            native_region: current.native_region,
+            native_latitude: current.native_latitude,
+            native_longitude: current.native_longitude,
             history: current.history,
         };
 
@@ -248,6 +262,19 @@ pub fn OrchidDetail(
                             }.into_any()
                         }
                     }}
+
+                    {native_lat.zip(native_lon).map(|(lat, lon)| {
+                        let region = native_region.clone().unwrap_or_else(|| "Native habitat".to_string());
+                        let zr = habitat_zone_reading.clone();
+                        view! {
+                            <HabitatWeatherCard
+                                native_region=region
+                                latitude=lat
+                                longitude=lon
+                                zone_reading=zr
+                            />
+                        }
+                    })}
 
                     <hr class="my-6 border-stone-200 dark:border-stone-700" />
 

@@ -93,6 +93,9 @@ mod tests {
             light_lux: String::new(),
             temperature_range: String::new(),
             conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
             history: Vec::new(),
         }
     }
@@ -150,6 +153,9 @@ mod tests {
             temp_range: "20-30C".into(),
             placement_suggestion: "Medium".into(),
             conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
         };
 
         update(&mut model, Msg::HandleScanResult(result));

@@ -13,6 +13,9 @@ fn test_orchid_json_serialization() {
         light_lux: "500".into(),
         temperature_range: "15-25C".into(),
         conservation_status: Some("Endangered".into()),
+        native_region: None,
+        native_latitude: None,
+        native_longitude: None,
         history: Vec::new(),
     };
 

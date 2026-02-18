@@ -20,6 +20,9 @@ pub fn AddOrchidForm(
     let (lux, set_lux) = signal(String::new());
     let (temp, set_temp) = signal(String::new());
     let (conservation, set_conservation) = signal(String::new());
+    let (native_region, set_native_region) = signal::<Option<String>>(None);
+    let (native_latitude, set_native_latitude) = signal::<Option<f64>>(None);
+    let (native_longitude, set_native_longitude) = signal::<Option<f64>>(None);
 
     let zones_for_prefill = zones.clone();
 
@@ -53,6 +56,10 @@ pub fn AddOrchidForm(
             }
 
             set_notes.set(data.reason);
+
+            set_native_region.set(data.native_region);
+            set_native_latitude.set(data.native_latitude);
+            set_native_longitude.set(data.native_longitude);
         }
     });
 
@@ -79,6 +86,9 @@ pub fn AddOrchidForm(
             light_lux: lux.get(),
             temperature_range: temp.get(),
             conservation_status: conservation_opt,
+            native_region: native_region.get(),
+            native_latitude: native_latitude.get(),
+            native_longitude: native_longitude.get(),
             history: Vec::new(),
         };
 

@@ -147,7 +147,36 @@ pub struct Orchid {
     pub conservation_status: Option<String>,
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
+    pub native_region: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub native_latitude: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub native_longitude: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub history: Vec<LogEntry>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct HabitatWeather {
+    pub temperature: f64,
+    pub humidity: f64,
+    pub precipitation: f64,
+    pub recorded_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct HabitatWeatherSummary {
+    pub period_type: String,
+    pub period_start: DateTime<Utc>,
+    pub avg_temperature: f64,
+    pub min_temperature: f64,
+    pub max_temperature: f64,
+    pub avg_humidity: f64,
+    pub total_precipitation: f64,
+    pub sample_count: u32,
 }
 
 #[cfg(test)]
@@ -203,6 +232,9 @@ mod tests {
             light_lux: "1000".into(),
             temperature_range: "20-30C".into(),
             conservation_status: Some("CITES II".into()),
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
             history: Vec::new(),
         };
 

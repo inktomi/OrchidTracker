@@ -30,6 +30,12 @@ mod ssr_types {
         #[surreal(default)]
         pub conservation_status: Option<String>,
         #[surreal(default)]
+        pub native_region: Option<String>,
+        #[surreal(default)]
+        pub native_latitude: Option<f64>,
+        #[surreal(default)]
+        pub native_longitude: Option<f64>,
+        #[surreal(default)]
         pub history: Vec<LogEntryDbRow>,
     }
 
@@ -61,6 +67,9 @@ mod ssr_types {
                 light_lux: self.light_lux,
                 temperature_range: self.temperature_range,
                 conservation_status: self.conservation_status,
+                native_region: self.native_region,
+                native_latitude: self.native_latitude,
+                native_longitude: self.native_longitude,
                 history: self.history.into_iter().map(|e| e.into_log_entry()).collect(),
             }
         }
@@ -183,6 +192,9 @@ pub async fn create_orchid(
     light_lux: String,
     temperature_range: String,
     conservation_status: Option<String>,
+    native_region: Option<String>,
+    native_latitude: Option<f64>,
+    native_longitude: Option<f64>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -199,7 +211,9 @@ pub async fn create_orchid(
              owner = $owner, name = $name, species = $species, \
              water_frequency_days = $water_freq, light_requirement = $light_req, \
              notes = $notes, placement = $placement, light_lux = $light_lux, \
-             temperature_range = $temp_range, conservation_status = $conservation \
+             temperature_range = $temp_range, conservation_status = $conservation, \
+             native_region = $native_region, native_latitude = $native_lat, \
+             native_longitude = $native_lon \
              RETURN *"
         )
         .bind(("owner", owner))
@@ -212,6 +226,9 @@ pub async fn create_orchid(
         .bind(("light_lux", light_lux))
         .bind(("temp_range", temperature_range))
         .bind(("conservation", conservation_status))
+        .bind(("native_region", native_region))
+        .bind(("native_lat", native_latitude))
+        .bind(("native_lon", native_longitude))
         .await
         .map_err(|e| internal_error("Create orchid query failed", e))?;
 
@@ -254,6 +271,8 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              water_frequency_days = $water_freq, light_requirement = $light_req, \
              notes = $notes, placement = $placement, light_lux = $light_lux, \
              temperature_range = $temp_range, conservation_status = $conservation, \
+             native_region = $native_region, native_latitude = $native_lat, \
+             native_longitude = $native_lon, \
              updated_at = time::now() \
              WHERE owner = $owner \
              RETURN *"
@@ -269,6 +288,9 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .bind(("light_lux", orchid.light_lux))
         .bind(("temp_range", orchid.temperature_range))
         .bind(("conservation", orchid.conservation_status))
+        .bind(("native_region", orchid.native_region))
+        .bind(("native_lat", orchid.native_latitude))
+        .bind(("native_lon", orchid.native_longitude))
         .await
         .map_err(|e| internal_error("Update orchid query failed", e))?;
 

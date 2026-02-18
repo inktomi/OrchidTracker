@@ -18,6 +18,12 @@ pub struct AnalysisResult {
     pub temp_range: String,
     pub placement_suggestion: String,
     pub conservation_status: Option<String>,
+    #[serde(default)]
+    pub native_region: Option<String>,
+    #[serde(default)]
+    pub native_latitude: Option<f64>,
+    #[serde(default)]
+    pub native_longitude: Option<f64>,
 }
 
 #[component]

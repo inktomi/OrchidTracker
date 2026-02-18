@@ -139,6 +139,16 @@ async fn main() {
         }
     });
 
+    // Spawn habitat weather polling task (every 2 hours)
+    tokio::spawn(async move {
+        // Initial delay to let the server fully start
+        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        loop {
+            orchid_tracker::climate::habitat_poller::poll_habitat_weather().await;
+            tokio::time::sleep(std::time::Duration::from_secs(2 * 60 * 60)).await;
+        }
+    });
+
     let listener = tokio::net::TcpListener::bind(&cfg.site_addr).await.unwrap();
     tracing::info!("Listening on http://{}", cfg.site_addr);
     axum::serve(listener, app.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.unwrap();
