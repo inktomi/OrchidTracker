@@ -8,6 +8,23 @@ use surrealdb::types::SurrealValue;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
+pub enum LocationType {
+    Indoor,
+    Outdoor,
+}
+
+impl fmt::Display for LocationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LocationType::Indoor => write!(f, "Indoor"),
+            LocationType::Outdoor => write!(f, "Outdoor"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum FitCategory {
     #[serde(rename = "Good Fit")]
     GoodFit,
@@ -51,39 +68,33 @@ impl fmt::Display for LightRequirement {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
-#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
-pub enum Placement {
-    Low,
-    Medium,
-    High,
-    Patio,
-    OutdoorRack,
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
+pub struct GrowingZone {
+    pub id: String,
+    pub name: String,
+    pub light_level: LightRequirement,
+    pub location_type: LocationType,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub temperature_range: String,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub humidity: String,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub description: String,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub sort_order: i32,
 }
 
-impl fmt::Display for Placement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Placement::Low => write!(f, "Low Light Area"),
-            Placement::Medium => write!(f, "Medium Light Area"),
-            Placement::High => write!(f, "High Light Area"),
-            Placement::Patio => write!(f, "Patio (Outdoors)"),
-            Placement::OutdoorRack => write!(f, "Outdoor Rack"),
-        }
-    }
-}
-
-impl Placement {
-    pub fn is_compatible_with(&self, req: &LightRequirement) -> bool {
-        matches!(
-            (self, req),
-            (Placement::Low, LightRequirement::Low)
-                | (Placement::Medium, LightRequirement::Medium)
-                | (Placement::High, LightRequirement::High)
-                | (Placement::Patio, LightRequirement::Medium)
-                | (Placement::Patio, LightRequirement::High)
-                | (Placement::OutdoorRack, LightRequirement::High)
-        )
-    }
+/// Check if an orchid's placement zone provides compatible light for its requirements.
+/// Returns true if compatible or if the zone is unknown.
+pub fn check_zone_compatibility(placement: &str, light_req: &LightRequirement, zones: &[GrowingZone]) -> bool {
+    zones.iter()
+        .find(|z| z.name == placement)
+        .map(|z| z.light_level == *light_req)
+        .unwrap_or(true)
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -107,7 +118,7 @@ pub struct Orchid {
     pub water_frequency_days: u32,
     pub light_requirement: LightRequirement,
     pub notes: String,
-    pub placement: Placement,
+    pub placement: String,
     pub light_lux: String,
     pub temperature_range: String,
     #[serde(default)]
@@ -118,31 +129,40 @@ pub struct Orchid {
     pub history: Vec<LogEntry>,
 }
 
-impl Orchid {
-    pub fn suggested_placement(&self) -> Placement {
-        match self.light_requirement {
-            LightRequirement::Low => Placement::Low,
-            LightRequirement::Medium => Placement::Medium,
-            LightRequirement::High => Placement::High,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_placement_compatibility() {
-        assert!(Placement::Low.is_compatible_with(&LightRequirement::Low));
-        assert!(!Placement::Low.is_compatible_with(&LightRequirement::High));
+    fn test_zone_compatibility() {
+        let zones = vec![
+            GrowingZone {
+                id: "1".into(),
+                name: "Low Light Area".into(),
+                light_level: LightRequirement::Low,
+                location_type: LocationType::Indoor,
+                temperature_range: String::new(),
+                humidity: String::new(),
+                description: String::new(),
+                sort_order: 0,
+            },
+            GrowingZone {
+                id: "2".into(),
+                name: "High Light Area".into(),
+                light_level: LightRequirement::High,
+                location_type: LocationType::Indoor,
+                temperature_range: String::new(),
+                humidity: String::new(),
+                description: String::new(),
+                sort_order: 1,
+            },
+        ];
 
-        assert!(Placement::Patio.is_compatible_with(&LightRequirement::Medium));
-        assert!(Placement::Patio.is_compatible_with(&LightRequirement::High));
-        assert!(!Placement::Patio.is_compatible_with(&LightRequirement::Low));
-
-        assert!(Placement::OutdoorRack.is_compatible_with(&LightRequirement::High));
-        assert!(!Placement::OutdoorRack.is_compatible_with(&LightRequirement::Low));
+        assert!(check_zone_compatibility("Low Light Area", &LightRequirement::Low, &zones));
+        assert!(!check_zone_compatibility("Low Light Area", &LightRequirement::High, &zones));
+        assert!(check_zone_compatibility("High Light Area", &LightRequirement::High, &zones));
+        // Unknown zone = don't flag
+        assert!(check_zone_compatibility("Unknown Zone", &LightRequirement::High, &zones));
     }
 
     #[test]
@@ -154,7 +174,7 @@ mod tests {
             water_frequency_days: 7,
             light_requirement: LightRequirement::Medium,
             notes: "Notes".into(),
-            placement: Placement::Medium,
+            placement: "Medium Light Area".to_string(),
             light_lux: "1000".into(),
             temperature_range: "20-30C".into(),
             conservation_status: Some("CITES II".into()),
@@ -165,24 +185,6 @@ mod tests {
         assert_eq!(orchid.light_requirement, LightRequirement::Medium);
         assert_eq!(orchid.history.len(), 0);
         assert_eq!(orchid.conservation_status, Some("CITES II".into()));
-    }
-
-    #[test]
-    fn test_suggested_placement() {
-        let orchid = Orchid {
-            id: "test:1".into(),
-            name: "Test".into(),
-            species: "Test".into(),
-            water_frequency_days: 7,
-            light_requirement: LightRequirement::High,
-            notes: String::new(),
-            placement: Placement::Low,
-            light_lux: String::new(),
-            temperature_range: String::new(),
-            conservation_status: None,
-            history: Vec::new(),
-        };
-        assert_eq!(orchid.suggested_placement(), Placement::High);
     }
 
     #[test]

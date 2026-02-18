@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use crate::components::cabinet_table::OrchidCabinetTable;
 use crate::components::orchid_card::OrchidCard;
 use crate::model::ViewMode;
-use crate::orchid::Orchid;
+use crate::orchid::{Orchid, GrowingZone};
 
 const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold text-primary bg-surface rounded-lg shadow-sm cursor-pointer border-none transition-all dark:text-primary-light";
 const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-transparent rounded-lg cursor-pointer border-none transition-all hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200";
@@ -10,6 +10,7 @@ const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium text-stone-500 bg-tran
 #[component]
 pub fn OrchidCollection(
     orchids_resource: Resource<Result<Vec<Orchid>, ServerFnError>>,
+    zones: Memo<Vec<GrowingZone>>,
     view_mode: Memo<ViewMode>,
     on_set_view: impl Fn(ViewMode) + 'static + Copy + Send + Sync,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -38,6 +39,8 @@ pub fn OrchidCollection(
             {move || orchids_resource.get().map(|result| {
                 let orchids = result.unwrap_or_default();
                 let orchids_for_table = orchids.clone();
+                let current_zones = zones.get();
+                let zones_for_table = current_zones.clone();
                 match view_mode.get() {
                     ViewMode::Grid => view! {
                         <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
@@ -46,9 +49,11 @@ pub fn OrchidCollection(
                                 key=|orchid| orchid.id.clone()
                                 children=move |orchid| {
                                     let orchid_clone = orchid.clone();
+                                    let zones_clone = current_zones.clone();
                                     view! {
                                         <OrchidCard
                                             orchid=orchid_clone
+                                            zones=zones_clone
                                             on_delete=on_delete
                                             on_select=on_select
                                         />
@@ -60,6 +65,7 @@ pub fn OrchidCollection(
                     ViewMode::Table => view! {
                         <OrchidCabinetTable
                             orchids=orchids_for_table
+                            zones=zones_for_table
                             on_delete=on_delete
                             on_select=on_select
                             on_update=on_update

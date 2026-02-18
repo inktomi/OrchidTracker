@@ -1,4 +1,4 @@
-use orchid_tracker::orchid::{Orchid, LightRequirement, Placement, FitCategory};
+use orchid_tracker::orchid::{Orchid, LightRequirement, FitCategory};
 
 #[test]
 fn test_orchid_json_serialization() {
@@ -9,7 +9,7 @@ fn test_orchid_json_serialization() {
         water_frequency_days: 10,
         light_requirement: LightRequirement::Low,
         notes: "Test Note".into(),
-        placement: Placement::High,
+        placement: "High Light Area".to_string(),
         light_lux: "500".into(),
         temperature_range: "15-25C".into(),
         conservation_status: Some("Endangered".into()),
@@ -27,14 +27,6 @@ fn test_orchid_json_serialization() {
     assert_eq!(orchid.light_requirement, deserialized.light_requirement);
     assert_eq!(orchid.placement, deserialized.placement);
     assert_eq!(orchid.conservation_status, deserialized.conservation_status);
-}
-
-#[test]
-fn test_placement_serialization() {
-    let p = Placement::OutdoorRack;
-    let json = serde_json::to_string(&p).expect("Failed to serialize");
-    let d: Placement = serde_json::from_str(&json).expect("Failed to deserialize");
-    assert_eq!(p, d);
 }
 
 #[test]

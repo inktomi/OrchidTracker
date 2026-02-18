@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::pages::home::HomePage;
 use crate::pages::login::LoginPage;
 use crate::pages::register::RegisterPage;
+use crate::pages::onboarding::OnboardingPage;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClimateData {
@@ -52,6 +53,7 @@ pub fn App() -> impl IntoView {
                 <Route path=path!("/") view=HomePage />
                 <Route path=path!("/login") view=LoginPage />
                 <Route path=path!("/register") view=RegisterPage />
+                <Route path=path!("/onboarding") view=OnboardingPage />
             </Routes>
         </Router>
     }

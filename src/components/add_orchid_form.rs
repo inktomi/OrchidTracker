@@ -1,10 +1,11 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, Placement};
+use crate::orchid::{Orchid, LightRequirement, GrowingZone};
 use crate::components::scanner::AnalysisResult;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE};
 
 #[component]
 pub fn AddOrchidForm(
+    zones: Vec<GrowingZone>,
     on_add: impl Fn(Orchid) + 'static + Send + Sync,
     on_close: impl Fn() + 'static + Copy + Send + Sync,
     prefill_data: Memo<Option<AnalysisResult>>,
@@ -13,11 +14,14 @@ pub fn AddOrchidForm(
     let (species, set_species) = signal(String::new());
     let (water_freq, set_water_freq) = signal("7".to_string());
     let (light, set_light) = signal("Medium".to_string());
-    let (placement, set_placement) = signal("Medium".to_string());
+    let default_placement = zones.first().map(|z| z.name.clone()).unwrap_or_default();
+    let (placement, set_placement) = signal(default_placement);
     let (notes, set_notes) = signal(String::new());
     let (lux, set_lux) = signal(String::new());
     let (temp, set_temp) = signal(String::new());
     let (conservation, set_conservation) = signal(String::new());
+
+    let zones_for_prefill = zones.clone();
 
     Effect::new(move |_| {
         if let Some(data) = prefill_data.get() {
@@ -32,14 +36,15 @@ pub fn AddOrchidForm(
             };
             set_light.set(light_val.to_string());
 
-             let place_val = match data.placement_suggestion.to_lowercase().as_str() {
-                "low" | "low light" => "Low",
-                "high" | "high light" => "High",
-                "patio" => "Patio",
-                "outdoorrack" | "outdoor rack" => "OutdoorRack",
-                _ => "Medium",
-            };
-            set_placement.set(place_val.to_string());
+            // Find best matching zone from scanner suggestion
+            let suggestion = data.placement_suggestion.to_lowercase();
+            let best_zone = zones_for_prefill.iter().find(|z| {
+                z.name.to_lowercase().contains(&suggestion)
+            }).or_else(|| zones_for_prefill.first());
+
+            if let Some(zone) = best_zone {
+                set_placement.set(zone.name.clone());
+            }
 
             set_temp.set(data.temp_range);
 
@@ -60,18 +65,10 @@ pub fn AddOrchidForm(
             "High" => LightRequirement::High,
             _ => LightRequirement::Medium,
         };
-        let place = match placement.get().as_str() {
-             "Low" => Placement::Low,
-             "High" => Placement::High,
-             "Patio" => Placement::Patio,
-             "OutdoorRack" => Placement::OutdoorRack,
-             _ => Placement::Medium,
-        };
 
         let cons_status = conservation.get();
         let conservation_opt = if cons_status.is_empty() { None } else { Some(cons_status) };
 
-        // ID is a placeholder — server will generate the real one
         let new_orchid = Orchid {
             id: String::new(),
             name: name.get(),
@@ -79,7 +76,7 @@ pub fn AddOrchidForm(
             water_frequency_days: water_freq.get().parse().unwrap_or(7),
             light_requirement: light_req,
             notes: notes.get(),
-            placement: place,
+            placement: placement.get(),
             light_lux: lux.get(),
             temperature_range: temp.get(),
             conservation_status: conservation_opt,
@@ -93,7 +90,7 @@ pub fn AddOrchidForm(
         set_species.set(String::new());
         set_water_freq.set("7".to_string());
         set_light.set("Medium".to_string());
-        set_placement.set("Medium".to_string());
+        set_placement.set(String::new());
         set_notes.set(String::new());
         set_lux.set(String::new());
         set_temp.set(String::new());
@@ -155,16 +152,18 @@ pub fn AddOrchidForm(
                         </div>
                         <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                              <div class="flex-1">
-                                <label>"Placement:"</label>
+                                <label>"Zone:"</label>
                                 <select
                                     on:change=move |ev| set_placement.set(event_target_value(&ev))
                                     prop:value=placement
                                 >
-                                    <option value="Low">"Low Light Area"</option>
-                                    <option value="Medium">"Medium Light Area"</option>
-                                    <option value="High">"High Light Area"</option>
-                                    <option value="Patio">"Patio (Outdoors)"</option>
-                                    <option value="OutdoorRack">"Outdoor Rack"</option>
+                                    {zones.iter().map(|zone| {
+                                        let name = zone.name.clone();
+                                        let label = format!("{} ({})", zone.name, zone.light_level);
+                                        view! {
+                                            <option value=name>{label}</option>
+                                        }
+                                    }).collect::<Vec<_>>()}
                                 </select>
                             </div>
                              <div class="flex-1">

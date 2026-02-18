@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::orchid::{Orchid, FitCategory, LightRequirement};
+use crate::orchid::{Orchid, FitCategory, LightRequirement, GrowingZone};
 use crate::app::ClimateData;
 use super::{MODAL_OVERLAY, BTN_PRIMARY, BTN_GHOST};
 
@@ -27,6 +27,7 @@ pub fn ScannerModal(
     on_add_to_collection: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
     existing_orchids: Vec<Orchid>,
     climate_data: Vec<ClimateData>,
+    zones: Vec<GrowingZone>,
 ) -> impl IntoView {
     let (is_scanning, set_is_scanning) = signal(false);
     let (analysis_result, set_analysis_result) = signal::<Option<AnalysisResult>>(None);
@@ -39,11 +40,14 @@ pub fn ScannerModal(
     {
         drop(existing_orchids);
         drop(climate_data);
+        drop(zones);
     }
     #[cfg(feature = "hydrate")]
     let existing_orchids = StoredValue::new(existing_orchids);
     #[cfg(feature = "hydrate")]
     let climate_data = StoredValue::new(climate_data);
+    #[cfg(feature = "hydrate")]
+    let zones = StoredValue::new(zones);
 
     #[cfg(feature = "hydrate")]
     let (facing_mode, set_facing_mode) = signal("environment".to_string());
@@ -147,6 +151,10 @@ pub fn ScannerModal(
                 orchids.iter().map(|o| o.species.clone()).collect()
             });
 
+            let zone_names: Vec<String> = zones.with_value(|z| {
+                z.iter().map(|zone| zone.name.clone()).collect()
+            });
+
             let summary = climate_data.with_value(|cd| {
                 if cd.is_empty() {
                     "Unknown climate".to_string()
@@ -162,6 +170,7 @@ pub fn ScannerModal(
                     base64_image,
                     existing_names,
                     summary,
+                    zone_names,
                 ).await {
                     Ok(result) => set_analysis_result.set(Some(result)),
                     Err(e) => set_error_msg.set(Some(format!("Analysis failed: {}", e))),

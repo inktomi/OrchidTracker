@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, Placement};
+use crate::orchid::{Orchid, LightRequirement, GrowingZone};
 use chrono::Local;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
 
@@ -13,19 +13,10 @@ fn light_req_to_key(lr: &LightRequirement) -> String {
     }
 }
 
-fn placement_to_key(p: &Placement) -> String {
-    match p {
-        Placement::Low => "Low".to_string(),
-        Placement::Medium => "Medium".to_string(),
-        Placement::High => "High".to_string(),
-        Placement::Patio => "Patio".to_string(),
-        Placement::OutdoorRack => "OutdoorRack".to_string(),
-    }
-}
-
 #[component]
 pub fn OrchidDetail(
     orchid: Orchid,
+    zones: Vec<GrowingZone>,
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
@@ -39,11 +30,13 @@ pub fn OrchidDetail(
     let (edit_species, set_edit_species) = signal(orchid.species.clone());
     let (edit_water_freq, set_edit_water_freq) = signal(orchid.water_frequency_days.to_string());
     let (edit_light_req, set_edit_light_req) = signal(light_req_to_key(&orchid.light_requirement));
-    let (edit_placement, set_edit_placement) = signal(placement_to_key(&orchid.placement));
+    let (edit_placement, set_edit_placement) = signal(orchid.placement.clone());
     let (edit_light_lux, set_edit_light_lux) = signal(orchid.light_lux.clone());
     let (edit_temp_range, set_edit_temp_range) = signal(orchid.temperature_range.clone());
     let (edit_notes, set_edit_notes) = signal(orchid.notes.clone());
     let (edit_conservation, set_edit_conservation) = signal(orchid.conservation_status.clone().unwrap_or_default());
+
+    let zones_for_edit = zones;
 
     let format_date = |dt: chrono::DateTime<chrono::Utc>| {
         dt.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string()
@@ -57,11 +50,10 @@ pub fn OrchidDetail(
         let orchid_id = orchid_signal.get().id.clone();
 
         leptos::task::spawn_local(async move {
-            // TODO: Image upload via /api/images/upload multipart
             let _ = crate::server_fns::orchids::add_log_entry(
                 orchid_id,
                 current_note,
-                None, // image_filename — will be added in Phase 5
+                None,
             ).await;
 
             set_is_syncing.set(false);
@@ -79,13 +71,6 @@ pub fn OrchidDetail(
             "High" => LightRequirement::High,
             _ => LightRequirement::Medium,
         };
-        let place = match edit_placement.get().as_str() {
-            "Low" => Placement::Low,
-            "High" => Placement::High,
-            "Patio" => Placement::Patio,
-            "OutdoorRack" => Placement::OutdoorRack,
-            _ => Placement::Medium,
-        };
 
         let cons = edit_conservation.get();
         let conservation_opt = if cons.is_empty() { None } else { Some(cons) };
@@ -97,7 +82,7 @@ pub fn OrchidDetail(
             water_frequency_days: edit_water_freq.get().parse().unwrap_or(7),
             light_requirement: light_req,
             notes: edit_notes.get(),
-            placement: place,
+            placement: edit_placement.get(),
             light_lux: edit_light_lux.get(),
             temperature_range: edit_temp_range.get(),
             conservation_status: conservation_opt,
@@ -115,7 +100,7 @@ pub fn OrchidDetail(
         set_edit_species.set(current.species);
         set_edit_water_freq.set(current.water_frequency_days.to_string());
         set_edit_light_req.set(light_req_to_key(&current.light_requirement));
-        set_edit_placement.set(placement_to_key(&current.placement));
+        set_edit_placement.set(current.placement);
         set_edit_light_lux.set(current.light_lux);
         set_edit_temp_range.set(current.temperature_range);
         set_edit_notes.set(current.notes);
@@ -138,7 +123,7 @@ pub fn OrchidDetail(
                                         set_edit_species.set(current.species);
                                         set_edit_water_freq.set(current.water_frequency_days.to_string());
                                         set_edit_light_req.set(light_req_to_key(&current.light_requirement));
-                                        set_edit_placement.set(placement_to_key(&current.placement));
+                                        set_edit_placement.set(current.placement);
                                         set_edit_light_lux.set(current.light_lux);
                                         set_edit_temp_range.set(current.temperature_range);
                                         set_edit_notes.set(current.notes);
@@ -153,6 +138,7 @@ pub fn OrchidDetail(
                 </div>
                 <div>
                     {move || {
+                        let zones_ref = zones_for_edit.clone();
                         if is_editing.get() {
                             view! {
                                 <div class="mb-6">
@@ -204,16 +190,18 @@ pub fn OrchidDetail(
                                         </div>
                                         <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                                             <div class="flex-1">
-                                                <label>"Placement:"</label>
+                                                <label>"Zone:"</label>
                                                 <select
                                                     prop:value=edit_placement
                                                     on:change=move |ev| set_edit_placement.set(event_target_value(&ev))
                                                 >
-                                                    <option value="Low">"Low Light Area"</option>
-                                                    <option value="Medium">"Medium Light Area"</option>
-                                                    <option value="High">"High Light Area"</option>
-                                                    <option value="Patio">"Patio (Outdoors)"</option>
-                                                    <option value="OutdoorRack">"Outdoor Rack"</option>
+                                                    {zones_ref.iter().map(|zone| {
+                                                        let name = zone.name.clone();
+                                                        let label = format!("{} ({})", zone.name, zone.light_level);
+                                                        view! {
+                                                            <option value=name>{label}</option>
+                                                        }
+                                                    }).collect::<Vec<_>>()}
                                                 </select>
                                             </div>
                                             <div class="flex-1">

@@ -152,7 +152,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     use crate::error::internal_error;
 
     let light_req_str = orchid.light_requirement.to_string();
-    let placement_str = orchid.placement.to_string();
+    let placement_str = orchid.placement.clone();
 
     validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, &light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
 

@@ -79,7 +79,7 @@ fn execute_cmd(cmd: Cmd) {
 mod tests {
     use super::*;
     use crate::model::ViewMode;
-    use crate::orchid::{LightRequirement, Orchid, Placement};
+    use crate::orchid::{LightRequirement, Orchid};
 
     fn test_orchid(id: &str) -> Orchid {
         Orchid {
@@ -89,7 +89,7 @@ mod tests {
             water_frequency_days: 7,
             light_requirement: LightRequirement::Medium,
             notes: String::new(),
-            placement: Placement::Medium,
+            placement: "Medium Light Area".to_string(),
             light_lux: String::new(),
             temperature_range: String::new(),
             conservation_status: None,

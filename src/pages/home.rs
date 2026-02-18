@@ -10,6 +10,7 @@ use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid};
+use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
 
 #[component]
@@ -19,6 +20,20 @@ pub fn HomePage() -> impl IntoView {
 
     // Load orchids from server
     let orchids_resource = Resource::new(|| (), |_| get_orchids());
+
+    // Run legacy migration once on load, then load zones
+    let migration_resource = Resource::new(|| (), |_| migrate_legacy_placements());
+    let (zones_version, set_zones_version) = signal(0u32);
+    let zones_resource = Resource::new(
+        move || (migration_resource.get(), zones_version.get()),
+        |_| get_zones(),
+    );
+
+    let zones_memo = Memo::new(move |_| {
+        zones_resource.get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+    });
 
     // TEA model + dispatch
     let (model, set_model) = signal(Model::default());
@@ -48,7 +63,7 @@ pub fn HomePage() -> impl IntoView {
                 orchid.water_frequency_days,
                 orchid.light_requirement.to_string(),
                 orchid.notes,
-                orchid.placement.to_string(),
+                orchid.placement.clone(),
                 orchid.light_lux,
                 orchid.temperature_range,
                 orchid.conservation_status,
@@ -79,11 +94,32 @@ pub fn HomePage() -> impl IntoView {
         });
     };
 
+    let on_zones_changed = move || {
+        set_zones_version.update(|v| *v += 1);
+    };
+
     view! {
         <Suspense fallback=move || view! { <p class="p-8 text-center text-stone-500">"Loading..."</p> }>
             {move || {
                 user.get().map(|result| match result {
-                    Ok(Some(_user_info)) => view! { <div></div> }.into_any(),
+                    Ok(Some(_user_info)) => {
+                        // Check if user needs onboarding (no zones)
+                        let zones = zones_memo.get();
+                        if zones.is_empty() {
+                            // Only redirect after migration has completed and zones are actually loaded
+                            if migration_resource.get().is_some() && zones_resource.get().is_some() {
+                                #[cfg(feature = "ssr")]
+                                leptos_axum::redirect("/onboarding");
+                                #[cfg(feature = "hydrate")]
+                                {
+                                    if let Some(window) = web_sys::window() {
+                                        let _ = window.location().set_href("/onboarding");
+                                    }
+                                }
+                            }
+                        }
+                        view! { <div></div> }.into_any()
+                    },
                     _ => {
                         #[cfg(feature = "ssr")]
                         leptos_axum::redirect("/login");
@@ -112,6 +148,7 @@ pub fn HomePage() -> impl IntoView {
 
             <OrchidCollection
                 orchids_resource=orchids_resource
+                zones=zones_memo
                 view_mode=view_mode
                 on_set_view=move |mode| send(Msg::SetViewMode(mode))
                 on_delete=on_delete
@@ -120,8 +157,10 @@ pub fn HomePage() -> impl IntoView {
             />
 
             {move || show_add_modal.get().then(|| {
+                let current_zones = zones_memo.get();
                 view! {
                     <AddOrchidForm
+                        zones=current_zones
                         on_add=on_add
                         on_close=move || send(Msg::ShowAddModal(false))
                         prefill_data=prefill_data
@@ -130,9 +169,11 @@ pub fn HomePage() -> impl IntoView {
             })}
 
             {move || selected_orchid.get().map(|orchid| {
+                let current_zones = zones_memo.get();
                 view! {
                     <OrchidDetail
                         orchid=orchid
+                        zones=current_zones
                         on_close=move || send(Msg::SelectOrchid(None))
                         on_update=on_update
                     />
@@ -140,19 +181,26 @@ pub fn HomePage() -> impl IntoView {
             })}
 
             {move || show_settings.get().then(|| {
+                let current_zones = zones_memo.get();
                 view! {
-                    <SettingsModal on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit }) />
+                    <SettingsModal
+                        zones=current_zones
+                        on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit })
+                        on_zones_changed=on_zones_changed
+                    />
                 }.into_any()
             })}
 
             {move || show_scanner.get().then(|| {
                 let orchids = orchids_resource.get().and_then(|r| r.ok()).unwrap_or_default();
+                let current_zones = zones_memo.get();
                 view! {
                     <ScannerModal
                         on_close=move || send(Msg::ShowScanner(false))
                         on_add_to_collection=move |result| send(Msg::HandleScanResult(result))
                         existing_orchids=orchids
                         climate_data=climate_data.get_value()
+                        zones=current_zones
                     />
                 }.into_any()
             })}

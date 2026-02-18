@@ -1,16 +1,17 @@
 use leptos::prelude::*;
-use crate::orchid::Orchid;
+use crate::orchid::{Orchid, GrowingZone, check_zone_compatibility};
 use super::BTN_DANGER;
 
 #[component]
 pub fn OrchidCard(
     orchid: Orchid,
+    zones: Vec<GrowingZone>,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     let orchid_id = orchid.id.clone();
     let orchid_clone = orchid.clone();
-    let is_misplaced = !orchid.placement.is_compatible_with(&orchid.light_requirement);
+    let is_misplaced = !check_zone_compatibility(&orchid.placement, &orchid.light_requirement, &zones);
     let suggestion_msg = if is_misplaced {
         format!("Needs {}", orchid.light_requirement)
     } else {
@@ -50,8 +51,8 @@ pub fn OrchidCard(
                         <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.light_requirement.to_string()}</div>
                     </div>
                     <div>
-                        <div class="text-xs tracking-wide text-stone-400">"Shelf"</div>
-                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.placement.to_string()}</div>
+                        <div class="text-xs tracking-wide text-stone-400">"Zone"</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.placement.clone()}</div>
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Temp"</div>
