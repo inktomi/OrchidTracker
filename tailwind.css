@@ -167,3 +167,52 @@ html.dark {
   0%, 100% { transform: translateY(0) scale(1); opacity: 0.35; }
   50%      { transform: translateY(-6px) scale(1.15); opacity: 0.6; }
 }
+
+/* ── Botanical line-art SVG animations ──────────────────────────────── */
+
+/* Line-drawing reveal: paths draw themselves on page load */
+.botanical-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: botanical-line-draw 2.5s ease-out forwards;
+}
+.botanical-draw circle {
+  opacity: 0;
+  animation: botanical-dot-appear 0.4s ease-out forwards;
+}
+
+@keyframes botanical-line-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes botanical-dot-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Staggered delays — groups draw in sequence from leaves → stem → blooms → buds */
+.bo-delay-0 path  { animation-delay: 0s; }
+.bo-delay-0 circle { animation-delay: 2.0s; }
+.bo-delay-1 path  { animation-delay: 0.4s; }
+.bo-delay-1 circle { animation-delay: 2.2s; }
+.bo-delay-2 path  { animation-delay: 1.0s; }
+.bo-delay-3 path  { animation-delay: 1.4s; }
+.bo-delay-4 path  { animation-delay: 1.8s; }
+.bo-delay-5 path  { animation-delay: 2.2s; }
+.bo-delay-6 path  { animation-delay: 2.6s; }
+.bo-delay-6 circle { animation-delay: 3.0s; }
+
+/* Gentle breathing for home page background accent */
+.botanical-breathe {
+  animation: botanical-gentle-breathe 8s ease-in-out infinite;
+}
+@keyframes botanical-gentle-breathe {
+  0%, 100% { opacity: 0.035; transform: scale(1) rotate(0deg); }
+  50%      { opacity: 0.055; transform: scale(1.01) rotate(0.5deg); }
+}
+html.dark .botanical-breathe {
+  animation-name: botanical-gentle-breathe-dark;
+}
+@keyframes botanical-gentle-breathe-dark {
+  0%, 100% { opacity: 0.05; transform: scale(1) rotate(0deg); }
+  50%      { opacity: 0.07; transform: scale(1.01) rotate(0.5deg); }
+}

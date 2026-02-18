@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use crate::components::add_orchid_form::AddOrchidForm;
 use crate::components::app_header::AppHeader;
+use crate::components::botanical_art::OrchidAccent;
 use crate::components::climate_dashboard::ClimateDashboard;
 use crate::components::orchid_collection::OrchidCollection;
 use crate::components::orchid_detail::OrchidDetail;
@@ -150,7 +151,14 @@ pub fn HomePage() -> impl IntoView {
             on_settings=move || send(Msg::ShowSettings(true))
         />
 
-        <main class="py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
+        // Botanical background art — subtle fixed orchid accent
+        <div class="overflow-hidden fixed inset-0 z-0 pointer-events-none">
+            <div class="absolute -bottom-4 -right-8 text-primary botanical-breathe">
+                <OrchidAccent class="w-64 h-auto sm:w-72" />
+            </div>
+        </div>
+
+        <main class="relative z-10 py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
             <Suspense fallback=|| ()>
                 {move || {
                     let readings = climate_readings.get();

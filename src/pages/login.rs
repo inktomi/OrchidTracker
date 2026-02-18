@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+use crate::components::botanical_art::OrchidSpray;
 use crate::server_fns::auth::login;
 
 const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
@@ -40,6 +41,9 @@ pub fn LoginPage() -> impl IntoView {
                 <div class="absolute inset-0 auth-glow-green"></div>
                 <div class="absolute inset-0 auth-glow-gold"></div>
                 <div class="absolute inset-0 auth-grid opacity-[0.04]"></div>
+                <div class="flex absolute inset-0 justify-center items-center botanical-draw text-white/[0.07]">
+                    <OrchidSpray class="w-[75%] max-w-[360px] h-auto" />
+                </div>
                 <div class="flex relative z-10 flex-col justify-between p-12 xl:p-16">
                     // Top — brand
                     <div>

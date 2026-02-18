@@ -7,6 +7,7 @@ pub mod orchid_card;
 pub mod add_orchid_form;
 pub mod app_header;
 pub mod orchid_collection;
+pub mod botanical_art;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 
