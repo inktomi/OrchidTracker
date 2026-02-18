@@ -3192,6 +3192,7 @@ name = "orchid-tracker"
 version = "0.2.0"
 dependencies = [
  "argon2",
+ "async-trait",
  "axum",
  "chrono",
  "clap",

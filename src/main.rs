@@ -11,7 +11,8 @@ async fn main() {
     use tower_http::services::ServeDir;
     use tower_http::limit::RequestBodyLimitLayer;
     use tower_http::set_header::SetResponseHeaderLayer;
-    use tower_sessions::{MemoryStore, SessionManagerLayer, Expiry};
+    use tower_sessions::{SessionManagerLayer, Expiry};
+    use orchid_tracker::session_store::SurrealSessionStore;
     use tower_governor::GovernorLayer;
     use tower_governor::governor::GovernorConfigBuilder;
     use time::Duration;
@@ -47,9 +48,9 @@ async fn main() {
         }
     }
 
-    // Session layer
-    let session_store = MemoryStore::default();
-    let session_layer = SessionManagerLayer::new(session_store)
+    // Session layer (SurrealDB-backed for persistence across restarts)
+    let session_store = SurrealSessionStore;
+    let session_layer = SessionManagerLayer::new(session_store.clone())
         .with_expiry(Expiry::OnInactivity(Duration::days(7)))
         .with_same_site(tower_sessions::cookie::SameSite::Strict)
         .with_http_only(true)
@@ -121,11 +122,12 @@ async fn main() {
         .layer(governor_layer)
         .with_state(leptos_options);
 
-    // Spawn background task to periodically clean up rate limiter state
+    // Spawn background task to periodically clean up rate limiter + expired sessions
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             governor_limiter.retain_recent();
+            session_store.cleanup_expired().await;
         }
     });
 
