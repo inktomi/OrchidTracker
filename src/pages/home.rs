@@ -151,8 +151,9 @@ pub fn HomePage() -> impl IntoView {
             on_settings=move || send(Msg::ShowSettings(true))
         />
 
-        // Botanical background art — subtle fixed orchid accent
+        // Botanical background art + subtle green glow
         <div class="overflow-hidden fixed inset-0 z-0 pointer-events-none">
+            <div class="absolute top-0 right-0 left-0 h-64 bg-gradient-to-b to-transparent from-primary/[0.04] dark:from-primary-light/[0.06]"></div>
             <div class="absolute -bottom-4 -right-8 text-primary botanical-breathe">
                 <OrchidAccent class="w-64 h-auto sm:w-72" />
             </div>
