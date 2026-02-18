@@ -10,6 +10,37 @@ pub struct SurrealSessionStore;
 
 #[async_trait]
 impl session_store::SessionStore for SurrealSessionStore {
+    async fn create(&self, record: &mut Record) -> session_store::Result<()> {
+        let data = serde_json::to_string(&record.data)
+            .map_err(|e| session_store::Error::Encode(e.to_string()))?;
+        let expiry = record.expiry_date.unix_timestamp();
+
+        // Retry with new IDs on collision (CREATE fails if record exists).
+        const MAX_RETRIES: u32 = 5;
+        for _ in 0..MAX_RETRIES {
+            let id = record.id.to_string();
+            let mut response = db()
+                .query("CREATE type::record('session', $id) SET data = $data, expiry = $expiry")
+                .bind(("id", id))
+                .bind(("data", data.clone()))
+                .bind(("expiry", expiry))
+                .await
+                .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+
+            let errors = response.take_errors();
+            if errors.is_empty() {
+                return Ok(());
+            }
+
+            // Collision — generate a new ID and retry
+            record.id = Id::default();
+        }
+
+        Err(session_store::Error::Backend(
+            "Session ID collision: exceeded max retries".to_string(),
+        ))
+    }
+
     async fn save(&self, record: &Record) -> session_store::Result<()> {
         let id = record.id.to_string();
         let data = serde_json::to_string(&record.data)
