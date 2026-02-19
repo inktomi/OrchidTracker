@@ -9,10 +9,11 @@ const BTN_SM: &str = "py-1.5 px-3 text-xs font-semibold rounded-lg border-none c
 #[component]
 pub fn SettingsModal(
     zones: Vec<GrowingZone>,
+    initial_temp_unit: String,
     on_close: impl Fn(String) + 'static + Copy + Send + Sync,
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
-    let (temp_unit, set_temp_unit) = signal("C".to_string());
+    let (temp_unit, set_temp_unit) = signal(initial_temp_unit);
 
     // Zone management state
     let (show_add_zone, set_show_add_zone) = signal(false);
@@ -541,22 +542,39 @@ fn NotificationSettings() -> impl IntoView {
     let (is_enabled, set_is_enabled) = signal(false);
     let (is_testing, set_is_testing) = signal(false);
 
+    // Check both browser permission AND server-side subscription state
     #[cfg(feature = "hydrate")]
     {
         Effect::new(move |_| {
             let perm = web_sys::Notification::permission();
             match perm {
-                web_sys::NotificationPermission::Granted => {
-                    set_permission_status.set("Granted".into());
-                    set_is_enabled.set(true);
-                }
                 web_sys::NotificationPermission::Denied => {
                     set_permission_status.set("Denied (change in browser settings)".into());
                     set_is_enabled.set(false);
                 }
-                _ => {
+                web_sys::NotificationPermission::Default => {
                     set_permission_status.set("Not yet requested".into());
                     set_is_enabled.set(false);
+                }
+                web_sys::NotificationPermission::Granted | _ => {
+                    // Permission granted, but check if we actually have
+                    // a server-side subscription (user may have toggled off)
+                    leptos::task::spawn_local(async move {
+                        match crate::server_fns::alerts::has_push_subscription().await {
+                            Ok(true) => {
+                                set_permission_status.set("Granted".into());
+                                set_is_enabled.set(true);
+                            }
+                            Ok(false) => {
+                                set_permission_status.set("Disabled".into());
+                                set_is_enabled.set(false);
+                            }
+                            Err(_) => {
+                                set_permission_status.set("Granted".into());
+                                set_is_enabled.set(false);
+                            }
+                        }
+                    });
                 }
             }
         });

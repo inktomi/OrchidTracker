@@ -249,9 +249,11 @@ pub fn HomePage() -> impl IntoView {
 
                             {move || show_settings.get().then(|| {
                                 let current_zones = zones_memo.get();
+                                let current_temp_unit = temp_unit.get();
                                 view! {
                                     <SettingsModal
                                         zones=current_zones
+                                        initial_temp_unit=current_temp_unit
                                         on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit })
                                         on_zones_changed=on_zones_changed
                                     />

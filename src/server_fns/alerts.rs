@@ -116,6 +116,34 @@ pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
 }
 
 #[server]
+pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use surrealdb::types::SurrealValue;
+
+    let user_id = require_auth().await?;
+    let owner = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("Owner ID parse failed", e))?;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct CountRow {
+        count: i64,
+    }
+
+    let mut resp = db()
+        .query("SELECT count() FROM push_subscription WHERE owner = $owner GROUP ALL")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Check push sub query failed", e))?;
+
+    let _ = resp.take_errors();
+    let row: Option<CountRow> = resp.take(0).unwrap_or(None);
+    Ok(row.map(|r| r.count > 0).unwrap_or(false))
+}
+
+#[server]
 pub async fn send_test_push() -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
