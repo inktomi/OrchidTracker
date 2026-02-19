@@ -5,9 +5,9 @@ use crate::error::AppError;
 ///
 /// API docs: https://weatherflow.github.io/Tempest/api/
 /// GET /swd/rest/observations/station/{station_id}?token={token}
-/// Response `obs[0]` is an array of sensor values at documented indices:
-///   Index 7: air_temperature (Celsius)
-///   Index 8: relative_humidity (%)
+/// Response `obs[0]` can be either:
+///   - An object with named keys (e.g. "air_temperature", "relative_humidity")
+///   - A positional array where index 7 = air_temperature, index 8 = relative_humidity
 pub async fn fetch_tempest_reading(
     client: &reqwest::Client,
     station_id: &str,
@@ -38,35 +38,42 @@ pub async fn fetch_tempest_reading(
         .await
         .map_err(|e| AppError::Serialization(format!("Tempest response parse error: {}", e)))?;
 
-    // Extract the first observation array
     let obs = json
         .get("obs")
         .and_then(|o| o.get(0))
         .ok_or_else(|| AppError::Serialization("No observations in Tempest response".into()))?;
 
-    let obs_arr = obs.as_array().ok_or_else(|| {
-        AppError::Serialization(format!("obs[0] is not an array: {:?}", obs))
-    })?;
-
-    tracing::debug!("Tempest obs array length={}, values={:?}", obs_arr.len(), obs_arr);
-
-    let temp_c = obs_arr
-        .get(7)
-        .and_then(|v| v.as_f64())
-        .ok_or_else(|| AppError::Serialization(format!(
-            "Missing temperature at index 7 (array length={}, value={:?})",
-            obs_arr.len(),
-            obs_arr.get(7)
-        )))?;
-
-    let humidity = obs_arr
-        .get(8)
-        .and_then(|v| v.as_f64())
-        .ok_or_else(|| AppError::Serialization(format!(
-            "Missing humidity at index 8 (array length={}, value={:?})",
-            obs_arr.len(),
-            obs_arr.get(8)
-        )))?;
+    let (temp_c, humidity) = if obs.is_object() {
+        // Named-key format: {"air_temperature": 12.6, "relative_humidity": 60, ...}
+        let temp = obs.get("air_temperature")
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| AppError::Serialization(
+                "Missing 'air_temperature' in Tempest observation".into(),
+            ))?;
+        let hum = obs.get("relative_humidity")
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| AppError::Serialization(
+                "Missing 'relative_humidity' in Tempest observation".into(),
+            ))?;
+        (temp, hum)
+    } else if let Some(arr) = obs.as_array() {
+        // Positional array format: index 7 = temperature, index 8 = humidity
+        let temp = arr.get(7)
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| AppError::Serialization(format!(
+                "Missing temperature at index 7 (array length={})", arr.len(),
+            )))?;
+        let hum = arr.get(8)
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| AppError::Serialization(format!(
+                "Missing humidity at index 8 (array length={})", arr.len(),
+            )))?;
+        (temp, hum)
+    } else {
+        return Err(AppError::Serialization(format!(
+            "Unexpected obs[0] type: {:?}", obs
+        )));
+    };
 
     let vpd = calculate_vpd(temp_c, humidity);
 
