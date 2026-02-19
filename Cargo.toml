@@ -36,6 +36,9 @@ governor = { version = "0.10", optional = true }
 tower_governor = { version = "0.8", optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
 async-trait = { version = "0.1", optional = true }
+aes-gcm = { version = "0.10", optional = true }
+sha2 = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
 
 # Client-only
 console_error_panic_hook = { version = "0.1", optional = true }
@@ -70,6 +73,7 @@ ssr = [
     "dep:time", "dep:governor", "dep:tower_governor",
     "dep:clap",
     "dep:async-trait",
+    "dep:aes-gcm", "dep:sha2", "dep:base64",
 ]
 
 [package.metadata.leptos]

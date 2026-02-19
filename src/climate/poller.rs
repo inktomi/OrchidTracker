@@ -48,11 +48,11 @@ pub async fn poll_all_zones() {
             Some(t) => t.as_str(),
             None => continue,
         };
-        let config_str = &zone.data_source_config;
+        let config_str = crate::crypto::decrypt_or_raw(&zone.data_source_config);
 
         let reading = match source_type {
             "tempest" => {
-                let config: TempestConfig = match serde_json::from_str(config_str) {
+                let config: TempestConfig = match serde_json::from_str(&config_str) {
                     Ok(c) => c,
                     Err(e) => {
                         tracing::warn!("Climate poll: bad tempest config for zone '{}': {}", zone_name, e);
@@ -62,7 +62,7 @@ pub async fn poll_all_zones() {
                 tempest::fetch_tempest_reading(&client, &config.station_id, &config.token).await
             }
             "ac_infinity" => {
-                let config: AcInfinityConfig = match serde_json::from_str(config_str) {
+                let config: AcInfinityConfig = match serde_json::from_str(&config_str) {
                     Ok(c) => c,
                     Err(e) => {
                         tracing::warn!("Climate poll: bad ac_infinity config for zone '{}': {}", zone_name, e);

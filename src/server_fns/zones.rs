@@ -50,7 +50,7 @@ mod ssr_types {
                 description: self.description,
                 sort_order: self.sort_order,
                 data_source_type: self.data_source_type,
-                data_source_config: self.data_source_config,
+                data_source_config: crate::crypto::decrypt_or_raw(&self.data_source_config),
             }
         }
     }

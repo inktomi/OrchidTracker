@@ -169,11 +169,18 @@ pub async fn configure_zone_data_source(
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
+    use crate::crypto::encrypt;
 
     let user_id = require_auth().await?;
     let owner = parse_owner(&user_id)?;
     let zone_record = surrealdb::types::RecordId::parse_simple(&zone_id)
         .map_err(|e| internal_error("Zone ID parse failed", e))?;
+
+    let stored_config = if config_json.is_empty() {
+        config_json
+    } else {
+        encrypt(&config_json).map_err(|e| internal_error("Encrypt config failed", e))?
+    };
 
     let mut response = db()
         .query(
@@ -182,7 +189,7 @@ pub async fn configure_zone_data_source(
         .bind(("id", zone_record))
         .bind(("owner", owner))
         .bind(("provider", provider))
-        .bind(("config", config_json))
+        .bind(("config", stored_config))
         .await
         .map_err(|e| internal_error("Configure data source query failed", e))?;
 

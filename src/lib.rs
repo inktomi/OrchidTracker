@@ -20,6 +20,8 @@ pub mod climate;
 #[cfg(feature = "ssr")]
 pub mod config;
 #[cfg(feature = "ssr")]
+pub mod crypto;
+#[cfg(feature = "ssr")]
 pub mod session_store;
 
 #[cfg(feature = "hydrate")]
