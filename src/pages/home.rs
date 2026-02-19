@@ -135,20 +135,134 @@ pub fn HomePage() -> impl IntoView {
                     Ok(Some(_user_info)) => {
                         // Check if user needs onboarding (no zones)
                         let zones = zones_memo.get();
-                        if zones.is_empty() {
-                            // Only redirect after migration has completed and zones are actually loaded
-                            if migration_resource.get().is_some() && zones_resource.get().is_some() {
-                                #[cfg(feature = "ssr")]
-                                leptos_axum::redirect("/onboarding");
-                                #[cfg(feature = "hydrate")]
-                                {
-                                    if let Some(window) = web_sys::window() {
-                                        let _ = window.location().set_href("/onboarding");
-                                    }
+                        if zones.is_empty()
+                            && migration_resource.get().is_some()
+                            && zones_resource.get().is_some()
+                        {
+                            #[cfg(feature = "ssr")]
+                            leptos_axum::redirect("/onboarding");
+                            #[cfg(feature = "hydrate")]
+                            {
+                                if let Some(window) = web_sys::window() {
+                                    let _ = window.location().set_href("/onboarding");
                                 }
                             }
+                            return view! { <div></div> }.into_any();
                         }
-                        view! { <div></div> }.into_any()
+
+                        // Authenticated user with zones — render full page
+                        view! {
+                            <AppHeader
+                                dark_mode=dark_mode
+                                on_toggle_dark=move || send(Msg::ToggleDarkMode)
+                                on_add=move || send(Msg::ShowAddModal(true))
+                                on_scan=move || send(Msg::ShowScanner(true))
+                                on_settings=move || send(Msg::ShowSettings(true))
+                            />
+
+                            // Botanical background art + subtle green glow
+                            <div class="overflow-hidden fixed inset-0 z-0 pointer-events-none">
+                                <div class="absolute top-0 right-0 left-0 h-64 bg-gradient-to-b to-transparent from-primary/[0.04] dark:from-primary-light/[0.06]"></div>
+                                <div class="absolute -bottom-4 -right-8 text-primary botanical-breathe">
+                                    <OrchidAccent class="w-64 h-auto sm:w-72" />
+                                </div>
+                            </div>
+
+                            <main class="relative z-10 py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
+                                <Suspense fallback=|| ()>
+                                    {move || {
+                                        let readings = climate_readings.get();
+                                        view! { <ClimateDashboard readings=readings unit=temp_unit /> }
+                                    }}
+                                </Suspense>
+
+                                <NotificationSetup />
+
+                                <Suspense fallback=|| ()>
+                                    {move || {
+                                        alerts_resource.get().map(|result| {
+                                            let alerts = result.unwrap_or_default();
+                                            if alerts.is_empty() {
+                                                view! { <div></div> }.into_any()
+                                            } else {
+                                                view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
+                                                    leptos::task::spawn_local(async move {
+                                                        let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
+                                                        alerts_resource.refetch();
+                                                    });
+                                                } /> }.into_any()
+                                            }
+                                        })
+                                    }}
+                                </Suspense>
+
+                                <OrchidCollection
+                                    orchids_resource=orchids_resource
+                                    zones=zones_memo
+                                    view_mode=view_mode
+                                    on_set_view=move |mode| send(Msg::SetViewMode(mode))
+                                    on_delete=on_delete
+                                    on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
+                                    on_update=on_update
+                                    on_water=on_water
+                                    on_add=move || send(Msg::ShowAddModal(true))
+                                    on_scan=move || send(Msg::ShowScanner(true))
+                                />
+                            </main>
+
+                            // Modals rendered outside <main> to avoid stacking context constraints
+                            {move || show_add_modal.get().then(|| {
+                                let current_zones = zones_memo.get();
+                                view! {
+                                    <AddOrchidForm
+                                        zones=current_zones
+                                        on_add=on_add
+                                        on_close=move || send(Msg::ShowAddModal(false))
+                                        prefill_data=prefill_data
+                                    />
+                                }.into_any()
+                            })}
+
+                            {move || selected_orchid.get().map(|orchid| {
+                                let current_zones = zones_memo.get();
+                                let current_readings = climate_readings.get();
+                                view! {
+                                    <OrchidDetail
+                                        orchid=orchid
+                                        zones=current_zones
+                                        climate_readings=current_readings
+                                        on_close=move || send(Msg::SelectOrchid(None))
+                                        on_update=on_update
+                                    />
+                                }.into_any()
+                            })}
+
+                            {move || show_settings.get().then(|| {
+                                let current_zones = zones_memo.get();
+                                view! {
+                                    <SettingsModal
+                                        zones=current_zones
+                                        on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit })
+                                        on_zones_changed=on_zones_changed
+                                    />
+                                }.into_any()
+                            })}
+
+                            {move || show_scanner.get().then(|| {
+                                let orchids = orchids_resource.get().and_then(|r| r.ok()).unwrap_or_default();
+                                let current_zones = zones_memo.get();
+                                let current_readings = climate_readings.get();
+                                view! {
+                                    <ScannerModal
+                                        on_close=move || send(Msg::ShowScanner(false))
+                                        on_add_to_collection=move |result| send(Msg::HandleScanResult(result))
+                                        existing_orchids=orchids
+                                        climate_readings=current_readings
+                                        zones=current_zones
+                                    />
+                                }.into_any()
+                            })}
+                        }.into_any()
                     },
                     _ => {
                         #[cfg(feature = "ssr")]
@@ -164,116 +278,6 @@ pub fn HomePage() -> impl IntoView {
                 })
             }}
         </Suspense>
-
-        <AppHeader
-            dark_mode=dark_mode
-            on_toggle_dark=move || send(Msg::ToggleDarkMode)
-            on_add=move || send(Msg::ShowAddModal(true))
-            on_scan=move || send(Msg::ShowScanner(true))
-            on_settings=move || send(Msg::ShowSettings(true))
-        />
-
-        // Botanical background art + subtle green glow
-        <div class="overflow-hidden fixed inset-0 z-0 pointer-events-none">
-            <div class="absolute top-0 right-0 left-0 h-64 bg-gradient-to-b to-transparent from-primary/[0.04] dark:from-primary-light/[0.06]"></div>
-            <div class="absolute -bottom-4 -right-8 text-primary botanical-breathe">
-                <OrchidAccent class="w-64 h-auto sm:w-72" />
-            </div>
-        </div>
-
-        <main class="relative z-10 py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
-            <Suspense fallback=|| ()>
-                {move || {
-                    let readings = climate_readings.get();
-                    view! { <ClimateDashboard readings=readings unit=temp_unit /> }
-                }}
-            </Suspense>
-
-            <NotificationSetup />
-
-            <Suspense fallback=|| ()>
-                {move || {
-                    alerts_resource.get().map(|result| {
-                        let alerts = result.unwrap_or_default();
-                        if alerts.is_empty() {
-                            view! { <div></div> }.into_any()
-                        } else {
-                            view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
-                                leptos::task::spawn_local(async move {
-                                    let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
-                                    alerts_resource.refetch();
-                                });
-                            } /> }.into_any()
-                        }
-                    })
-                }}
-            </Suspense>
-
-            <OrchidCollection
-                orchids_resource=orchids_resource
-                zones=zones_memo
-                view_mode=view_mode
-                on_set_view=move |mode| send(Msg::SetViewMode(mode))
-                on_delete=on_delete
-                on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
-                on_update=on_update
-                on_water=on_water
-                on_add=move || send(Msg::ShowAddModal(true))
-                on_scan=move || send(Msg::ShowScanner(true))
-            />
-
-            {move || show_add_modal.get().then(|| {
-                let current_zones = zones_memo.get();
-                view! {
-                    <AddOrchidForm
-                        zones=current_zones
-                        on_add=on_add
-                        on_close=move || send(Msg::ShowAddModal(false))
-                        prefill_data=prefill_data
-                    />
-                }.into_any()
-            })}
-
-            {move || selected_orchid.get().map(|orchid| {
-                let current_zones = zones_memo.get();
-                let current_readings = climate_readings.get();
-                view! {
-                    <OrchidDetail
-                        orchid=orchid
-                        zones=current_zones
-                        climate_readings=current_readings
-                        on_close=move || send(Msg::SelectOrchid(None))
-                        on_update=on_update
-                    />
-                }.into_any()
-            })}
-
-            {move || show_settings.get().then(|| {
-                let current_zones = zones_memo.get();
-                view! {
-                    <SettingsModal
-                        zones=current_zones
-                        on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit })
-                        on_zones_changed=on_zones_changed
-                    />
-                }.into_any()
-            })}
-
-            {move || show_scanner.get().then(|| {
-                let orchids = orchids_resource.get().and_then(|r| r.ok()).unwrap_or_default();
-                let current_zones = zones_memo.get();
-                let current_readings = climate_readings.get();
-                view! {
-                    <ScannerModal
-                        on_close=move || send(Msg::ShowScanner(false))
-                        on_add_to_collection=move |result| send(Msg::HandleScanResult(result))
-                        existing_orchids=orchids
-                        climate_readings=current_readings
-                        zones=current_zones
-                    />
-                }.into_any()
-            })}
-        </main>
     }
 }
 

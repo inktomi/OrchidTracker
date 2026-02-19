@@ -19,7 +19,7 @@ pub fn AppHeader(
             <div class="flex relative z-10 flex-wrap gap-3 justify-between items-center py-3 px-4 mx-auto sm:px-6 max-w-[1200px]">
                 <div class="flex gap-2.5 items-center">
                     <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg border bg-white/10 border-white/20">"🌿"</div>
-                    <h1 class="m-0 text-sm font-semibold tracking-widest uppercase text-white/90">"Orchid Tracker"</h1>
+                    <span class="text-sm font-semibold tracking-widest uppercase text-white/90">"Orchid Tracker"</span>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
                     <button class=BTN_GHOST on:click=move |_| on_toggle_dark()>
