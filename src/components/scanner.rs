@@ -174,9 +174,9 @@ pub fn ScannerModal(
             leptos::task::spawn_local(async move {
                 match crate::server_fns::scanner::analyze_orchid_image(
                     base64_image,
-                    existing_names,
+                    Some(existing_names),
                     summary,
-                    zone_names,
+                    Some(zone_names),
                 ).await {
                     Ok(result) => set_analysis_result.set(Some(result)),
                     Err(e) => set_error_msg.set(Some(format!("Analysis failed: {}", e))),

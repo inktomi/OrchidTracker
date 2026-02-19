@@ -44,15 +44,29 @@ pub async fn fetch_tempest_reading(
         .and_then(|o| o.get(0))
         .ok_or_else(|| AppError::Serialization("No observations in Tempest response".into()))?;
 
-    let temp_c = obs
+    let obs_arr = obs.as_array().ok_or_else(|| {
+        AppError::Serialization(format!("obs[0] is not an array: {:?}", obs))
+    })?;
+
+    tracing::debug!("Tempest obs array length={}, values={:?}", obs_arr.len(), obs_arr);
+
+    let temp_c = obs_arr
         .get(7)
         .and_then(|v| v.as_f64())
-        .ok_or_else(|| AppError::Serialization("Missing temperature at index 7".into()))?;
+        .ok_or_else(|| AppError::Serialization(format!(
+            "Missing temperature at index 7 (array length={}, value={:?})",
+            obs_arr.len(),
+            obs_arr.get(7)
+        )))?;
 
-    let humidity = obs
+    let humidity = obs_arr
         .get(8)
         .and_then(|v| v.as_f64())
-        .ok_or_else(|| AppError::Serialization("Missing humidity at index 8".into()))?;
+        .ok_or_else(|| AppError::Serialization(format!(
+            "Missing humidity at index 8 (array length={}, value={:?})",
+            obs_arr.len(),
+            obs_arr.get(8)
+        )))?;
 
     let vpd = calculate_vpd(temp_c, humidity);
 

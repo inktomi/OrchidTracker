@@ -4,14 +4,17 @@ use crate::components::scanner::AnalysisResult;
 #[server]
 pub async fn analyze_orchid_image(
     image_base64: String,
-    existing_species: Vec<String>,
+    existing_species: Option<Vec<String>>,
     climate_summary: String,
-    zone_names: Vec<String>,
+    zone_names: Option<Vec<String>>,
 ) -> Result<AnalysisResult, ServerFnError> {
     use crate::auth::require_auth;
     use crate::config::config;
 
     require_auth().await?;
+
+    let existing_species = existing_species.unwrap_or_default();
+    let zone_names = zone_names.unwrap_or_default();
 
     // Cap base64 payload at ~15MB to prevent abuse
     if image_base64.len() > 15 * 1024 * 1024 {
