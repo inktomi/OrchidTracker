@@ -16,9 +16,11 @@ pub fn OrchidCollection(
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
+    on_water: impl Fn(String) + 'static + Copy + Send + Sync,
     on_add: impl Fn() + 'static + Copy + Send + Sync,
     on_scan: impl Fn() + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
+    let (sort_needs_water, set_sort_needs_water) = signal(false);
     view! {
         <Suspense fallback=move || view! { <p class="text-center text-stone-500">"Loading orchids..."</p> }>
             {move || orchids_resource.get().map(|result| {
@@ -36,8 +38,8 @@ pub fn OrchidCollection(
                         <div class="flex justify-center mb-6">
                             <div class="inline-flex gap-1 p-1 rounded-xl bg-secondary">
                                 <button
-                                    class=move || if view_mode.get() == ViewMode::Grid { TAB_ACTIVE } else { TAB_INACTIVE }
-                                    on:click=move |_| on_set_view(ViewMode::Grid)
+                                    class=move || if view_mode.get() == ViewMode::Grid && !sort_needs_water.get() { TAB_ACTIVE } else { TAB_INACTIVE }
+                                    on:click=move |_| { set_sort_needs_water.set(false); on_set_view(ViewMode::Grid); }
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
@@ -45,8 +47,17 @@ pub fn OrchidCollection(
                                     "All Plants"
                                 </button>
                                 <button
+                                    class=move || if sort_needs_water.get() { TAB_ACTIVE } else { TAB_INACTIVE }
+                                    on:click=move |_| { set_sort_needs_water.set(true); on_set_view(ViewMode::Grid); }
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
+                                    </svg>
+                                    "Needs Water"
+                                </button>
+                                <button
                                     class=move || if view_mode.get() == ViewMode::Table { TAB_ACTIVE } else { TAB_INACTIVE }
-                                    on:click=move |_| on_set_view(ViewMode::Table)
+                                    on:click=move |_| { set_sort_needs_water.set(false); on_set_view(ViewMode::Table); }
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M2 4.5A2.5 2.5 0 014.5 2h11A2.5 2.5 0 0118 4.5v2A2.5 2.5 0 0115.5 9h-11A2.5 2.5 0 012 6.5v-2zM2 13.5A2.5 2.5 0 014.5 11h11a2.5 2.5 0 012.5 2.5v2a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 012 15.5v-2z"/>
@@ -58,26 +69,37 @@ pub fn OrchidCollection(
 
                         // Current view
                         {match view_mode.get() {
-                            ViewMode::Grid => view! {
-                                <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-                                    <For
-                                        each=move || orchids.clone()
-                                        key=|orchid| orchid.id.clone()
-                                        children=move |orchid| {
-                                            let orchid_clone = orchid.clone();
-                                            let zones_clone = current_zones.clone();
-                                            view! {
-                                                <OrchidCard
-                                                    orchid=orchid_clone
-                                                    zones=zones_clone
-                                                    on_delete=on_delete
-                                                    on_select=on_select
-                                                />
+                            ViewMode::Grid => {
+                                let mut sorted = orchids.clone();
+                                if sort_needs_water.get() {
+                                    sorted.sort_by(|a, b| {
+                                        let a_due = a.days_until_due().unwrap_or(i64::MAX);
+                                        let b_due = b.days_until_due().unwrap_or(i64::MAX);
+                                        a_due.cmp(&b_due)
+                                    });
+                                }
+                                view! {
+                                    <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+                                        <For
+                                            each=move || sorted.clone()
+                                            key=|orchid| orchid.id.clone()
+                                            children=move |orchid| {
+                                                let orchid_clone = orchid.clone();
+                                                let zones_clone = current_zones.clone();
+                                                view! {
+                                                    <OrchidCard
+                                                        orchid=orchid_clone
+                                                        zones=zones_clone
+                                                        on_delete=on_delete
+                                                        on_select=on_select
+                                                        on_water=on_water
+                                                    />
+                                                }
                                             }
-                                        }
-                                    />
-                                </div>
-                            }.into_any(),
+                                        />
+                                    </div>
+                                }.into_any()
+                            },
                             ViewMode::Table => view! {
                                 <OrchidCabinetTable
                                     orchids=orchids_for_table

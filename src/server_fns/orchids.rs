@@ -36,6 +36,16 @@ mod ssr_types {
         #[surreal(default)]
         pub native_longitude: Option<f64>,
         #[surreal(default)]
+        pub last_watered_at: Option<chrono::DateTime<chrono::Utc>>,
+        #[surreal(default)]
+        pub temp_min: Option<f64>,
+        #[surreal(default)]
+        pub temp_max: Option<f64>,
+        #[surreal(default)]
+        pub humidity_min: Option<f64>,
+        #[surreal(default)]
+        pub humidity_max: Option<f64>,
+        #[surreal(default)]
         pub history: Vec<LogEntryDbRow>,
     }
 
@@ -70,6 +80,11 @@ mod ssr_types {
                 native_region: self.native_region,
                 native_latitude: self.native_latitude,
                 native_longitude: self.native_longitude,
+                last_watered_at: self.last_watered_at,
+                temp_min: self.temp_min,
+                temp_max: self.temp_max,
+                humidity_min: self.humidity_min,
+                humidity_max: self.humidity_max,
                 history: self.history.into_iter().map(|e| e.into_log_entry()).collect(),
             }
         }
@@ -195,6 +210,10 @@ pub async fn create_orchid(
     native_region: Option<String>,
     native_latitude: Option<f64>,
     native_longitude: Option<f64>,
+    temp_min: Option<f64>,
+    temp_max: Option<f64>,
+    humidity_min: Option<f64>,
+    humidity_max: Option<f64>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -213,7 +232,9 @@ pub async fn create_orchid(
              notes = $notes, placement = $placement, light_lux = $light_lux, \
              temperature_range = $temp_range, conservation_status = $conservation, \
              native_region = $native_region, native_latitude = $native_lat, \
-             native_longitude = $native_lon \
+             native_longitude = $native_lon, \
+             temp_min = $temp_min, temp_max = $temp_max, \
+             humidity_min = $humidity_min, humidity_max = $humidity_max \
              RETURN *"
         )
         .bind(("owner", owner))
@@ -229,6 +250,10 @@ pub async fn create_orchid(
         .bind(("native_region", native_region))
         .bind(("native_lat", native_latitude))
         .bind(("native_lon", native_longitude))
+        .bind(("temp_min", temp_min))
+        .bind(("temp_max", temp_max))
+        .bind(("humidity_min", humidity_min))
+        .bind(("humidity_max", humidity_max))
         .await
         .map_err(|e| internal_error("Create orchid query failed", e))?;
 
@@ -273,6 +298,8 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              temperature_range = $temp_range, conservation_status = $conservation, \
              native_region = $native_region, native_latitude = $native_lat, \
              native_longitude = $native_lon, \
+             temp_min = $temp_min, temp_max = $temp_max, \
+             humidity_min = $humidity_min, humidity_max = $humidity_max, \
              updated_at = time::now() \
              WHERE owner = $owner \
              RETURN *"
@@ -291,6 +318,10 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .bind(("native_region", orchid.native_region))
         .bind(("native_lat", orchid.native_latitude))
         .bind(("native_lon", orchid.native_longitude))
+        .bind(("temp_min", orchid.temp_min))
+        .bind(("temp_max", orchid.temp_max))
+        .bind(("humidity_min", orchid.humidity_min))
+        .bind(("humidity_max", orchid.humidity_max))
         .await
         .map_err(|e| internal_error("Update orchid query failed", e))?;
 
@@ -402,4 +433,48 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
         .map_err(|e| internal_error("Get log entries parse failed", e))?;
 
     Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
+}
+
+#[server]
+pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    let user_id = require_auth().await?;
+    let oid = parse_record_id(&orchid_id)?;
+    let owner = parse_record_id(&user_id)?;
+
+    // Update last_watered_at
+    let mut response = db()
+        .query(
+            "UPDATE $id SET last_watered_at = time::now() WHERE owner = $owner RETURN *"
+        )
+        .bind(("id", oid.clone()))
+        .bind(("owner", owner.clone()))
+        .await
+        .map_err(|e| internal_error("Mark watered query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Mark watered query error", err_msg));
+    }
+
+    let db_row: Option<OrchidDbRow> = response.take(0)
+        .map_err(|e| internal_error("Mark watered parse failed", e))?;
+
+    let orchid = db_row.map(|r| r.into_orchid())
+        .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
+
+    // Also create a log entry
+    let _ = db()
+        .query(
+            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered'"
+        )
+        .bind(("orchid_id", oid))
+        .bind(("owner", owner))
+        .await;
+
+    Ok(orchid)
 }

@@ -3,14 +3,16 @@ use crate::components::add_orchid_form::AddOrchidForm;
 use crate::components::app_header::AppHeader;
 use crate::components::botanical_art::OrchidAccent;
 use crate::components::climate_dashboard::ClimateDashboard;
+use crate::components::notification_setup::NotificationSetup;
 use crate::components::orchid_collection::OrchidCollection;
 use crate::components::orchid_detail::OrchidDetail;
 use crate::components::scanner::ScannerModal;
 use crate::components::settings::SettingsModal;
+use crate::orchid::Alert;
 use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
-use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid};
+use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
 
@@ -62,6 +64,12 @@ pub fn HomePage() -> impl IntoView {
             .unwrap_or_default()
     });
 
+    // Active alerts
+    let alerts_resource = Resource::new(
+        move || zones_version.get(),
+        |_| crate::server_fns::alerts::get_active_alerts(),
+    );
+
     // Orchid operations via server functions (async I/O — not TEA state)
     let on_add = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
@@ -78,6 +86,10 @@ pub fn HomePage() -> impl IntoView {
                 orchid.native_region,
                 orchid.native_latitude,
                 orchid.native_longitude,
+                orchid.temp_min,
+                orchid.temp_max,
+                orchid.humidity_min,
+                orchid.humidity_max,
             ).await;
             orchids_resource.refetch();
         });
@@ -101,6 +113,13 @@ pub fn HomePage() -> impl IntoView {
         }
         leptos::task::spawn_local(async move {
             let _ = delete_orchid(id).await;
+            orchids_resource.refetch();
+        });
+    };
+
+    let on_water = move |id: String| {
+        leptos::task::spawn_local(async move {
+            let _ = mark_watered(id).await;
             orchids_resource.refetch();
         });
     };
@@ -170,6 +189,26 @@ pub fn HomePage() -> impl IntoView {
                 }}
             </Suspense>
 
+            <NotificationSetup />
+
+            <Suspense fallback=|| ()>
+                {move || {
+                    alerts_resource.get().map(|result| {
+                        let alerts = result.unwrap_or_default();
+                        if alerts.is_empty() {
+                            view! { <div></div> }.into_any()
+                        } else {
+                            view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
+                                leptos::task::spawn_local(async move {
+                                    let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
+                                    alerts_resource.refetch();
+                                });
+                            } /> }.into_any()
+                        }
+                    })
+                }}
+            </Suspense>
+
             <OrchidCollection
                 orchids_resource=orchids_resource
                 zones=zones_memo
@@ -178,6 +217,7 @@ pub fn HomePage() -> impl IntoView {
                 on_delete=on_delete
                 on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
                 on_update=on_update
+                on_water=on_water
                 on_add=move || send(Msg::ShowAddModal(true))
                 on_scan=move || send(Msg::ShowScanner(true))
             />
@@ -235,4 +275,34 @@ pub fn HomePage() -> impl IntoView {
             })}
         </main>
     }
+}
+
+/// Alert banner showing active condition/watering alerts
+#[component]
+fn AlertBanner(
+    alerts: Vec<Alert>,
+    on_dismiss: impl Fn(String) + 'static + Copy + Send + Sync,
+) -> impl IntoView {
+    view! {
+        <div class="flex flex-col gap-2 mb-4">
+            {alerts.into_iter().map(|alert| {
+                let id = alert.id.clone();
+                let (bg, text, border) = match alert.severity.as_str() {
+                    "critical" => ("bg-red-50 dark:bg-red-900/20", "text-red-700 dark:text-red-300", "border-red-200 dark:border-red-800"),
+                    "warning" => ("bg-amber-50 dark:bg-amber-900/20", "text-amber-700 dark:text-amber-300", "border-amber-200 dark:border-amber-800"),
+                    _ => ("bg-sky-50 dark:bg-sky-900/20", "text-sky-700 dark:text-sky-300", "border-sky-200 dark:border-sky-800"),
+                };
+                let class = format!("flex gap-3 justify-between items-center p-3 text-sm rounded-xl border {} {} {}", bg, text, border);
+                view! {
+                    <div class=class>
+                        <span>{alert.message}</span>
+                        <button
+                            class="py-1 px-2 text-xs rounded-lg border-none opacity-60 transition-opacity cursor-pointer hover:opacity-100 bg-black/5"
+                            on:click=move |_| on_dismiss(id.clone())
+                        >"Dismiss"</button>
+                    </div>
+                }
+            }).collect::<Vec<_>>()}
+        </div>
+    }.into_any()
 }

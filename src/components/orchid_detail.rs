@@ -37,6 +37,11 @@ pub fn OrchidDetail(
     let (edit_temp_range, set_edit_temp_range) = signal(orchid.temperature_range.clone());
     let (edit_notes, set_edit_notes) = signal(orchid.notes.clone());
     let (edit_conservation, set_edit_conservation) = signal(orchid.conservation_status.clone().unwrap_or_default());
+    let (edit_temp_min, set_edit_temp_min) = signal(orchid.temp_min.map(|v| v.to_string()).unwrap_or_default());
+    let (edit_temp_max, set_edit_temp_max) = signal(orchid.temp_max.map(|v| v.to_string()).unwrap_or_default());
+    let (edit_humidity_min, set_edit_humidity_min) = signal(orchid.humidity_min.map(|v| v.to_string()).unwrap_or_default());
+    let (edit_humidity_max, set_edit_humidity_max) = signal(orchid.humidity_max.map(|v| v.to_string()).unwrap_or_default());
+    let (is_watering, set_is_watering) = signal(false);
 
     let zones_for_edit = zones;
 
@@ -100,6 +105,11 @@ pub fn OrchidDetail(
             native_region: current.native_region,
             native_latitude: current.native_latitude,
             native_longitude: current.native_longitude,
+            last_watered_at: current.last_watered_at,
+            temp_min: edit_temp_min.get().parse().ok(),
+            temp_max: edit_temp_max.get().parse().ok(),
+            humidity_min: edit_humidity_min.get().parse().ok(),
+            humidity_max: edit_humidity_max.get().parse().ok(),
             history: current.history,
         };
 
@@ -119,6 +129,10 @@ pub fn OrchidDetail(
         set_edit_temp_range.set(current.temperature_range);
         set_edit_notes.set(current.notes);
         set_edit_conservation.set(current.conservation_status.unwrap_or_default());
+        set_edit_temp_min.set(current.temp_min.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_temp_max.set(current.temp_max.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_humidity_min.set(current.humidity_min.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_humidity_max.set(current.humidity_max.map(|v| v.to_string()).unwrap_or_default());
         set_is_editing.set(false);
     };
 
@@ -142,6 +156,10 @@ pub fn OrchidDetail(
                                         set_edit_temp_range.set(current.temperature_range);
                                         set_edit_notes.set(current.notes);
                                         set_edit_conservation.set(current.conservation_status.unwrap_or_default());
+                                        set_edit_temp_min.set(current.temp_min.map(|v| v.to_string()).unwrap_or_default());
+                                        set_edit_temp_max.set(current.temp_max.map(|v| v.to_string()).unwrap_or_default());
+                                        set_edit_humidity_min.set(current.humidity_min.map(|v| v.to_string()).unwrap_or_default());
+                                        set_edit_humidity_max.set(current.humidity_max.map(|v| v.to_string()).unwrap_or_default());
                                         set_is_editing.set(true);
                                     }
                                 >"Edit"</button>
@@ -235,6 +253,42 @@ pub fn OrchidDetail(
                                                 placeholder="e.g. 18-28C"
                                             />
                                         </div>
+                                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                                            <div class="flex-1">
+                                                <label>"Min Temp (C):"</label>
+                                                <input type="number" step="0.1"
+                                                    prop:value=edit_temp_min
+                                                    on:input=move |ev| set_edit_temp_min.set(event_target_value(&ev))
+                                                    placeholder="e.g. 18"
+                                                />
+                                            </div>
+                                            <div class="flex-1">
+                                                <label>"Max Temp (C):"</label>
+                                                <input type="number" step="0.1"
+                                                    prop:value=edit_temp_max
+                                                    on:input=move |ev| set_edit_temp_max.set(event_target_value(&ev))
+                                                    placeholder="e.g. 28"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                                            <div class="flex-1">
+                                                <label>"Min Humidity (%):"</label>
+                                                <input type="number" step="0.1"
+                                                    prop:value=edit_humidity_min
+                                                    on:input=move |ev| set_edit_humidity_min.set(event_target_value(&ev))
+                                                    placeholder="e.g. 50"
+                                                />
+                                            </div>
+                                            <div class="flex-1">
+                                                <label>"Max Humidity (%):"</label>
+                                                <input type="number" step="0.1"
+                                                    prop:value=edit_humidity_max
+                                                    on:input=move |ev| set_edit_humidity_max.set(event_target_value(&ev))
+                                                    placeholder="e.g. 80"
+                                                />
+                                            </div>
+                                        </div>
                                         <div class="mb-4">
                                             <label>"Notes:"</label>
                                             <textarea
@@ -275,6 +329,42 @@ pub fn OrchidDetail(
                             />
                         }
                     })}
+
+                    // Watering status + Water Now button
+                    <div class="flex gap-3 justify-between items-center p-4 mb-4 rounded-xl bg-secondary">
+                        <div>
+                            <div class="text-xs tracking-wide text-stone-400">"Watering Status"</div>
+                            <div class="text-sm font-medium text-stone-700 dark:text-stone-300">
+                                {move || {
+                                    let o = orchid_signal.get();
+                                    match o.days_until_due() {
+                                        Some(days) if days < 0 => format!("Overdue by {} days", -days),
+                                        Some(0) => "Due today".to_string(),
+                                        Some(1) => "Due tomorrow".to_string(),
+                                        Some(days) => format!("Due in {} days", days),
+                                        None => "Never watered".to_string(),
+                                    }
+                                }}
+                            </div>
+                        </div>
+                        <button
+                            class=BTN_PRIMARY
+                            disabled=move || is_watering.get()
+                            on:click=move |_| {
+                                set_is_watering.set(true);
+                                let orchid_id = orchid_signal.get().id.clone();
+                                leptos::task::spawn_local(async move {
+                                    match crate::server_fns::orchids::mark_watered(orchid_id).await {
+                                        Ok(updated) => set_orchid_signal.set(updated),
+                                        Err(e) => log::error!("Failed to mark watered: {}", e),
+                                    }
+                                    set_is_watering.set(false);
+                                });
+                            }
+                        >
+                            {move || if is_watering.get() { "Watering..." } else { "Water Now" }}
+                        </button>
+                    </div>
 
                     <hr class="my-6 border-stone-200 dark:border-stone-700" />
 

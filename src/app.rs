@@ -27,6 +27,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
             </head>
             <body>
                 <App />
+                <script>
+                    "if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(function(e) { console.warn('SW registration failed:', e); }); }"
+                </script>
             </body>
         </html>
     }

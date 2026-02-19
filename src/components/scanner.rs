@@ -24,6 +24,14 @@ pub struct AnalysisResult {
     pub native_latitude: Option<f64>,
     #[serde(default)]
     pub native_longitude: Option<f64>,
+    #[serde(default)]
+    pub temp_min: Option<f64>,
+    #[serde(default)]
+    pub temp_max: Option<f64>,
+    #[serde(default)]
+    pub humidity_min: Option<f64>,
+    #[serde(default)]
+    pub humidity_max: Option<f64>,
 }
 
 #[component]

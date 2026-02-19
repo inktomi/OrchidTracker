@@ -15,6 +15,9 @@ pub struct AppConfig {
     pub session_secret: String,
     pub site_addr: String,
     pub reload_port: u32,
+    pub vapid_private_key: String,
+    pub vapid_public_key: String,
+    pub vapid_contact: String,
 }
 
 impl AppConfig {
@@ -31,6 +34,9 @@ impl AppConfig {
             session_secret: std::env::var("SESSION_SECRET").unwrap_or_else(|_| "change-me-in-production-must-be-at-least-64-chars-long-for-security-purposes-ok".into()),
             site_addr: std::env::var("LEPTOS_SITE_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
             reload_port: std::env::var("LEPTOS_RELOAD_PORT").unwrap_or_else(|_| "3001".into()).parse::<u32>().unwrap_or(3001),
+            vapid_private_key: std::env::var("VAPID_PRIVATE_KEY").unwrap_or_default(),
+            vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").unwrap_or_default(),
+            vapid_contact: std::env::var("VAPID_CONTACT").unwrap_or_else(|_| "mailto:admin@example.com".into()),
         }
     }
 }

@@ -156,7 +156,56 @@ pub struct Orchid {
     pub native_longitude: Option<f64>,
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
+    pub last_watered_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub temp_min: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub temp_max: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub humidity_min: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub humidity_max: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub history: Vec<LogEntry>,
+}
+
+impl Orchid {
+    /// Days since last watered, or None if never watered.
+    pub fn days_since_watered(&self) -> Option<i64> {
+        self.last_watered_at.map(|dt| (Utc::now() - dt).num_days())
+    }
+
+    /// True if watering is overdue based on water_frequency_days.
+    pub fn is_overdue(&self) -> bool {
+        self.days_since_watered()
+            .map(|days| days > self.water_frequency_days as i64)
+            .unwrap_or(false)
+    }
+
+    /// Days until watering is due. Negative = overdue. None if never watered.
+    pub fn days_until_due(&self) -> Option<i64> {
+        self.days_since_watered()
+            .map(|days| self.water_frequency_days as i64 - days)
+    }
+}
+
+/// An alert for condition drift or overdue watering
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Alert {
+    pub id: String,
+    #[serde(default)]
+    pub orchid_name: Option<String>,
+    #[serde(default)]
+    pub zone_name: Option<String>,
+    pub alert_type: String,
+    pub severity: String,
+    pub message: String,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -235,6 +284,11 @@ mod tests {
             native_region: None,
             native_latitude: None,
             native_longitude: None,
+            last_watered_at: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
             history: Vec::new(),
         };
 
@@ -242,6 +296,90 @@ mod tests {
         assert_eq!(orchid.light_requirement, LightRequirement::Medium);
         assert_eq!(orchid.history.len(), 0);
         assert_eq!(orchid.conservation_status, Some("CITES II".into()));
+    }
+
+    #[test]
+    fn test_watering_helpers_never_watered() {
+        let orchid = Orchid {
+            id: "test:1".into(),
+            name: "Test".into(),
+            species: "Test".into(),
+            water_frequency_days: 7,
+            light_requirement: LightRequirement::Medium,
+            notes: String::new(),
+            placement: String::new(),
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
+            last_watered_at: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
+            history: Vec::new(),
+        };
+        assert_eq!(orchid.days_since_watered(), None);
+        assert!(!orchid.is_overdue());
+        assert_eq!(orchid.days_until_due(), None);
+    }
+
+    #[test]
+    fn test_watering_helpers_recently_watered() {
+        let orchid = Orchid {
+            id: "test:1".into(),
+            name: "Test".into(),
+            species: "Test".into(),
+            water_frequency_days: 7,
+            light_requirement: LightRequirement::Medium,
+            notes: String::new(),
+            placement: String::new(),
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
+            last_watered_at: Some(Utc::now() - chrono::Duration::days(2)),
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
+            history: Vec::new(),
+        };
+        assert_eq!(orchid.days_since_watered(), Some(2));
+        assert!(!orchid.is_overdue());
+        assert_eq!(orchid.days_until_due(), Some(5));
+    }
+
+    #[test]
+    fn test_watering_helpers_overdue() {
+        let orchid = Orchid {
+            id: "test:1".into(),
+            name: "Test".into(),
+            species: "Test".into(),
+            water_frequency_days: 7,
+            light_requirement: LightRequirement::Medium,
+            notes: String::new(),
+            placement: String::new(),
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
+            last_watered_at: Some(Utc::now() - chrono::Duration::days(10)),
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
+            history: Vec::new(),
+        };
+        assert_eq!(orchid.days_since_watered(), Some(10));
+        assert!(orchid.is_overdue());
+        assert_eq!(orchid.days_until_due(), Some(-3));
     }
 
     #[test]

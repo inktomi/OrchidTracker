@@ -124,7 +124,10 @@ pub async fn poll_all_zones() {
         tracing::warn!("Climate poll: failed to prune old readings: {}", e);
     }
 
-    tracing::info!("Climate poll completed");
+    tracing::info!("Climate poll completed, checking alerts...");
+
+    // Check condition alerts after storing new readings
+    super::alerts::check_and_send_alerts().await;
 }
 
 // Internal structs for zone query result and config parsing

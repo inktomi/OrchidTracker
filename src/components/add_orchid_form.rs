@@ -23,6 +23,10 @@ pub fn AddOrchidForm(
     let (native_region, set_native_region) = signal::<Option<String>>(None);
     let (native_latitude, set_native_latitude) = signal::<Option<f64>>(None);
     let (native_longitude, set_native_longitude) = signal::<Option<f64>>(None);
+    let (temp_min, set_temp_min) = signal(String::new());
+    let (temp_max, set_temp_max) = signal(String::new());
+    let (humidity_min, set_humidity_min) = signal(String::new());
+    let (humidity_max, set_humidity_max) = signal(String::new());
 
     let zones_for_prefill = zones.clone();
 
@@ -60,6 +64,11 @@ pub fn AddOrchidForm(
             set_native_region.set(data.native_region);
             set_native_latitude.set(data.native_latitude);
             set_native_longitude.set(data.native_longitude);
+
+            if let Some(v) = data.temp_min { set_temp_min.set(v.to_string()); }
+            if let Some(v) = data.temp_max { set_temp_max.set(v.to_string()); }
+            if let Some(v) = data.humidity_min { set_humidity_min.set(v.to_string()); }
+            if let Some(v) = data.humidity_max { set_humidity_max.set(v.to_string()); }
         }
     });
 
@@ -89,6 +98,11 @@ pub fn AddOrchidForm(
             native_region: native_region.get(),
             native_latitude: native_latitude.get(),
             native_longitude: native_longitude.get(),
+            last_watered_at: None,
+            temp_min: temp_min.get().parse().ok(),
+            temp_max: temp_max.get().parse().ok(),
+            humidity_min: humidity_min.get().parse().ok(),
+            humidity_max: humidity_max.get().parse().ok(),
             history: Vec::new(),
         };
 
@@ -191,6 +205,42 @@ pub fn AddOrchidForm(
                                 prop:value=temp
                                 placeholder="e.g. 18-28C"
                             />
+                        </div>
+                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                            <div class="flex-1">
+                                <label>"Min Temp (C):"</label>
+                                <input type="number" step="0.1"
+                                    on:input=move |ev| set_temp_min.set(event_target_value(&ev))
+                                    prop:value=temp_min
+                                    placeholder="e.g. 18"
+                                />
+                            </div>
+                            <div class="flex-1">
+                                <label>"Max Temp (C):"</label>
+                                <input type="number" step="0.1"
+                                    on:input=move |ev| set_temp_max.set(event_target_value(&ev))
+                                    prop:value=temp_max
+                                    placeholder="e.g. 28"
+                                />
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                            <div class="flex-1">
+                                <label>"Min Humidity (%):"</label>
+                                <input type="number" step="0.1"
+                                    on:input=move |ev| set_humidity_min.set(event_target_value(&ev))
+                                    prop:value=humidity_min
+                                    placeholder="e.g. 50"
+                                />
+                            </div>
+                            <div class="flex-1">
+                                <label>"Max Humidity (%):"</label>
+                                <input type="number" step="0.1"
+                                    on:input=move |ev| set_humidity_max.set(event_target_value(&ev))
+                                    prop:value=humidity_max
+                                    placeholder="e.g. 80"
+                                />
+                            </div>
                         </div>
                         <div class="mb-4">
                             <label>"Notes:"</label>

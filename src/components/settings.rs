@@ -201,6 +201,14 @@ pub fn SettingsModal(
                         }}
                     </div>
 
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
+
+                    // Notifications section
+                    <div class="mb-6">
+                        <h3 class="mb-4 text-sm font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Notifications"</h3>
+                        <NotificationSettings />
+                    </div>
+
                     <div class="mt-6">
                         <button class=BTN_PRIMARY on:click=move |_| on_close(temp_unit.get_untracked())>"Save Settings"</button>
                     </div>
@@ -522,6 +530,118 @@ fn DataSourceConfig(
                     view! { <div></div> }.into_any()
                 }
             }}
+        </div>
+    }
+}
+
+/// Notification settings section within the settings modal
+#[component]
+fn NotificationSettings() -> impl IntoView {
+    let (permission_status, set_permission_status) = signal("Checking...".to_string());
+    let (is_enabled, set_is_enabled) = signal(false);
+    let (is_testing, set_is_testing) = signal(false);
+
+    #[cfg(feature = "hydrate")]
+    {
+        Effect::new(move |_| {
+            let perm = web_sys::Notification::permission();
+            match perm {
+                web_sys::NotificationPermission::Granted => {
+                    set_permission_status.set("Granted".into());
+                    set_is_enabled.set(true);
+                }
+                web_sys::NotificationPermission::Denied => {
+                    set_permission_status.set("Denied (change in browser settings)".into());
+                    set_is_enabled.set(false);
+                }
+                _ => {
+                    set_permission_status.set("Not yet requested".into());
+                    set_is_enabled.set(false);
+                }
+            }
+        });
+    }
+
+    let toggle_notifications = move |_| {
+        if is_enabled.get() {
+            // Disable: unsubscribe from push
+            leptos::task::spawn_local(async move {
+                let _ = crate::server_fns::alerts::unsubscribe_push().await;
+                set_is_enabled.set(false);
+                set_permission_status.set("Disabled".into());
+            });
+        } else {
+            // Enable: request permission + subscribe
+            #[cfg(feature = "hydrate")]
+            {
+                leptos::task::spawn_local(async move {
+                    use wasm_bindgen_futures::JsFuture;
+
+                    match web_sys::Notification::request_permission() {
+                        Ok(promise) => { let _ = JsFuture::from(promise).await; }
+                        Err(_) => {}
+                    }
+
+                    let perm = web_sys::Notification::permission();
+                    if perm == web_sys::NotificationPermission::Granted {
+                        crate::components::notification_setup::register_and_subscribe_from_settings().await;
+                        set_permission_status.set("Granted".into());
+                        set_is_enabled.set(true);
+                    } else {
+                        set_permission_status.set("Denied (change in browser settings)".into());
+                    }
+                });
+            }
+        }
+    };
+
+    let send_test = move |_| {
+        set_is_testing.set(true);
+        #[cfg(feature = "hydrate")]
+        {
+            leptos::task::spawn_local(async move {
+                // Show a local notification as test
+                let opts = web_sys::NotificationOptions::new();
+                opts.set_body("This is a test notification from OrchidTracker");
+                let _ = web_sys::Notification::new_with_options("Test Notification", &opts);
+                set_is_testing.set(false);
+            });
+        }
+        #[cfg(not(feature = "hydrate"))]
+        { set_is_testing.set(false); }
+    };
+
+    view! {
+        <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center">
+                <div>
+                    <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Push notifications for care alerts"</div>
+                    <div class="text-xs text-stone-400">{move || permission_status.get()}</div>
+                </div>
+                <button
+                    class=move || if is_enabled.get() {
+                        "relative w-11 h-6 bg-primary rounded-full transition-colors cursor-pointer border-none"
+                    } else {
+                        "relative w-11 h-6 bg-stone-300 dark:bg-stone-600 rounded-full transition-colors cursor-pointer border-none"
+                    }
+                    on:click=toggle_notifications
+                >
+                    <span class=move || if is_enabled.get() {
+                        "absolute top-0.5 left-5.5 w-5 h-5 bg-white rounded-full transition-all shadow-sm"
+                    } else {
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-all shadow-sm"
+                    }></span>
+                </button>
+            </div>
+            {move || is_enabled.get().then(|| {
+                view! {
+                    <button
+                        class=format!("{} text-stone-500 bg-stone-100 hover:bg-stone-200 dark:text-stone-400 dark:bg-stone-800 dark:hover:bg-stone-700", BTN_SM)
+                        disabled=move || is_testing.get()
+                        on:click=send_test
+                    >"Send Test Notification"</button>
+                }
+            })}
         </div>
     }
 }

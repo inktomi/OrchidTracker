@@ -39,6 +39,7 @@ async-trait = { version = "0.1", optional = true }
 aes-gcm = { version = "0.10", optional = true }
 sha2 = { version = "0.10", optional = true }
 base64 = { version = "0.22", optional = true }
+web-push = { version = "0.10", optional = true }
 
 # Client-only
 console_error_panic_hook = { version = "0.1", optional = true }
@@ -53,6 +54,10 @@ web-sys = { version = "0.3", features = [
     "MediaStreamTrack", "Clipboard", "console",
     "UrlSearchParams", "Blob", "Url", "File", "FileList",
     "HtmlElement",
+    "Notification", "NotificationPermission", "NotificationOptions",
+    "ServiceWorkerContainer", "ServiceWorkerRegistration",
+    "PushManager", "PushSubscription", "PushSubscriptionOptionsInit",
+    "PushSubscriptionJson",
 ], optional = true }
 js-sys = { version = "0.3", optional = true }
 gloo-timers = { version = "0.3", features = ["futures"], optional = true }
@@ -74,6 +79,7 @@ ssr = [
     "dep:clap",
     "dep:async-trait",
     "dep:aes-gcm", "dep:sha2", "dep:base64",
+    "dep:web-push",
 ]
 
 [package.metadata.leptos]

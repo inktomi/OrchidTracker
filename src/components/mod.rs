@@ -9,6 +9,7 @@ pub mod app_header;
 pub mod orchid_collection;
 pub mod botanical_art;
 pub mod habitat_weather;
+pub mod notification_setup;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 

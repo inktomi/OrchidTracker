@@ -22,6 +22,8 @@ pub mod config;
 #[cfg(feature = "ssr")]
 pub mod crypto;
 #[cfg(feature = "ssr")]
+pub mod push;
+#[cfg(feature = "ssr")]
 pub mod session_store;
 
 #[cfg(feature = "hydrate")]

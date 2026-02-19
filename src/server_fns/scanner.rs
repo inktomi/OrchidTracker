@@ -46,13 +46,15 @@ pub async fn analyze_orchid_image(
         6. Determine the orchid's native habitat region and approximate center-point coordinates for its primary native range. \
         Then, evaluate the fit. \
         Finally, return ONLY valid JSON with this structure (no markdown): \
-        {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
+        {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"temp_min\": 18.0, \"temp_max\": 28.0, \"humidity_min\": 50.0, \"humidity_max\": 80.0, \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
         Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
         For light_req, choose from: 'High', 'Medium', 'Low'. \
         For placement_suggestion, choose from my zones: {}. \
         For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common. \
         For native_region, provide a brief description of where this species naturally grows. \
-        For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown.",
+        For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown. \
+        For temp_min/temp_max, provide the ideal temperature range in Celsius as numeric values (e.g. 18.0 and 28.0). \
+        For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown.",
         climate_summary,
         zone_list,
         existing_species,

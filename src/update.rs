@@ -96,6 +96,11 @@ mod tests {
             native_region: None,
             native_latitude: None,
             native_longitude: None,
+            last_watered_at: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
             history: Vec::new(),
         }
     }
@@ -156,6 +161,10 @@ mod tests {
             native_region: None,
             native_latitude: None,
             native_longitude: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
         };
 
         update(&mut model, Msg::HandleScanResult(result));

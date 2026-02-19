@@ -3,6 +3,7 @@ pub mod ac_infinity;
 pub mod poller;
 pub mod open_meteo;
 pub mod habitat_poller;
+pub mod alerts;
 
 /// A raw climate reading from any data source, before storage.
 pub struct RawReading {
