@@ -131,6 +131,16 @@ pub fn HomePage() -> impl IntoView {
     view! {
         <Suspense fallback=move || view! { <p class="p-8 text-center text-stone-500">"Loading..."</p> }>
             {move || {
+                // Read ALL resources here so the outer Suspense tracks them.
+                // The Suspense won't resolve until every resource has data,
+                // ensuring inner Memos/Suspenses see the same values during
+                // hydration as they did during SSR (preventing DOM mismatches).
+                let _ = orchids_resource.get();
+                let _ = climate_resource.get();
+                let _ = alerts_resource.get();
+                let _ = migration_resource.get();
+                let _ = zones_resource.get();
+
                 user.get().map(|result| match result {
                     Ok(Some(_user_info)) => {
                         // Check if user needs onboarding (no zones)

@@ -1,0 +1,3 @@
+# Enable detailed hydration error messages in WASM builds (even release)
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "leptos_debuginfo"]
