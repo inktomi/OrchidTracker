@@ -32,5 +32,9 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
+# Playwright
+end2end/test-results/
+end2end/playwright-report/
+
 # Image storage
 data/

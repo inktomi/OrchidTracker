@@ -93,6 +93,8 @@ reload-port = 3001
 env = "DEV"
 bin-features = ["ssr"]
 lib-features = ["hydrate"]
+end2end-cmd = "npx playwright test"
+end2end-dir = "end2end"
 
 [profile.release]
 codegen-units = 1
