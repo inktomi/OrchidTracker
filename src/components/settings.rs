@@ -595,20 +595,17 @@ fn NotificationSettings() -> impl IntoView {
         }
     };
 
+    let (test_result, set_test_result) = signal::<Option<Result<String, String>>>(None);
     let send_test = move |_| {
         set_is_testing.set(true);
-        #[cfg(feature = "hydrate")]
-        {
-            leptos::task::spawn_local(async move {
-                // Show a local notification as test
-                let opts = web_sys::NotificationOptions::new();
-                opts.set_body("This is a test notification from OrchidTracker");
-                let _ = web_sys::Notification::new_with_options("Test Notification", &opts);
-                set_is_testing.set(false);
-            });
-        }
-        #[cfg(not(feature = "hydrate"))]
-        { set_is_testing.set(false); }
+        set_test_result.set(None);
+        leptos::task::spawn_local(async move {
+            match crate::server_fns::alerts::send_test_push().await {
+                Ok(msg) => set_test_result.set(Some(Ok(msg))),
+                Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+            }
+            set_is_testing.set(false);
+        });
     };
 
     view! {
@@ -635,13 +632,23 @@ fn NotificationSettings() -> impl IntoView {
             </div>
             {move || is_enabled.get().then(|| {
                 view! {
-                    <button
-                        class=format!("{} text-stone-500 bg-stone-100 hover:bg-stone-200 dark:text-stone-400 dark:bg-stone-800 dark:hover:bg-stone-700", BTN_SM)
-                        disabled=move || is_testing.get()
-                        on:click=send_test
-                    >"Send Test Notification"</button>
-                }
+                    <div class="flex flex-col gap-2">
+                        <button
+                            class=format!("{} text-stone-500 bg-stone-100 hover:bg-stone-200 dark:text-stone-400 dark:bg-stone-800 dark:hover:bg-stone-700", BTN_SM)
+                            disabled=move || is_testing.get()
+                            on:click=send_test
+                        >{move || if is_testing.get() { "Sending..." } else { "Send Test Notification" }}</button>
+                        {move || test_result.get().map(|result| match result {
+                            Ok(msg) => view! {
+                                <div class="p-2 text-xs text-emerald-700 bg-emerald-50 rounded-lg dark:text-emerald-300 dark:bg-emerald-900/20">{msg}</div>
+                            }.into_any(),
+                            Err(msg) => view! {
+                                <div class="p-2 text-xs text-red-700 bg-red-50 rounded-lg dark:text-red-300 dark:bg-red-900/20">{msg}</div>
+                            }.into_any(),
+                        })}
+                    </div>
+                }.into_any()
             })}
         </div>
-    }
+    }.into_any()
 }

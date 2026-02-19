@@ -116,6 +116,65 @@ pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
 }
 
 #[server]
+pub async fn send_test_push() -> Result<String, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use surrealdb::types::SurrealValue;
+
+    let user_id = require_auth().await?;
+    let owner = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("Owner ID parse failed", e))?;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct PushSubRow {
+        endpoint: String,
+        p256dh: String,
+        auth: String,
+    }
+
+    let mut resp = db()
+        .query("SELECT endpoint, p256dh, auth FROM push_subscription WHERE owner = $owner")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Query push subs failed", e))?;
+
+    let _ = resp.take_errors();
+    let subs: Vec<PushSubRow> = resp.take(0).unwrap_or_default();
+
+    if subs.is_empty() {
+        return Ok("No push subscriptions found. Try toggling notifications off and on.".into());
+    }
+
+    let mut sent = 0;
+    let mut errors = Vec::new();
+    for sub in &subs {
+        let push_sub = crate::push::PushSubscriptionRow {
+            endpoint: sub.endpoint.clone(),
+            p256dh: sub.p256dh.clone(),
+            auth: sub.auth.clone(),
+        };
+        match crate::push::send_push(
+            &push_sub,
+            "Test Notification",
+            "Push notifications are working! You'll receive alerts for watering and climate conditions.",
+        ).await {
+            Ok(()) => sent += 1,
+            Err(e) => errors.push(e.to_string()),
+        }
+    }
+
+    if sent > 0 && errors.is_empty() {
+        Ok(format!("Sent to {} subscription(s)", sent))
+    } else if sent > 0 {
+        Ok(format!("Sent to {}/{} subscription(s). Errors: {}", sent, subs.len(), errors.join(", ")))
+    } else {
+        Err(ServerFnError::new(format!("Failed to send: {}", errors.join(", "))))
+    }
+}
+
+#[server]
 pub async fn acknowledge_alert(alert_id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
