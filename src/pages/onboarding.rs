@@ -117,7 +117,7 @@ pub fn OnboardingPage() -> impl IntoView {
                 <div class="w-full max-w-lg">
                     // Mobile brand
                     <div class="flex gap-2 justify-center items-center mb-8 lg:hidden">
-                        <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/leaf_icon.svg")></div>
+                        <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
                         <span class="text-sm font-semibold tracking-widest uppercase text-primary">"Orchid Tracker"</span>
                     </div>
 
@@ -180,7 +180,7 @@ fn LeftPanel(step: ReadSignal<u32>) -> impl IntoView {
             <div class="flex relative z-10 flex-col justify-between p-12 xl:p-16">
                 <div>
                     <div class="flex gap-3 items-center mb-2">
-                        <div class="flex justify-center items-center w-10 h-10 text-lg rounded-xl border bg-white/10 border-white/20 [&>svg]:w-5 [&>svg]:h-5" inner_html=include_str!("../../public/svg/leaf_icon.svg")></div>
+                        <div class="flex justify-center items-center w-10 h-10 text-lg rounded-xl border bg-white/10 border-white/20 [&>svg]:w-5 [&>svg]:h-5" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
                         <span class="text-sm font-semibold tracking-widest uppercase text-white/70">"Orchid Tracker"</span>
                     </div>
                 </div>

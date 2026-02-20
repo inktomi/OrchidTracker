@@ -1,0 +1,116 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+  <defs>
+    <!-- Rich Tropical Gradients for a fleshy, vivid Bulbophyllum -->
+    <linearGradient id="dorsalGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffb703" />
+      <stop offset="40%" stop-color="#fb8500" />
+      <stop offset="100%" stop-color="#800f2f" />
+    </linearGradient>
+    
+    <linearGradient id="lateralGradL" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#590d22" />
+      <stop offset="50%" stop-color="#a4133c" />
+      <stop offset="100%" stop-color="#ffb703" />
+    </linearGradient>
+
+    <linearGradient id="lateralGradR" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#590d22" />
+      <stop offset="50%" stop-color="#a4133c" />
+      <stop offset="100%" stop-color="#ffb703" />
+    </linearGradient>
+
+    <linearGradient id="lipGrad" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#ff0054" />
+      <stop offset="40%" stop-color="#9e0059" />
+      <stop offset="100%" stop-color="#390099" />
+    </linearGradient>
+    
+    <radialGradient id="columnGrad" cx="50%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#d4d700" />
+      <stop offset="70%" stop-color="#55a630" />
+      <stop offset="100%" stop-color="#007f5f" />
+    </radialGradient>
+
+    <!-- Drop shadow for depth on the labellum -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#1a0008" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes lip-wobble {
+      0%, 100% { transform: rotate(-5deg); }
+      50% { transform: rotate(7deg); }
+    }
+    @keyframes background-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .labellum {
+      /* Hinge the labellum right at the base of the column */
+      transform-origin: 50px 58px;
+      animation: lip-wobble 3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    .bg-pulse {
+      transform-origin: 50px 50px;
+      animation: background-pulse 6s ease-in-out infinite;
+    }
+  </style>
+
+  <!-- Deep shadow background -->
+  <circle cx="50" cy="50" r="48" fill="#1a050a" />
+
+  <g class="bg-pulse">
+    <!-- Dorsal Sepal (Top, arched over) -->
+    <path d="M 50,55 C 20,40 5,10 40,5 C 48,3 52,3 60,5 C 95,10 80,40 50,55 Z" fill="url(#dorsalGrad)" />
+    <!-- Dorsal Sepal Stripes -->
+    <path d="M 50,55 Q 35,30 43,6 M 50,55 Q 50,30 52,5 M 50,55 Q 65,30 57,6 M 50,55 Q 25,25 25,10 M 50,55 Q 75,25 75,10" stroke="#590d22" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round"/>
+
+    <!-- Left Lateral Sepal -->
+    <path d="M 45,50 C 10,50 0,80 10,95 C 20,105 35,90 48,60 Z" fill="url(#lateralGradL)" />
+    <!-- Right Lateral Sepal -->
+    <path d="M 55,50 C 90,50 100,80 90,95 C 80,105 65,90 52,60 Z" fill="url(#lateralGradR)" />
+    
+    <!-- Lateral Sepal Stripes -->
+    <path d="M 45,55 Q 15,75 12,92 M 47,57 Q 30,75 22,90 M 43,53 Q 5,65 5,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" />
+    <path d="M 55,55 Q 85,75 88,92 M 53,57 Q 70,75 78,90 M 57,53 Q 95,65 95,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" />
+
+    <!-- Tiny Petals (often very small and horn-like in Bulbophyllum) -->
+    <path d="M 45,50 C 35,42 20,45 25,55 C 28,60 40,55 45,52 Z" fill="#ffb703" />
+    <path d="M 55,50 C 65,42 80,45 75,55 C 72,60 60,55 55,52 Z" fill="#ffb703" />
+
+    <!-- Column (The reproductive structure in the center) -->
+    <path d="M 42,35 C 40,20 60,20 58,35 C 56,50 54,58 50,58 C 46,58 44,50 42,35 Z" fill="url(#columnGrad)" />
+    
+    <!-- Column details (Anther cap and stigma) -->
+    <ellipse cx="50" cy="28" rx="5" ry="4" fill="#ffdd00" />
+    <!-- Stigmatic cavity -->
+    <path d="M 46,38 Q 50,44 54,38 C 54,35 46,35 46,38 Z" fill="#004b23" opacity="0.8" />
+  </g>
+
+  <!-- The Hinged Labellum (Lip) - The wobbling fleshy part! -->
+  <g class="labellum" filter="url(#dropShadow)">
+    <!-- Fleshy base -->
+    <path d="M 47,58 C 43,62 35,75 40,90 C 43,100 57,100 60,90 C 65,75 57,62 53,58 Z" fill="url(#lipGrad)" />
+    
+    <!-- Deep groove down the middle -->
+    <path d="M 50,59 Q 47,75 50,94" stroke="#2a0014" stroke-width="2.5" fill="none" stroke-linecap="round" />
+    <path d="M 50,59 Q 53,75 50,94" stroke="#ff8fa3" stroke-width="0.75" fill="none" stroke-linecap="round" />
+
+    <!-- Fleshy Bulbophyllum textures / spots / warts -->
+    <circle cx="43" cy="70" r="1.5" fill="#ffb703" opacity="0.9" />
+    <circle cx="56" cy="73" r="2" fill="#ffb703" opacity="0.9" />
+    <circle cx="45" cy="80" r="1.2" fill="#ffb703" opacity="0.9" />
+    <circle cx="55" cy="83" r="1" fill="#ffb703" opacity="0.9" />
+    <circle cx="47" cy="89" r="1.2" fill="#ffb703" opacity="0.9" />
+    <circle cx="52" cy="76" r="1.5" fill="#ffb703" opacity="0.9" />
+    <circle cx="41" cy="77" r="1" fill="#ffb703" opacity="0.9" />
+    <circle cx="58" cy="80" r="0.8" fill="#ffb703" opacity="0.9" />
+    
+    <!-- Delicate ciliate hairs on the edge of the lip -->
+    <path d="M 40,68 L 35,69 M 60,68 L 65,69 M 38,78 L 32,80 M 62,78 L 68,80 M 41,88 L 35,92 M 59,88 L 65,92 M 45,96 L 40,102 M 55,96 L 60,102" stroke="#ff0054" stroke-width="1" stroke-linecap="round" opacity="0.9" />
+  </g>
+  
+  <!-- Subtle foreground lighting overlay to give it a macro photo feel -->
+  <circle cx="35" cy="35" r="45" fill="#ffffff" opacity="0.15" style="mix-blend-mode: overlay;" pointer-events="none" />
+</svg>
