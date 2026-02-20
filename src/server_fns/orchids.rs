@@ -159,6 +159,19 @@ mod ssr_types {
 #[cfg(feature = "ssr")]
 use ssr_types::*;
 
+/// Normalize light requirement strings to DB-compatible values.
+/// Handles aliases like "Medium Light" -> "Medium", "low" -> "Low", etc.
+/// Defaults to "Medium" for unrecognized input.
+#[cfg(feature = "ssr")]
+fn normalize_light_requirement(input: &str) -> String {
+    match input.trim() {
+        "Low" | "low" | "Low Light" => "Low".to_string(),
+        "Medium" | "medium" | "Medium Light" => "Medium".to_string(),
+        "High" | "high" | "High Light" => "High".to_string(),
+        _ => "Medium".to_string(),
+    }
+}
+
 #[cfg(feature = "ssr")]
 fn validate_orchid_fields(
     name: &str,
@@ -285,6 +298,8 @@ pub async fn create_orchid(
     use crate::db::db;
     use crate::error::internal_error;
 
+    let light_requirement = normalize_light_requirement(&light_requirement);
+
     validate_orchid_fields(&name, &species, &notes, water_frequency_days, &light_requirement, &placement, &light_lux, &temperature_range, &conservation_status)?;
 
     let user_id = require_auth().await?;
@@ -360,11 +375,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
 
-    let light_req_str = match orchid.light_requirement {
-        crate::orchid::LightRequirement::Low => "Low",
-        crate::orchid::LightRequirement::Medium => "Medium",
-        crate::orchid::LightRequirement::High => "High",
-    };
+    let light_req_str = orchid.light_requirement.as_str();
     let placement_str = orchid.placement.clone();
 
     validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
@@ -719,4 +730,49 @@ pub async fn mark_repotted(orchid_id: String, pot_medium: Option<String>, pot_si
         .await;
 
     Ok(orchid)
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "ssr")]
+    use super::normalize_light_requirement;
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_normalize_light_requirement_canonical() {
+        assert_eq!(normalize_light_requirement("Low"), "Low");
+        assert_eq!(normalize_light_requirement("Medium"), "Medium");
+        assert_eq!(normalize_light_requirement("High"), "High");
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_normalize_light_requirement_display_aliases() {
+        assert_eq!(normalize_light_requirement("Low Light"), "Low");
+        assert_eq!(normalize_light_requirement("Medium Light"), "Medium");
+        assert_eq!(normalize_light_requirement("High Light"), "High");
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_normalize_light_requirement_lowercase() {
+        assert_eq!(normalize_light_requirement("low"), "Low");
+        assert_eq!(normalize_light_requirement("medium"), "Medium");
+        assert_eq!(normalize_light_requirement("high"), "High");
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_normalize_light_requirement_unknown_defaults_to_medium() {
+        assert_eq!(normalize_light_requirement("Bright"), "Medium");
+        assert_eq!(normalize_light_requirement(""), "Medium");
+        assert_eq!(normalize_light_requirement("Full Sun"), "Medium");
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_normalize_light_requirement_trims_whitespace() {
+        assert_eq!(normalize_light_requirement("  Low  "), "Low");
+        assert_eq!(normalize_light_requirement(" Medium Light "), "Medium");
+    }
 }

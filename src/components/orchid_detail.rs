@@ -14,11 +14,7 @@ const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold border-b-2 cursor-poin
 const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 bg-transparent dark:hover:text-stone-300";
 
 fn light_req_to_key(lr: &LightRequirement) -> String {
-    match lr {
-        LightRequirement::Low => "Low".to_string(),
-        LightRequirement::Medium => "Medium".to_string(),
-        LightRequirement::High => "High".to_string(),
-    }
+    lr.as_str().to_string()
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -100,14 +100,17 @@ pub fn HomePage() -> impl IntoView {
 
     let hemisphere = Memo::new(move |_| model.get().hemisphere.clone());
 
+    // Error toast signal
+    let (toast_msg, set_toast_msg) = signal::<Option<String>>(None);
+
     // Orchid operations via server functions (async I/O — not TEA state)
     let on_add = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
-            let _ = create_orchid(
+            match create_orchid(
                 orchid.name,
                 orchid.species,
                 orchid.water_frequency_days,
-                orchid.light_requirement.to_string(),
+                orchid.light_requirement.as_str().to_string(),
                 orchid.notes,
                 orchid.placement.clone(),
                 orchid.light_lux,
@@ -132,14 +135,19 @@ pub fn HomePage() -> impl IntoView {
                 orchid.rest_fertilizer_multiplier,
                 orchid.active_water_multiplier,
                 orchid.active_fertilizer_multiplier,
-            ).await;
+            ).await {
+                Ok(_) => {},
+                Err(e) => set_toast_msg.set(Some(format!("Failed to add orchid: {}", e))),
+            }
             orchids_resource.refetch();
         });
     };
 
     let on_update = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
-            let _ = update_orchid(orchid.clone()).await;
+            if let Err(e) = update_orchid(orchid.clone()).await {
+                set_toast_msg.set(Some(format!("Failed to update orchid: {}", e)));
+            }
             orchids_resource.refetch();
         });
     };
@@ -154,14 +162,18 @@ pub fn HomePage() -> impl IntoView {
             }
         }
         leptos::task::spawn_local(async move {
-            let _ = delete_orchid(id).await;
+            if let Err(e) = delete_orchid(id).await {
+                set_toast_msg.set(Some(format!("Failed to delete orchid: {}", e)));
+            }
             orchids_resource.refetch();
         });
     };
 
     let on_water = move |id: String| {
         leptos::task::spawn_local(async move {
-            let _ = mark_watered(id).await;
+            if let Err(e) = mark_watered(id).await {
+                set_toast_msg.set(Some(format!("Failed to mark watered: {}", e)));
+            }
             orchids_resource.refetch();
         });
     };
@@ -338,6 +350,8 @@ pub fn HomePage() -> impl IntoView {
                                     />
                                 }.into_any()
                             })}
+
+                            <ErrorToast msg=toast_msg set_msg=set_toast_msg />
                         }.into_any()
                     },
                     _ => {
@@ -354,6 +368,37 @@ pub fn HomePage() -> impl IntoView {
                 })
             }}
         </Suspense>
+    }
+}
+
+/// Error toast notification — auto-dismisses after 5 seconds
+#[component]
+fn ErrorToast(
+    msg: ReadSignal<Option<String>>,
+    set_msg: WriteSignal<Option<String>>,
+) -> impl IntoView {
+    view! {
+        {move || msg.get().map(|text| {
+            // Auto-dismiss after 5 seconds (hydrate-only)
+            #[cfg(feature = "hydrate")]
+            {
+                let dismiss = set_msg;
+                leptos::task::spawn_local(async move {
+                    gloo_timers::future::TimeoutFuture::new(5_000).await;
+                    dismiss.set(None);
+                });
+            }
+
+            view! {
+                <div class="flex fixed right-4 bottom-4 left-4 z-50 gap-3 justify-between items-center py-3 px-4 text-sm text-white bg-red-600 rounded-xl shadow-lg sm:left-4 sm:right-auto sm:max-w-md">
+                    <span>{text}</span>
+                    <button
+                        class="py-1 px-2 text-xs font-semibold text-red-600 bg-white rounded border-none cursor-pointer hover:bg-red-50"
+                        on:click=move |_| set_msg.set(None)
+                    >"Dismiss"</button>
+                </div>
+            }
+        })}
     }
 }
 

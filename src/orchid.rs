@@ -56,6 +56,19 @@ pub enum LightRequirement {
     High,
 }
 
+impl LightRequirement {
+    /// Returns the DB-compatible short key: "Low", "Medium", "High".
+    /// Use this when sending values to SurrealDB or serializing for storage.
+    /// For UI display, use `Display` which returns "Low Light", etc.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LightRequirement::Low => "Low",
+            LightRequirement::Medium => "Medium",
+            LightRequirement::High => "High",
+        }
+    }
+}
+
 impl fmt::Display for LightRequirement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -675,6 +688,24 @@ mod tests {
         assert_eq!(bad, FitCategory::BadFit);
         let caution: FitCategory = serde_json::from_str("\"Caution Fit\"").unwrap();
         assert_eq!(caution, FitCategory::CautionFit);
+    }
+
+    #[test]
+    fn test_light_requirement_as_str() {
+        assert_eq!(LightRequirement::Low.as_str(), "Low");
+        assert_eq!(LightRequirement::Medium.as_str(), "Medium");
+        assert_eq!(LightRequirement::High.as_str(), "High");
+    }
+
+    #[test]
+    fn test_light_requirement_display_vs_as_str() {
+        // Display is for UI ("Low Light"), as_str is for DB ("Low")
+        assert_eq!(LightRequirement::Low.to_string(), "Low Light");
+        assert_eq!(LightRequirement::Low.as_str(), "Low");
+        assert_eq!(LightRequirement::Medium.to_string(), "Medium Light");
+        assert_eq!(LightRequirement::Medium.as_str(), "Medium");
+        assert_eq!(LightRequirement::High.to_string(), "High Light");
+        assert_eq!(LightRequirement::High.as_str(), "High");
     }
 
     #[test]
