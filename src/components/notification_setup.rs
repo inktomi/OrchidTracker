@@ -14,8 +14,10 @@ pub fn NotificationSetup() -> impl IntoView {
             if perm == web_sys::NotificationPermission::Default {
                 set_show_banner.set(true);
             } else if perm == web_sys::NotificationPermission::Granted {
+                // Only register the SW so it can receive pushes for existing subscriptions.
+                // Do NOT re-subscribe — that's controlled by the settings toggle.
                 leptos::task::spawn_local(async move {
-                    register_and_subscribe_silent().await;
+                    ensure_sw_registered().await;
                 });
             }
         });
@@ -167,6 +169,22 @@ async fn register_and_subscribe() -> Result<(), String> {
 pub(crate) async fn register_and_subscribe_silent() {
     if let Err(e) = register_and_subscribe().await {
         log::error!("Push subscribe failed: {}", e);
+    }
+}
+
+/// Register the service worker only (no push subscription).
+/// Called on page load when permission is already granted, so the SW
+/// is active and can receive pushes for existing subscriptions.
+#[cfg(feature = "hydrate")]
+async fn ensure_sw_registered() {
+    use wasm_bindgen_futures::JsFuture;
+
+    let Some(window) = web_sys::window() else { return };
+    let sw_container = window.navigator().service_worker();
+
+    let promise = sw_container.register("/sw.js");
+    if let Err(e) = JsFuture::from(promise).await {
+        log::error!("SW registration failed: {:?}", e);
     }
 }
 
