@@ -84,8 +84,8 @@ pub fn OrchidCard(
                         <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.placement.clone()}</div>
                     </div>
                     <div>
-                        <div class="text-xs tracking-wide text-stone-400">"Temp"</div>
-                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.temperature_range}</div>
+                        <div class="text-xs tracking-wide text-stone-400">"Pot"</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.pot_medium.clone().unwrap_or_else(|| "\u{2014}".to_string())}</div>
                     </div>
                 </div>
 

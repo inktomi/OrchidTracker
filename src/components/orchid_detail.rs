@@ -5,6 +5,7 @@ use crate::components::event_type_picker::EventTypePicker;
 use crate::components::photo_capture::PhotoCapture;
 use crate::components::growth_thread::GrowthThread;
 use crate::components::first_bloom::FirstBloomCelebration;
+use crate::components::photo_gallery::PhotoGallery;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
 
 const EDIT_BTN: &str = "py-2 px-3 text-sm font-semibold text-white rounded-lg border-none cursor-pointer bg-accent hover:bg-accent-dark transition-colors";
@@ -22,6 +23,7 @@ fn light_req_to_key(lr: &LightRequirement) -> String {
 #[derive(Clone, Copy, PartialEq)]
 enum DetailTab {
     Journal,
+    Gallery,
     Details,
 }
 
@@ -83,6 +85,10 @@ pub fn OrchidDetail(
                         on:click=move |_| set_active_tab.set(DetailTab::Journal)
                     >"Journal"</button>
                     <button
+                        class=move || if active_tab.get() == DetailTab::Gallery { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| set_active_tab.set(DetailTab::Gallery)
+                    >"Gallery"</button>
+                    <button
                         class=move || if active_tab.get() == DetailTab::Details { TAB_ACTIVE } else { TAB_INACTIVE }
                         on:click=move |_| set_active_tab.set(DetailTab::Details)
                     >"Details"</button>
@@ -98,6 +104,9 @@ pub fn OrchidDetail(
                                 set_log_entries=set_log_entries
                                 set_show_first_bloom=set_show_first_bloom
                             />
+                        }.into_any(),
+                        DetailTab::Gallery => view! {
+                            <PhotoGallery entries=log_entries />
                         }.into_any(),
                         DetailTab::Details => view! {
                             <DetailsTab
@@ -251,6 +260,10 @@ fn DetailsTab(
     let (edit_temp_max, set_edit_temp_max) = signal(String::new());
     let (edit_humidity_min, set_edit_humidity_min) = signal(String::new());
     let (edit_humidity_max, set_edit_humidity_max) = signal(String::new());
+    let (edit_fert_freq, set_edit_fert_freq) = signal(String::new());
+    let (edit_fert_type, set_edit_fert_type) = signal(String::new());
+    let (edit_pot_medium, set_edit_pot_medium) = signal(String::new());
+    let (edit_pot_size, set_edit_pot_size) = signal(String::new());
 
     let populate_edit_fields = move || {
         let current = orchid_signal.get();
@@ -267,6 +280,10 @@ fn DetailsTab(
         set_edit_temp_max.set(current.temp_max.map(|v| v.to_string()).unwrap_or_default());
         set_edit_humidity_min.set(current.humidity_min.map(|v| v.to_string()).unwrap_or_default());
         set_edit_humidity_max.set(current.humidity_max.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_fert_freq.set(current.fertilize_frequency_days.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_fert_type.set(current.fertilizer_type.unwrap_or_default());
+        set_edit_pot_medium.set(current.pot_medium.unwrap_or_default());
+        set_edit_pot_size.set(current.pot_size.unwrap_or_default());
     };
 
     let on_edit_save = move |ev: leptos::ev::SubmitEvent| {
@@ -279,6 +296,9 @@ fn DetailsTab(
         };
         let cons = edit_conservation.get();
         let conservation_opt = if cons.is_empty() { None } else { Some(cons) };
+        let fert_type_val = edit_fert_type.get();
+        let pot_medium_val = edit_pot_medium.get();
+        let pot_size_val = edit_pot_size.get();
         let updated = Orchid {
             id: current.id,
             name: edit_name.get(),
@@ -299,6 +319,12 @@ fn DetailsTab(
             humidity_min: edit_humidity_min.get().parse().ok(),
             humidity_max: edit_humidity_max.get().parse().ok(),
             first_bloom_at: current.first_bloom_at,
+            last_fertilized_at: current.last_fertilized_at,
+            fertilize_frequency_days: edit_fert_freq.get().parse().ok(),
+            fertilizer_type: if fert_type_val.is_empty() { None } else { Some(fert_type_val) },
+            last_repotted_at: current.last_repotted_at,
+            pot_medium: if pot_medium_val.is_empty() { None } else { Some(pot_medium_val) },
+            pot_size: if pot_size_val.is_empty() { None } else { Some(pot_size_val) },
         };
         set_orchid_signal.set(updated.clone());
         on_update(updated);
@@ -330,6 +356,10 @@ fn DetailsTab(
                         edit_temp_max=edit_temp_max set_edit_temp_max=set_edit_temp_max
                         edit_humidity_min=edit_humidity_min set_edit_humidity_min=set_edit_humidity_min
                         edit_humidity_max=edit_humidity_max set_edit_humidity_max=set_edit_humidity_max
+                        edit_fert_freq=edit_fert_freq set_edit_fert_freq=set_edit_fert_freq
+                        edit_fert_type=edit_fert_type set_edit_fert_type=set_edit_fert_type
+                        edit_pot_medium=edit_pot_medium set_edit_pot_medium=set_edit_pot_medium
+                        edit_pot_size=edit_pot_size set_edit_pot_size=set_edit_pot_size
                         zones=zones_ref
                         on_save=on_edit_save
                         on_cancel=on_edit_cancel
@@ -376,6 +406,9 @@ fn DetailsTab(
                 }.into_any()
             }
         }}
+
+        // Care Schedule: Fertilizer + Pot Info
+        <CareScheduleCard orchid_signal=orchid_signal set_orchid_signal=set_orchid_signal />
 
         // Habitat weather
         {native_lat.zip(native_lon).map(|(lat, lon)| {
@@ -431,6 +464,122 @@ fn DetailsTab(
 
 // ── Edit Form sub-component ──────────────────────────────────────────
 
+// ── Care Schedule Card ───────────────────────────────────────────────
+
+const CARE_CARD: &str = "p-4 mb-4 rounded-xl border border-stone-200 dark:border-stone-700";
+const CARE_STAT_LABEL: &str = "text-xs tracking-wide text-stone-400";
+const CARE_STAT_VALUE: &str = "text-sm font-medium text-stone-700 dark:text-stone-300";
+
+#[component]
+fn CareScheduleCard(
+    orchid_signal: ReadSignal<Orchid>,
+    set_orchid_signal: WriteSignal<Orchid>,
+) -> impl IntoView {
+    let (is_fertilizing, set_is_fertilizing) = signal(false);
+
+    view! {
+        <div class=CARE_CARD>
+            <h3 class="mt-0 mb-3 text-sm font-semibold tracking-wide text-stone-500 dark:text-stone-400">"Care Schedule"</h3>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                // Fertilizer section
+                <div>
+                    <div class=CARE_STAT_LABEL>"\u{2728} Fertilizer"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || {
+                            let o = orchid_signal.get();
+                            o.fertilizer_type.unwrap_or_else(|| "Not set".to_string())
+                        }}
+                    </div>
+                </div>
+                <div>
+                    <div class=CARE_STAT_LABEL>"Fertilize Every"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || {
+                            let o = orchid_signal.get();
+                            match o.fertilize_frequency_days {
+                                Some(d) => format!("{} days", d),
+                                None => "No schedule".to_string(),
+                            }
+                        }}
+                    </div>
+                </div>
+                <div>
+                    <div class=CARE_STAT_LABEL>"Last Fertilized"</div>
+                    <div class={move || {
+                        let o = orchid_signal.get();
+                        let overdue = o.fertilize_frequency_days.is_some()
+                            && o.fertilize_days_until_due().map(|d| d < 0).unwrap_or(false);
+                        if overdue { "text-sm font-medium text-danger" } else { CARE_STAT_VALUE }
+                    }}>
+                        {move || {
+                            let o = orchid_signal.get();
+                            match o.days_since_fertilized() {
+                                Some(0) => "Today".to_string(),
+                                Some(1) => "1 day ago".to_string(),
+                                Some(d) => format!("{} days ago", d),
+                                None => "Never".to_string(),
+                            }
+                        }}
+                    </div>
+                </div>
+                <div class="flex items-end">
+                    <button
+                        class="py-1.5 px-3 text-xs font-semibold text-yellow-700 bg-yellow-100 rounded-lg border-none transition-colors cursor-pointer dark:text-yellow-300 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
+                        disabled=move || is_fertilizing.get()
+                        on:click=move |_| {
+                            set_is_fertilizing.set(true);
+                            let orchid_id = orchid_signal.get().id.clone();
+                            leptos::task::spawn_local(async move {
+                                match crate::server_fns::orchids::mark_fertilized(orchid_id).await {
+                                    Ok(updated) => set_orchid_signal.set(updated),
+                                    Err(e) => log::error!("Failed to mark fertilized: {}", e),
+                                }
+                                set_is_fertilizing.set(false);
+                            });
+                        }
+                    >
+                        {move || if is_fertilizing.get() { "..." } else { "\u{2728} Fertilize" }}
+                    </button>
+                </div>
+            </div>
+
+            // Pot info
+            <div class="grid grid-cols-2 gap-3 pt-3 mt-3 text-sm border-t border-stone-100 dark:border-stone-700/50">
+                <div>
+                    <div class=CARE_STAT_LABEL>"\u{1FAB4} Pot Medium"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || orchid_signal.get().pot_medium.unwrap_or_else(|| "Not set".to_string())}
+                    </div>
+                </div>
+                <div>
+                    <div class=CARE_STAT_LABEL>"Pot Size"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || orchid_signal.get().pot_size.unwrap_or_else(|| "Not set".to_string())}
+                    </div>
+                </div>
+                <div>
+                    <div class=CARE_STAT_LABEL>"Last Repotted"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || {
+                            let o = orchid_signal.get();
+                            match o.days_since_repotted() {
+                                Some(0) => "Today".to_string(),
+                                Some(d) if d < 30 => format!("{} days ago", d),
+                                Some(d) if d < 365 => format!("{} months ago", d / 30),
+                                Some(d) => format!("{:.1} years ago", d as f64 / 365.0),
+                                None => "Never".to_string(),
+                            }
+                        }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    }.into_any()
+}
+
+// ── Edit Form sub-component ──────────────────────────────────────────
+
 #[component]
 fn EditForm(
     edit_name: ReadSignal<String>, set_edit_name: WriteSignal<String>,
@@ -446,6 +595,10 @@ fn EditForm(
     edit_temp_max: ReadSignal<String>, set_edit_temp_max: WriteSignal<String>,
     edit_humidity_min: ReadSignal<String>, set_edit_humidity_min: WriteSignal<String>,
     edit_humidity_max: ReadSignal<String>, set_edit_humidity_max: WriteSignal<String>,
+    edit_fert_freq: ReadSignal<String>, set_edit_fert_freq: WriteSignal<String>,
+    edit_fert_type: ReadSignal<String>, set_edit_fert_type: WriteSignal<String>,
+    edit_pot_medium: ReadSignal<String>, set_edit_pot_medium: WriteSignal<String>,
+    edit_pot_size: ReadSignal<String>, set_edit_pot_size: WriteSignal<String>,
     zones: Vec<GrowingZone>,
     on_save: impl Fn(leptos::ev::SubmitEvent) + 'static + Copy + Send + Sync,
     on_cancel: impl Fn(leptos::ev::MouseEvent) + 'static + Copy + Send + Sync,
@@ -519,6 +672,41 @@ fn EditForm(
                         <input type="number" step="0.1" prop:value=edit_humidity_max on:input=move |ev| set_edit_humidity_max.set(event_target_value(&ev)) placeholder="e.g. 80" />
                     </div>
                 </div>
+
+                // ── Fertilizer & Pot Section ──
+                <div class="pt-4 mt-4 border-t border-stone-200 dark:border-stone-700">
+                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Fertilizer & Pot"</h4>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Fertilizer Type:"</label>
+                            <input type="text" prop:value=edit_fert_type on:input=move |ev| set_edit_fert_type.set(event_target_value(&ev)) placeholder="e.g. MSU, Bloom Booster" />
+                        </div>
+                        <div class="flex-1">
+                            <label>"Fertilize Every (days):"</label>
+                            <input type="number" prop:value=edit_fert_freq on:input=move |ev| set_edit_fert_freq.set(event_target_value(&ev)) placeholder="e.g. 14" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Pot Medium:"</label>
+                            <select prop:value=edit_pot_medium on:change=move |ev| set_edit_pot_medium.set(event_target_value(&ev))>
+                                <option value="">"Select..."</option>
+                                <option value="Bark">"Bark"</option>
+                                <option value="Sphagnum Moss">"Sphagnum Moss"</option>
+                                <option value="Semi-Hydro (LECA)">"Semi-Hydro (LECA)"</option>
+                                <option value="Perlite Mix">"Perlite Mix"</option>
+                                <option value="Mounted">"Mounted"</option>
+                                <option value="Full Water Culture">"Full Water Culture"</option>
+                                <option value="Other">"Other"</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label>"Pot Size:"</label>
+                            <input type="text" prop:value=edit_pot_size on:input=move |ev| set_edit_pot_size.set(event_target_value(&ev)) placeholder="e.g. 4 inch, 10cm" />
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-4">
                     <label>"Notes:"</label>
                     <textarea prop:value=edit_notes on:input=move |ev| set_edit_notes.set(event_target_value(&ev)) rows="3"></textarea>

@@ -176,6 +176,24 @@ pub struct Orchid {
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub first_bloom_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub last_fertilized_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub fertilize_frequency_days: Option<u32>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub fertilizer_type: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub last_repotted_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub pot_medium: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub pot_size: Option<String>,
 }
 
 impl Orchid {
@@ -195,6 +213,24 @@ impl Orchid {
     pub fn days_until_due(&self) -> Option<i64> {
         self.days_since_watered()
             .map(|days| self.water_frequency_days as i64 - days)
+    }
+
+    /// Days since last fertilized, or None if never fertilized.
+    pub fn days_since_fertilized(&self) -> Option<i64> {
+        self.last_fertilized_at.map(|dt| (Utc::now() - dt).num_days())
+    }
+
+    /// Days until fertilizing is due. None if no schedule set.
+    pub fn fertilize_days_until_due(&self) -> Option<i64> {
+        self.fertilize_frequency_days.and_then(|freq| {
+            self.days_since_fertilized()
+                .map(|days| freq as i64 - days)
+        })
+    }
+
+    /// Days since last repotted, or None if never repotted.
+    pub fn days_since_repotted(&self) -> Option<i64> {
+        self.last_repotted_at.map(|dt| (Utc::now() - dt).num_days())
     }
 }
 
@@ -294,6 +330,12 @@ mod tests {
             humidity_min: None,
             humidity_max: None,
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
 
         assert_eq!(orchid.name, "Test Orchid");
@@ -323,6 +365,12 @@ mod tests {
             humidity_min: None,
             humidity_max: None,
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
         assert_eq!(orchid.days_since_watered(), None);
         assert!(!orchid.is_overdue());
@@ -351,6 +399,12 @@ mod tests {
             humidity_min: None,
             humidity_max: None,
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(2));
         assert!(!orchid.is_overdue());
@@ -379,6 +433,12 @@ mod tests {
             humidity_min: None,
             humidity_max: None,
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(10));
         assert!(orchid.is_overdue());
@@ -459,6 +519,12 @@ mod tests {
             humidity_min: Some(60.0),
             humidity_max: Some(80.0),
             first_bloom_at: Some(now),
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
 
         let json = serde_json::to_string(&orchid).unwrap();

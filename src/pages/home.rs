@@ -105,6 +105,10 @@ pub fn HomePage() -> impl IntoView {
                 orchid.temp_max,
                 orchid.humidity_min,
                 orchid.humidity_max,
+                orchid.fertilize_frequency_days,
+                orchid.fertilizer_type,
+                orchid.pot_medium,
+                orchid.pot_size,
             ).await;
             orchids_resource.refetch();
         });

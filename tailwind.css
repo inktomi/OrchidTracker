@@ -288,3 +288,32 @@ html.dark .botanical-breathe {
   10%  { opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
+
+/* ── Photo Gallery ─────────────────────────────────────────────────── */
+
+/* Gallery thumbnails stagger in on tab switch */
+.gallery-thumb-in {
+  animation: gallery-thumb-in 0.3s ease-out both;
+}
+@keyframes gallery-thumb-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Lightbox image slide transition */
+.gallery-slide-in {
+  animation: gallery-slide-in 0.25s ease-out both;
+}
+@keyframes gallery-slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Compare mode split entrance */
+.gallery-compare-split {
+  animation: gallery-compare-split 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes gallery-compare-split {
+  from { opacity: 0; transform: scaleX(0.8); }
+  to   { opacity: 1; transform: scaleX(1); }
+}

@@ -104,6 +104,12 @@ pub fn AddOrchidForm(
             humidity_min: humidity_min.get().parse().ok(),
             humidity_max: humidity_max.get().parse().ok(),
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         };
 
         on_add(new_orchid);

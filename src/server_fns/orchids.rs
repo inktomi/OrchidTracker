@@ -56,6 +56,18 @@ mod ssr_types {
         pub humidity_max: Option<f64>,
         #[surreal(default)]
         pub first_bloom_at: Option<chrono::DateTime<chrono::Utc>>,
+        #[surreal(default)]
+        pub last_fertilized_at: Option<chrono::DateTime<chrono::Utc>>,
+        #[surreal(default)]
+        pub fertilize_frequency_days: Option<u32>,
+        #[surreal(default)]
+        pub fertilizer_type: Option<String>,
+        #[surreal(default)]
+        pub last_repotted_at: Option<chrono::DateTime<chrono::Utc>>,
+        #[surreal(default)]
+        pub pot_medium: Option<String>,
+        #[surreal(default)]
+        pub pot_size: Option<String>,
     }
 
     #[derive(serde::Deserialize, SurrealValue, Clone)]
@@ -97,6 +109,12 @@ mod ssr_types {
                 humidity_min: self.humidity_min,
                 humidity_max: self.humidity_max,
                 first_bloom_at: self.first_bloom_at,
+                last_fertilized_at: self.last_fertilized_at,
+                fertilize_frequency_days: self.fertilize_frequency_days,
+                fertilizer_type: self.fertilizer_type,
+                last_repotted_at: self.last_repotted_at,
+                pot_medium: self.pot_medium,
+                pot_size: self.pot_size,
             }
         }
     }
@@ -226,6 +244,10 @@ pub async fn create_orchid(
     temp_max: Option<f64>,
     humidity_min: Option<f64>,
     humidity_max: Option<f64>,
+    fertilize_frequency_days: Option<u32>,
+    fertilizer_type: Option<String>,
+    pot_medium: Option<String>,
+    pot_size: Option<String>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -246,7 +268,9 @@ pub async fn create_orchid(
              native_region = $native_region, native_latitude = $native_lat, \
              native_longitude = $native_lon, \
              temp_min = $temp_min, temp_max = $temp_max, \
-             humidity_min = $humidity_min, humidity_max = $humidity_max \
+             humidity_min = $humidity_min, humidity_max = $humidity_max, \
+             fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
+             pot_medium = $pot_medium, pot_size = $pot_size \
              RETURN *"
         )
         .bind(("owner", owner))
@@ -266,6 +290,10 @@ pub async fn create_orchid(
         .bind(("temp_max", temp_max))
         .bind(("humidity_min", humidity_min))
         .bind(("humidity_max", humidity_max))
+        .bind(("fert_freq", fertilize_frequency_days.map(|v| v as i64)))
+        .bind(("fert_type", fertilizer_type))
+        .bind(("pot_medium", pot_medium))
+        .bind(("pot_size", pot_size))
         .await
         .map_err(|e| internal_error("Create orchid query failed", e))?;
 
@@ -312,6 +340,8 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              native_longitude = $native_lon, \
              temp_min = $temp_min, temp_max = $temp_max, \
              humidity_min = $humidity_min, humidity_max = $humidity_max, \
+             fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
+             pot_medium = $pot_medium, pot_size = $pot_size, \
              updated_at = time::now() \
              WHERE owner = $owner \
              RETURN *"
@@ -334,6 +364,10 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .bind(("temp_max", orchid.temp_max))
         .bind(("humidity_min", orchid.humidity_min))
         .bind(("humidity_max", orchid.humidity_max))
+        .bind(("fert_freq", orchid.fertilize_frequency_days.map(|v| v as i64)))
+        .bind(("fert_type", orchid.fertilizer_type))
+        .bind(("pot_medium", orchid.pot_medium))
+        .bind(("pot_size", orchid.pot_size))
         .await
         .map_err(|e| internal_error("Update orchid query failed", e))?;
 
@@ -537,6 +571,92 @@ pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
     let _ = db()
         .query(
             "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered', event_type = 'Watered'"
+        )
+        .bind(("orchid_id", oid))
+        .bind(("owner", owner))
+        .await;
+
+    Ok(orchid)
+}
+
+#[server]
+pub async fn mark_fertilized(orchid_id: String) -> Result<Orchid, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    let user_id = require_auth().await?;
+    let oid = parse_record_id(&orchid_id)?;
+    let owner = parse_record_id(&user_id)?;
+
+    let mut response = db()
+        .query(
+            "UPDATE $id SET last_fertilized_at = time::now() WHERE owner = $owner RETURN *"
+        )
+        .bind(("id", oid.clone()))
+        .bind(("owner", owner.clone()))
+        .await
+        .map_err(|e| internal_error("Mark fertilized query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Mark fertilized query error", err_msg));
+    }
+
+    let db_row: Option<OrchidDbRow> = response.take(0)
+        .map_err(|e| internal_error("Mark fertilized parse failed", e))?;
+
+    let orchid = db_row.map(|r| r.into_orchid())
+        .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
+
+    let _ = db()
+        .query(
+            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Fertilized', event_type = 'Fertilized'"
+        )
+        .bind(("orchid_id", oid))
+        .bind(("owner", owner))
+        .await;
+
+    Ok(orchid)
+}
+
+#[server]
+pub async fn mark_repotted(orchid_id: String, pot_medium: Option<String>, pot_size: Option<String>) -> Result<Orchid, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    let user_id = require_auth().await?;
+    let oid = parse_record_id(&orchid_id)?;
+    let owner = parse_record_id(&user_id)?;
+
+    let mut response = db()
+        .query(
+            "UPDATE $id SET last_repotted_at = time::now(), pot_medium = $pot_medium, pot_size = $pot_size WHERE owner = $owner RETURN *"
+        )
+        .bind(("id", oid.clone()))
+        .bind(("owner", owner.clone()))
+        .bind(("pot_medium", pot_medium))
+        .bind(("pot_size", pot_size))
+        .await
+        .map_err(|e| internal_error("Mark repotted query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Mark repotted query error", err_msg));
+    }
+
+    let db_row: Option<OrchidDbRow> = response.take(0)
+        .map_err(|e| internal_error("Mark repotted parse failed", e))?;
+
+    let orchid = db_row.map(|r| r.into_orchid())
+        .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
+
+    let _ = db()
+        .query(
+            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Repotted', event_type = 'Repotted'"
         )
         .bind(("orchid_id", oid))
         .bind(("owner", owner))

@@ -102,6 +102,12 @@ mod tests {
             humidity_min: None,
             humidity_max: None,
             first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None,
+            pot_size: None,
         }
     }
 

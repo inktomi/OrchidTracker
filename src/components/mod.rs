@@ -15,6 +15,7 @@ pub mod event_type_picker;
 pub mod photo_capture;
 pub mod growth_thread;
 pub mod first_bloom;
+pub mod photo_gallery;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 
