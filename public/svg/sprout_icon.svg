@@ -1,0 +1,21 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+    <!-- Subtly organic soil line -->
+    <path d="M 4,20 C 8,21 16,19 20,20" stroke-width="1.2" stroke-dasharray="2,1" />
+    
+    <!-- Sprout stem -->
+    <path d="M 12,20 C 12,14 14,10 16,6" stroke-width="1.2" />
+    <path d="M 11.5,20 C 11.5,14 13.5,10 15.5,6" stroke-width="0.5" stroke-dasharray="1,1" />
+
+    <!-- Left leaf -->
+    <path d="M 14,11 C 12,11 8,9 6,6 C 8,4 12,5 14,7 C 15,9 15,10 14,11 Z" stroke-width="1.2" />
+    <path d="M 10,7.5 C 11.5,8.5 13,9.5 14,11" stroke-width="0.5" stroke-dasharray="1,1" />
+
+    <!-- Right leaf -->
+    <path d="M 16,6 C 18,7 22,6 22,4 C 20,2 18,3 16,4 C 15,5 15,6 16,6 Z" stroke-width="1" />
+    
+    <!-- Vintage stippling dots -->
+    <circle cx="12" cy="18" r="0.4" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="16" r="0.4" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="14" r="0.3" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="8" r="0.3" fill="currentColor" stroke="none" />
+</svg>

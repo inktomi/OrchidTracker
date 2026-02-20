@@ -138,7 +138,7 @@ fn EmptyCollection(
                 <div class="absolute left-0 top-1 w-1.5 h-1.5 rounded-full bg-shelf-medium/40 empty-dot"></div>
 
                 // Central plant
-                <div class="text-6xl empty-plant">"🌿"</div>
+                <div class="text-6xl empty-plant [&>svg]:w-[1em] [&>svg]:h-[1em] [&>svg]:inline-block" inner_html=include_str!("../../public/svg/leaf_icon.svg")></div>
             </div>
 
             <h2 class="mb-3 text-2xl sm:text-3xl text-stone-800 dark:text-stone-100">"Your collection awaits"</h2>

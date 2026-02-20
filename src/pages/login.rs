@@ -48,7 +48,7 @@ pub fn LoginPage() -> impl IntoView {
                     // Top — brand
                     <div>
                         <div class="flex gap-3 items-center mb-2">
-                            <div class="flex justify-center items-center w-10 h-10 text-lg rounded-xl border bg-white/10 border-white/20">"🌿"</div>
+                            <div class="flex justify-center items-center w-10 h-10 text-lg rounded-xl border bg-white/10 border-white/20 [&>svg]:w-5 [&>svg]:h-5" inner_html=include_str!("../../public/svg/leaf_icon.svg")></div>
                             <span class="text-sm font-semibold tracking-widest uppercase text-white/70">"Orchid Tracker"</span>
                         </div>
                     </div>
@@ -86,7 +86,7 @@ pub fn LoginPage() -> impl IntoView {
                 <div class="w-full max-w-sm">
                     // Mobile brand (visible only on small screens)
                     <div class="flex gap-2 justify-center items-center mb-8 lg:hidden">
-                        <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary">"🌿"</div>
+                        <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/leaf_icon.svg")></div>
                         <span class="text-sm font-semibold tracking-widest uppercase text-primary">"Orchid Tracker"</span>
                     </div>
 

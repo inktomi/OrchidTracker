@@ -1,0 +1,16 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+    <!-- Subtle, organic, vintage leaf -->
+    <path d="M 12,22 C 12,22 10,18 7,14 C 4,10 4,4 4,4 C 4,4 10,4 14,7 C 18,10 22,12 22,12 C 22,12 18,14 15,16 C 12,18 12,22 12,22 Z" stroke-width="1.2" />
+    <path d="M 4,4 C 8,8 10,14 12,22" stroke-width="0.8" />
+    <!-- Secondary veins (vintage hatching) -->
+    <path d="M 7.5,7.5 C 9,7 10.5,6.5 12,6" stroke-width="0.5" stroke-dasharray="1,1" />
+    <path d="M 9.5,10.5 C 11.5,9.5 13,8.5 15,8" stroke-width="0.5" stroke-dasharray="1,1" />
+    <path d="M 11,14 C 13,12 15,11 17,10" stroke-width="0.5" stroke-dasharray="1,1" />
+    
+    <!-- Small secondary leaf -->
+    <path d="M 12,22 C 10,21 8,20 6,21 C 4,22 4,16 4,16 C 4,16 8,16 10,18 C 11,19 12,22 12,22 Z" stroke-width="1" />
+    <!-- Stippling dots -->
+    <circle cx="8" cy="18" r="0.4" fill="currentColor" stroke="none" />
+    <circle cx="6" cy="14" r="0.3" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="12" r="0.4" fill="currentColor" stroke="none" />
+</svg>
