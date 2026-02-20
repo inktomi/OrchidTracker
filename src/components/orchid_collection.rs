@@ -125,20 +125,9 @@ fn EmptyCollection(
 ) -> impl IntoView {
     view! {
         <div class="flex flex-col items-center py-16 px-6 text-center animate-fade-in">
-            // Decorative floating dots (leaves)
-            <div class="flex relative justify-center items-center mb-8 w-40 h-40">
-                // Outer ring
-                <div class="absolute inset-0 rounded-full border-2 border-dashed empty-ring border-primary/20 dark:border-primary-light/15"></div>
-
-                // Floating leaf dots
-                <div class="absolute -top-1 left-8 w-2.5 h-2.5 rounded-full bg-primary/40 dark:bg-primary-light/30 empty-dot"></div>
-                <div class="absolute -right-1 top-6 w-2 h-2 rounded-full bg-accent/50 empty-dot"></div>
-                <div class="absolute -left-1 bottom-2 w-3 h-3 rounded-full bg-primary-light/30 empty-dot"></div>
-                <div class="absolute -bottom-1 right-8 w-2 h-2 rounded-full bg-accent-light/40 empty-dot"></div>
-                <div class="absolute left-0 top-1 w-1.5 h-1.5 rounded-full bg-shelf-medium/40 empty-dot"></div>
-
-                // Central plant
-                <div class="text-6xl empty-plant [&>svg]:w-[1em] [&>svg]:h-[1em] [&>svg]:inline-block" inner_html=include_str!("../../public/svg/empty_collection.svg")></div>
+            // Decorative empty state image
+            <div class="flex relative justify-center items-center mb-8 w-64 h-64 sm:w-72 sm:h-72">
+                <div class="w-full h-full empty-plant [&>svg]:w-full [&>svg]:h-full" inner_html=include_str!("../../public/svg/empty_collection.svg")></div>
             </div>
 
             <h2 class="mb-3 text-2xl sm:text-3xl text-stone-800 dark:text-stone-100">"Your collection awaits"</h2>
