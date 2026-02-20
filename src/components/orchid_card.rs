@@ -29,6 +29,7 @@ pub fn OrchidCard(
     };
 
     let conservation = orchid.conservation_status.clone();
+    let has_first_bloom = orchid.first_bloom_at.is_some();
     let has_notes = !orchid.notes.is_empty();
     let notes = orchid.notes.clone();
 
@@ -63,6 +64,10 @@ pub fn OrchidCard(
 
                 {conservation.map(|status| {
                     view! { <span class="inline-block py-0.5 px-2 mb-3 text-xs font-medium rounded-full border text-danger bg-danger/5 border-danger/20">{status}</span> }
+                })}
+
+                {has_first_bloom.then(|| {
+                    view! { <span class="inline-block py-0.5 px-2 mb-3 ml-1 text-xs font-medium text-amber-700 rounded-full border dark:text-amber-300 bg-amber-100/80 border-amber-300/40 dark:bg-amber-900/30 dark:border-amber-700/40">"\u{1F33C} First Bloom!"</span> }
                 })}
 
                 <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">

@@ -108,3 +108,138 @@ pub async fn analyze_orchid_image(
 
     Ok(result)
 }
+
+#[server]
+pub async fn generate_care_recap(
+    orchid_id: String,
+    event_type: String,
+) -> Result<String, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::config::config;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    let user_id = require_auth().await?;
+
+    let cfg = config();
+    let api_key = &cfg.gemini_api_key;
+    let model = &cfg.gemini_model;
+
+    if api_key.is_empty() {
+        return Err(ServerFnError::new("Gemini API key not configured"));
+    }
+
+    let orchid_record = surrealdb::types::RecordId::parse_simple(&orchid_id)
+        .map_err(|e| internal_error("Parse orchid ID failed", e))?;
+    let owner = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("Parse user ID failed", e))?;
+
+    // Gather care history for past 6 months
+    let mut response = db()
+        .query(
+            "SELECT event_type, note, timestamp FROM log_entry \
+             WHERE orchid = $orchid_id AND owner = $owner \
+             AND timestamp > time::now() - 6m \
+             ORDER BY timestamp ASC"
+        )
+        .bind(("orchid_id", orchid_record.clone()))
+        .bind(("owner", owner.clone()))
+        .await
+        .map_err(|e| internal_error("Care recap query failed", e))?;
+
+    let _ = response.take_errors();
+    let entries: Vec<serde_json::Value> = response.take(0).unwrap_or_default();
+
+    // Gather orchid info
+    let mut orchid_resp = db()
+        .query(
+            "SELECT name, species, light_requirement, placement FROM $orchid_id \
+             WHERE owner = $owner"
+        )
+        .bind(("orchid_id", orchid_record))
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Orchid info query failed", e))?;
+
+    let _ = orchid_resp.take_errors();
+    let orchid_info: Option<serde_json::Value> = orchid_resp.take(0).unwrap_or(None);
+
+    let species = orchid_info.as_ref()
+        .and_then(|o| o.get("species"))
+        .and_then(|s| s.as_str())
+        .unwrap_or("Unknown");
+
+    // Summarize care events
+    let mut watering_count = 0u32;
+    let mut care_events = Vec::new();
+    for entry in &entries {
+        let et = entry.get("event_type").and_then(|e| e.as_str()).unwrap_or("");
+        let note = entry.get("note").and_then(|n| n.as_str()).unwrap_or("");
+        match et {
+            "Watered" => watering_count += 1,
+            "" => {},
+            _ => care_events.push(format!("{}: {}", et, note)),
+        }
+    }
+
+    let care_summary = serde_json::json!({
+        "species": species,
+        "event_type": event_type,
+        "watering_count_6mo": watering_count,
+        "care_events": care_events,
+        "total_log_entries": entries.len(),
+    });
+
+    let prompt = format!(
+        "Given this {} orchid's care history over the past 6 months, explain in 2-3 sentences \
+         what likely contributed to this {}. Be specific about which care actions helped. \
+         Keep the tone warm and encouraging. Data: {}",
+        species, event_type, care_summary
+    );
+
+    let request_body = serde_json::json!({
+        "contents": [{
+            "parts": [{ "text": prompt }]
+        }]
+    });
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+        model
+    );
+
+    let client = reqwest::Client::new();
+    let resp = client.post(&url)
+        .header("x-goog-api-key", api_key)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| ServerFnError::new(format!("Network error: {}", e)))?;
+
+    if !resp.status().is_success() {
+        // Fallback: return raw stats
+        return Ok(format!(
+            "Over the past 6 months: {} waterings, {} care events recorded.",
+            watering_count, care_events.len()
+        ));
+    }
+
+    let json_resp: serde_json::Value = resp.json().await
+        .map_err(|_| ServerFnError::new("Parse error"))?;
+
+    let text = json_resp
+        .get("candidates")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("content"))
+        .and_then(|c| c.get("parts"))
+        .and_then(|p| p.get(0))
+        .and_then(|p| p.get("text"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| format!(
+            "Over the past 6 months: {} waterings, {} care events recorded.",
+            watering_count, care_events.len()
+        ));
+
+    Ok(text)
+}

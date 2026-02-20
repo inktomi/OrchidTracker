@@ -1,5 +1,12 @@
 use leptos::prelude::*;
+use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, LogEntry};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AddLogEntryResponse {
+    pub entry: LogEntry,
+    pub is_first_bloom: bool,
+}
 
 #[cfg(feature = "ssr")]
 fn parse_record_id(id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
@@ -46,7 +53,7 @@ mod ssr_types {
         #[surreal(default)]
         pub humidity_max: Option<f64>,
         #[surreal(default)]
-        pub history: Vec<LogEntryDbRow>,
+        pub first_bloom_at: Option<chrono::DateTime<chrono::Utc>>,
     }
 
     #[derive(serde::Deserialize, SurrealValue, Clone)]
@@ -57,6 +64,8 @@ mod ssr_types {
         pub note: String,
         #[surreal(default)]
         pub image_filename: Option<String>,
+        #[surreal(default)]
+        pub event_type: Option<String>,
     }
 
     impl OrchidDbRow {
@@ -85,7 +94,7 @@ mod ssr_types {
                 temp_max: self.temp_max,
                 humidity_min: self.humidity_min,
                 humidity_max: self.humidity_max,
-                history: self.history.into_iter().map(|e| e.into_log_entry()).collect(),
+                first_bloom_at: self.first_bloom_at,
             }
         }
     }
@@ -97,6 +106,7 @@ mod ssr_types {
                 timestamp: self.timestamp,
                 note: self.note,
                 image_filename: self.image_filename,
+                event_type: self.event_type,
             }
         }
     }
@@ -363,7 +373,8 @@ pub async fn add_log_entry(
     orchid_id: String,
     note: String,
     image_filename: Option<String>,
-) -> Result<LogEntry, ServerFnError> {
+    event_type: Option<String>,
+) -> Result<AddLogEntryResponse, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -375,6 +386,17 @@ pub async fn add_log_entry(
         validate_filename(filename)?;
     }
 
+    // Validate event_type against allowed values
+    let allowed_event_types = [
+        "Flowering", "NewGrowth", "Repotted", "Fertilized",
+        "PestTreatment", "Purchased", "Watered", "Note",
+    ];
+    if let Some(ref et) = event_type {
+        if !allowed_event_types.contains(&et.as_str()) {
+            return Err(ServerFnError::new("Invalid event type"));
+        }
+    }
+
     let user_id = require_auth().await?;
     let orchid_record = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
@@ -383,13 +405,15 @@ pub async fn add_log_entry(
         .query(
             "CREATE log_entry SET \
              orchid = $orchid_id, owner = $owner, \
-             note = $note, image_filename = $image_filename \
+             note = $note, image_filename = $image_filename, \
+             event_type = $event_type \
              RETURN *"
         )
-        .bind(("orchid_id", orchid_record))
-        .bind(("owner", owner))
+        .bind(("orchid_id", orchid_record.clone()))
+        .bind(("owner", owner.clone()))
         .bind(("note", note))
         .bind(("image_filename", image_filename))
+        .bind(("event_type", event_type.clone()))
         .await
         .map_err(|e| internal_error("Add log entry query failed", e))?;
 
@@ -402,8 +426,48 @@ pub async fn add_log_entry(
     let db_row: Option<LogEntryDbRow> = response.take(0)
         .map_err(|e| internal_error("Add log entry parse failed", e))?;
 
-    db_row.map(|r| r.into_log_entry())
-        .ok_or_else(|| ServerFnError::new("Failed to create log entry"))
+    let entry = db_row.map(|r| r.into_log_entry())
+        .ok_or_else(|| ServerFnError::new("Failed to create log entry"))?;
+
+    // Check for first bloom
+    let mut is_first_bloom = false;
+    if event_type.as_deref() == Some("Flowering") {
+        // Check if any prior flowering entries exist
+        let mut bloom_resp = db()
+            .query(
+                "SELECT count() AS cnt FROM log_entry \
+                 WHERE orchid = $orchid_id AND owner = $owner \
+                 AND event_type = 'Flowering' \
+                 GROUP ALL"
+            )
+            .bind(("orchid_id", orchid_record.clone()))
+            .bind(("owner", owner.clone()))
+            .await
+            .map_err(|e| internal_error("Check bloom query failed", e))?;
+
+        let _ = bloom_resp.take_errors();
+        let bloom_count: Option<serde_json::Value> = bloom_resp.take(0)
+            .unwrap_or(None);
+
+        let count = bloom_count
+            .and_then(|v| v.get("cnt").and_then(|c| c.as_i64()))
+            .unwrap_or(0);
+
+        // count == 1 means the entry we just created is the only one
+        if count <= 1 {
+            is_first_bloom = true;
+            let _ = db()
+                .query(
+                    "UPDATE $orchid_id SET first_bloom_at = time::now() \
+                     WHERE owner = $owner"
+                )
+                .bind(("orchid_id", orchid_record))
+                .bind(("owner", owner))
+                .await;
+        }
+    }
+
+    Ok(AddLogEntryResponse { entry, is_first_bloom })
 }
 
 #[server]
@@ -467,10 +531,10 @@ pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
     let orchid = db_row.map(|r| r.into_orchid())
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
 
-    // Also create a log entry
+    // Also create a log entry with event_type
     let _ = db()
         .query(
-            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered'"
+            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered', event_type = 'Watered'"
         )
         .bind(("orchid_id", oid))
         .bind(("owner", owner))

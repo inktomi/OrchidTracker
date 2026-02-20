@@ -101,7 +101,7 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
-            history: Vec::new(),
+            first_bloom_at: None,
         }
     }
 

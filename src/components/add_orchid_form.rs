@@ -103,7 +103,7 @@ pub fn AddOrchidForm(
             temp_max: temp_max.get().parse().ok(),
             humidity_min: humidity_min.get().parse().ok(),
             humidity_max: humidity_max.get().parse().ok(),
-            history: Vec::new(),
+            first_bloom_at: None,
         };
 
         on_add(new_orchid);

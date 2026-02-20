@@ -125,8 +125,12 @@ pub struct LogEntry {
     pub id: String,
     pub timestamp: DateTime<Utc>,
     pub note: String,
+    #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub image_filename: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub event_type: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -171,7 +175,7 @@ pub struct Orchid {
     pub humidity_max: Option<f64>,
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
-    pub history: Vec<LogEntry>,
+    pub first_bloom_at: Option<DateTime<Utc>>,
 }
 
 impl Orchid {
@@ -289,12 +293,11 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
-            history: Vec::new(),
+            first_bloom_at: None,
         };
 
         assert_eq!(orchid.name, "Test Orchid");
         assert_eq!(orchid.light_requirement, LightRequirement::Medium);
-        assert_eq!(orchid.history.len(), 0);
         assert_eq!(orchid.conservation_status, Some("CITES II".into()));
     }
 
@@ -319,7 +322,7 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
-            history: Vec::new(),
+            first_bloom_at: None,
         };
         assert_eq!(orchid.days_since_watered(), None);
         assert!(!orchid.is_overdue());
@@ -347,7 +350,7 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
-            history: Vec::new(),
+            first_bloom_at: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(2));
         assert!(!orchid.is_overdue());
@@ -375,7 +378,7 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
-            history: Vec::new(),
+            first_bloom_at: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(10));
         assert!(orchid.is_overdue());

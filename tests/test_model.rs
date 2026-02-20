@@ -21,7 +21,7 @@ fn test_orchid_json_serialization() {
         temp_max: None,
         humidity_min: None,
         humidity_max: None,
-        history: Vec::new(),
+        first_bloom_at: None,
     };
 
     // Serialize

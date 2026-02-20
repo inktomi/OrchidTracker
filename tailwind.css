@@ -251,3 +251,40 @@ html.dark .botanical-breathe {
   0%, 100% { opacity: 0.05; transform: scale(1) rotate(0deg); }
   50%      { opacity: 0.07; transform: scale(1.01) rotate(0.5deg); }
 }
+
+/* ── First Bloom Celebration ──────────────────────────────────────── */
+
+.bloom-overlay {
+  animation: bloom-overlay-in 0.5s ease-out both;
+}
+@keyframes bloom-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bloom-glow {
+  background: radial-gradient(ellipse at center, rgba(182,141,64,0.4), rgba(182,141,64,0.1) 50%, transparent 70%);
+  animation: bloom-glow-pulse 2s ease-in-out both;
+}
+@keyframes bloom-glow-pulse {
+  0%   { opacity: 0; transform: scale(0.8); }
+  50%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0.7; transform: scale(1); }
+}
+
+.bloom-badge-in {
+  animation: bloom-badge-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+@keyframes bloom-badge-in {
+  from { opacity: 0; transform: scale(0.5) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.petal-fall {
+  animation: petal-fall 3s ease-in-out both;
+}
+@keyframes petal-fall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
