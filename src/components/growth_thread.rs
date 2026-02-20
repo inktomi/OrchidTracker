@@ -31,11 +31,11 @@ pub fn GrowthThread(
                 for entry in &all_entries {
                     let local = entry.timestamp.with_timezone(&Local);
                     let month_key = format!("{} {}", month_name(local.month()), local.year());
-                    if let Some(last) = groups.last_mut() {
-                        if last.0 == month_key {
-                            last.1.push(entry.clone());
-                            continue;
-                        }
+                    if let Some(last) = groups.last_mut()
+                        && last.0 == month_key
+                    {
+                        last.1.push(entry.clone());
+                        continue;
                     }
                     groups.push((month_key, vec![entry.clone()]));
                 }

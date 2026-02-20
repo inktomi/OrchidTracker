@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, LogEntry};
