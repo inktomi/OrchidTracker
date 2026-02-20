@@ -105,7 +105,7 @@ async fn register_and_subscribe() -> Result<(), String> {
     }
 
     // Convert VAPID key from URL-safe base64 to Uint8Array
-    let key_bytes = url_safe_base64_decode(&vapid_key);
+    let key_bytes = base64url_decode(&vapid_key);
     let key_array = js_sys::Uint8Array::from(key_bytes.as_slice());
 
     // Subscribe to push
@@ -163,21 +163,105 @@ pub(crate) async fn register_and_subscribe_silent() {
     }
 }
 
-#[cfg(feature = "hydrate")]
-fn url_safe_base64_decode(input: &str) -> Vec<u8> {
-    // URL-safe base64 decode (no padding) using browser's atob
-    let padded = match input.len() % 4 {
-        2 => format!("{}==", input),
-        3 => format!("{}=", input),
-        _ => input.to_string(),
-    };
-    let standard = padded.replace('-', "+").replace('_', "/");
-    if let Some(window) = web_sys::window() {
-        match window.atob(&standard) {
-            Ok(decoded) => decoded.bytes().collect(),
-            Err(_) => Vec::new(),
+/// Decode a base64url (RFC 4648 §5) string to raw bytes.
+/// Accepts both URL-safe (`-_`) and standard (`+/`) alphabets, with or without padding.
+/// Pure Rust — no browser APIs required, so it's testable everywhere.
+#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+pub(crate) fn base64url_decode(input: &str) -> Vec<u8> {
+    let mut output = Vec::with_capacity(input.len() * 3 / 4);
+    let mut buf: u32 = 0;
+    let mut bits: u32 = 0;
+
+    for &byte in input.as_bytes() {
+        let val = match byte {
+            b'A'..=b'Z' => byte - b'A',
+            b'a'..=b'z' => byte - b'a' + 26,
+            b'0'..=b'9' => byte - b'0' + 52,
+            b'-' | b'+' => 62,
+            b'_' | b'/' => 63,
+            _ => continue, // skip padding '=' and whitespace
+        };
+        buf = (buf << 6) | val as u32;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            output.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
         }
-    } else {
-        Vec::new()
+    }
+
+    output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::base64url_decode;
+
+    #[test]
+    fn test_base64url_decode_empty() {
+        assert_eq!(base64url_decode(""), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn test_base64url_decode_hello() {
+        // "Hello" = SGVsbG8 in base64url (no padding)
+        assert_eq!(base64url_decode("SGVsbG8"), b"Hello".to_vec());
+    }
+
+    #[test]
+    fn test_base64url_decode_with_padding() {
+        // "Hello" = SGVsbG8= with standard base64 padding
+        assert_eq!(base64url_decode("SGVsbG8="), b"Hello".to_vec());
+    }
+
+    #[test]
+    fn test_base64url_decode_high_bytes() {
+        // Bytes > 127 must decode correctly (this was the atob/UTF-8 bug).
+        // 0xFF 0xFE = //4 in standard base64, __4 in base64url
+        assert_eq!(base64url_decode("__4"), vec![0xFF, 0xFE]);
+        // Same with standard alphabet
+        assert_eq!(base64url_decode("//4"), vec![0xFF, 0xFE]);
+    }
+
+    #[test]
+    fn test_base64url_decode_65_byte_p256_key() {
+        // A VAPID key is 65 bytes: 0x04 + 32 X + 32 Y.
+        // Generate a known 65-byte payload and verify round-trip length.
+        let key_bytes: Vec<u8> = (0..65).map(|i| (i * 3 + 7) as u8).collect();
+        // Encode with standard base64 then make URL-safe
+        let encoded = standard_base64_encode(&key_bytes)
+            .replace('+', "-")
+            .replace('/', "_")
+            .trim_end_matches('=')
+            .to_string();
+        let decoded = base64url_decode(&encoded);
+        assert_eq!(decoded.len(), 65, "P-256 key must decode to exactly 65 bytes");
+        assert_eq!(decoded, key_bytes);
+    }
+
+    /// Minimal base64 encoder for test use only.
+    fn standard_base64_encode(data: &[u8]) -> String {
+        const TABLE: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = String::new();
+        for chunk in data.chunks(3) {
+            let b0 = chunk[0] as u32;
+            let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+            let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+            let triple = (b0 << 16) | (b1 << 8) | b2;
+            out.push(TABLE[((triple >> 18) & 0x3F) as usize] as char);
+            out.push(TABLE[((triple >> 12) & 0x3F) as usize] as char);
+            if chunk.len() > 1 {
+                out.push(TABLE[((triple >> 6) & 0x3F) as usize] as char);
+            } else {
+                out.push('=');
+            }
+            if chunk.len() > 2 {
+                out.push(TABLE[(triple & 0x3F) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+        out
     }
 }
