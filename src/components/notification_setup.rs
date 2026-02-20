@@ -91,10 +91,17 @@ async fn register_and_subscribe() -> Result<(), String> {
 
     // Register service worker
     let promise = sw_container.register("/sw.js");
-    let registration = JsFuture::from(promise).await
-        .map_err(|e| format!("Service worker registration failed: {:?}", e))?
+    JsFuture::from(promise).await
+        .map_err(|e| format!("Service worker registration failed: {:?}", e))?;
+
+    // Wait for the SW to be active — register() resolves before activation,
+    // but push subscriptions must come from an active registration
+    let ready_promise = sw_container.ready()
+        .map_err(|e| format!("SW ready error: {:?}", e))?;
+    let registration = JsFuture::from(ready_promise).await
+        .map_err(|e| format!("SW not ready: {:?}", e))?
         .dyn_into::<web_sys::ServiceWorkerRegistration>()
-        .map_err(|_| "Service worker registration returned unexpected type".to_string())?;
+        .map_err(|_| "SW ready returned unexpected type".to_string())?;
 
     // Get VAPID public key
     let vapid_key = crate::server_fns::alerts::get_vapid_public_key().await
