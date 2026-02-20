@@ -289,6 +289,36 @@ html.dark .botanical-breathe {
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
 
+/* ── Error Toast ───────────────────────────────────────────────────── */
+
+/* Slide up from below with a gentle organic spring */
+.toast-enter {
+  animation: toast-rise 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes toast-rise {
+  0%   { opacity: 0; transform: translateY(24px) scale(0.95); }
+  60%  { opacity: 1; transform: translateY(-3px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Progress bar drain — synced with the 5s auto-dismiss */
+.toast-progress {
+  animation: toast-drain 5s linear both;
+}
+@keyframes toast-drain {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* Subtle breathing pulse on the icon */
+.toast-icon-pulse {
+  animation: toast-icon-pulse 2s ease-in-out infinite;
+}
+@keyframes toast-icon-pulse {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.08); }
+}
+
 /* ── Photo Gallery ─────────────────────────────────────────────────── */
 
 /* Gallery thumbnails stagger in on tab switch */

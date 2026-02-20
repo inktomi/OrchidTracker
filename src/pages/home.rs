@@ -371,7 +371,8 @@ pub fn HomePage() -> impl IntoView {
     }
 }
 
-/// Error toast notification — auto-dismisses after 5 seconds
+/// Error toast — botanical-themed notification with organic spring animation,
+/// glassmorphic backdrop, progress drain bar, and 5-second auto-dismiss.
 #[component]
 fn ErrorToast(
     msg: ReadSignal<Option<String>>,
@@ -390,12 +391,39 @@ fn ErrorToast(
             }
 
             view! {
-                <div class="flex fixed right-4 bottom-4 left-4 z-50 gap-3 justify-between items-center py-3 px-4 text-sm text-white bg-red-600 rounded-xl shadow-lg sm:left-4 sm:right-auto sm:max-w-md">
-                    <span>{text}</span>
-                    <button
-                        class="py-1 px-2 text-xs font-semibold text-red-600 bg-white rounded border-none cursor-pointer hover:bg-red-50"
-                        on:click=move |_| set_msg.set(None)
-                    >"Dismiss"</button>
+                <div class="fixed right-3 left-3 bottom-4 z-50 sm:left-4 sm:right-auto sm:max-w-sm toast-enter">
+                    <div class="overflow-hidden relative rounded-2xl border shadow-xl backdrop-blur-md bg-surface/90 border-danger/20 dark:bg-stone-900/90 dark:border-danger/30">
+                        // Warm danger gradient along the left edge
+                        <div class="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-danger via-danger/70 to-danger/30"></div>
+
+                        <div class="flex gap-3 items-start py-3.5 pr-3 pl-5">
+                            // Pulsing warning icon
+                            <span class="flex-shrink-0 mt-0.5 text-lg text-danger toast-icon-pulse" aria-hidden="true">
+                                "\u{26A0}"
+                            </span>
+
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-semibold tracking-wide uppercase text-danger/80 dark:text-danger/90">"Something went wrong"</p>
+                                <p class="mt-0.5 text-sm leading-snug text-stone-700 dark:text-stone-300">{text}</p>
+                            </div>
+
+                            // Dismiss button — subtle, stone-toned
+                            <button
+                                class="flex-shrink-0 p-1.5 mt-0.5 rounded-lg border-none transition-colors cursor-pointer text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-800 hover:text-stone-600 hover:bg-stone-100"
+                                on:click=move |_| set_msg.set(None)
+                                aria-label="Dismiss"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        // Progress drain bar — visually counts down the auto-dismiss
+                        <div class="h-0.5 bg-danger/10 dark:bg-danger/5">
+                            <div class="h-full rounded-r-full toast-progress bg-danger/40"></div>
+                        </div>
+                    </div>
                 </div>
             }
         })}
