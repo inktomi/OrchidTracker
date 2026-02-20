@@ -13,6 +13,7 @@ use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
+use crate::server_fns::preferences::{get_temp_unit, save_temp_unit};
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
 
@@ -69,6 +70,20 @@ pub fn HomePage() -> impl IntoView {
         move || zones_version.get(),
         |_| crate::server_fns::alerts::get_active_alerts(),
     );
+
+    // Load saved temp unit preference from server
+    let temp_unit_resource = Resource::new(|| (), |_| get_temp_unit());
+
+    // Initialize model temp_unit from server preference when it loads
+    Effect::new(move |_| {
+        if let Some(Ok(unit)) = temp_unit_resource.get() {
+            set_model.update(|m| {
+                if m.temp_unit != unit {
+                    m.temp_unit = unit;
+                }
+            });
+        }
+    });
 
     // Orchid operations via server functions (async I/O — not TEA state)
     let on_add = move |orchid: Orchid| {
@@ -140,6 +155,7 @@ pub fn HomePage() -> impl IntoView {
                 let _ = alerts_resource.get();
                 let _ = migration_resource.get();
                 let _ = zones_resource.get();
+                let _ = temp_unit_resource.get();
 
                 user.get().map(|result| match result {
                     Ok(Some(_user_info)) => {
@@ -254,7 +270,13 @@ pub fn HomePage() -> impl IntoView {
                                     <SettingsModal
                                         zones=current_zones
                                         initial_temp_unit=current_temp_unit
-                                        on_close=move |temp_unit: String| send(Msg::SettingsClosed { temp_unit })
+                                        on_close=move |new_unit: String| {
+                                    let unit_to_save = new_unit.clone();
+                                    send(Msg::SettingsClosed { temp_unit: new_unit });
+                                    leptos::task::spawn_local(async move {
+                                        let _ = save_temp_unit(unit_to_save).await;
+                                    });
+                                }
                                         on_zones_changed=on_zones_changed
                                     />
                                 }.into_any()

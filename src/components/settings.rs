@@ -542,7 +542,7 @@ fn NotificationSettings() -> impl IntoView {
     let (is_enabled, set_is_enabled) = signal(false);
     let (is_testing, set_is_testing) = signal(false);
 
-    // Check browser permission + PushManager subscription state
+    // Check browser permission + server subscription state
     #[cfg(feature = "hydrate")]
     {
         Effect::new(move |_| {
@@ -557,15 +557,17 @@ fn NotificationSettings() -> impl IntoView {
                     set_is_enabled.set(false);
                 }
                 web_sys::NotificationPermission::Granted | _ => {
-                    // Permission granted — check if browser has an active
-                    // push subscription (source of truth)
+                    // Permission granted — check server for active subscription
                     leptos::task::spawn_local(async move {
-                        if has_browser_push_subscription().await {
-                            set_permission_status.set("Granted".into());
-                            set_is_enabled.set(true);
-                        } else {
-                            set_permission_status.set("Disabled".into());
-                            set_is_enabled.set(false);
+                        match crate::server_fns::alerts::has_push_subscription().await {
+                            Ok(true) => {
+                                set_permission_status.set("Enabled".into());
+                                set_is_enabled.set(true);
+                            }
+                            _ => {
+                                set_permission_status.set("Disabled".into());
+                                set_is_enabled.set(false);
+                            }
                         }
                     });
                 }
@@ -597,14 +599,15 @@ fn NotificationSettings() -> impl IntoView {
 
                     let perm = web_sys::Notification::permission();
                     if perm == web_sys::NotificationPermission::Granted {
-                        crate::components::notification_setup::register_and_subscribe_from_settings().await;
-                        // Verify subscription was actually stored
-                        if has_browser_push_subscription().await {
-                            set_permission_status.set("Granted".into());
-                            set_is_enabled.set(true);
-                        } else {
-                            set_permission_status.set("Setup failed \u{2014} try again".into());
-                            set_is_enabled.set(false);
+                        match crate::components::notification_setup::register_and_subscribe_from_settings().await {
+                            Ok(()) => {
+                                set_permission_status.set("Enabled".into());
+                                set_is_enabled.set(true);
+                            }
+                            Err(e) => {
+                                set_permission_status.set(format!("Failed: {}", e));
+                                set_is_enabled.set(false);
+                            }
                         }
                     } else {
                         set_permission_status.set("Denied (change in browser settings)".into());
@@ -670,41 +673,6 @@ fn NotificationSettings() -> impl IntoView {
             })}
         </div>
     }.into_any()
-}
-
-/// Check if the browser has an active push subscription via PushManager.
-#[cfg(feature = "hydrate")]
-async fn has_browser_push_subscription() -> bool {
-    use wasm_bindgen::JsCast;
-    use wasm_bindgen_futures::JsFuture;
-
-    let Some(window) = web_sys::window() else { return false };
-    let sw = window.navigator().service_worker();
-
-    // Wait for service worker to be ready
-    let ready = match JsFuture::from(sw.ready().unwrap_or_else(|_| {
-        js_sys::Promise::resolve(&wasm_bindgen::JsValue::NULL)
-    })).await {
-        Ok(val) => val.dyn_into::<web_sys::ServiceWorkerRegistration>().ok(),
-        Err(_) => None,
-    };
-
-    let Some(registration) = ready else { return false };
-
-    let push_manager = match registration.push_manager() {
-        Ok(pm) => pm,
-        Err(_) => return false,
-    };
-
-    match push_manager.get_subscription() {
-        Ok(promise) => {
-            match JsFuture::from(promise).await {
-                Ok(val) => !val.is_null() && !val.is_undefined(),
-                Err(_) => false,
-            }
-        }
-        Err(_) => false,
-    }
 }
 
 /// Unsubscribe the browser's PushManager subscription.

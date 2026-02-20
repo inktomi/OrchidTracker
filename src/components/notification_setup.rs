@@ -15,7 +15,7 @@ pub fn NotificationSetup() -> impl IntoView {
                 set_show_banner.set(true);
             } else if perm == web_sys::NotificationPermission::Granted {
                 leptos::task::spawn_local(async move {
-                    register_and_subscribe().await;
+                    register_and_subscribe_silent().await;
                 });
             }
         });
@@ -33,7 +33,7 @@ pub fn NotificationSetup() -> impl IntoView {
                 }
 
                 if web_sys::Notification::permission() == web_sys::NotificationPermission::Granted {
-                    register_and_subscribe().await;
+                    register_and_subscribe_silent().await;
                 }
 
                 set_show_banner.set(false);
@@ -72,86 +72,61 @@ pub fn NotificationSetup() -> impl IntoView {
     }
 }
 
-/// Public entry point for registering push subscription from settings
+/// Public entry point for registering push subscription from settings.
+/// Returns Ok(()) on success or Err with a user-visible error message.
 #[cfg(feature = "hydrate")]
-pub async fn register_and_subscribe_from_settings() {
-    register_and_subscribe().await;
+pub async fn register_and_subscribe_from_settings() -> Result<(), String> {
+    register_and_subscribe().await
 }
 
 /// Register the service worker and subscribe to push notifications.
 #[cfg(feature = "hydrate")]
-async fn register_and_subscribe() {
+async fn register_and_subscribe() -> Result<(), String> {
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
 
-    let Some(window) = web_sys::window() else { return };
+    let window = web_sys::window().ok_or("No window object")?;
     let navigator = window.navigator();
     let sw_container = navigator.service_worker();
 
     // Register service worker
     let promise = sw_container.register("/sw.js");
-    let registration = match JsFuture::from(promise).await {
-        Ok(val) => val.dyn_into::<web_sys::ServiceWorkerRegistration>().ok(),
-        Err(e) => {
-            log::error!("SW registration failed: {:?}", e);
-            None
-        }
-    };
-
-    let Some(registration) = registration else { return };
+    let registration = JsFuture::from(promise).await
+        .map_err(|e| format!("Service worker registration failed: {:?}", e))?
+        .dyn_into::<web_sys::ServiceWorkerRegistration>()
+        .map_err(|_| "Service worker registration returned unexpected type".to_string())?;
 
     // Get VAPID public key
-    let vapid_key = match crate::server_fns::alerts::get_vapid_public_key().await {
-        Ok(key) if !key.is_empty() => key,
-        _ => {
-            log::warn!("VAPID key not configured, skipping push subscription");
-            return;
-        }
-    };
+    let vapid_key = crate::server_fns::alerts::get_vapid_public_key().await
+        .map_err(|e| format!("Failed to get VAPID key: {}", e))?;
+
+    if vapid_key.is_empty() {
+        return Err("VAPID key not configured on server".into());
+    }
 
     // Convert VAPID key from URL-safe base64 to Uint8Array
     let key_bytes = url_safe_base64_decode(&vapid_key);
     let key_array = js_sys::Uint8Array::from(key_bytes.as_slice());
 
     // Subscribe to push
-    let push_manager = match registration.push_manager() {
-        Ok(pm) => pm,
-        Err(e) => {
-            log::error!("Push manager error: {:?}", e);
-            return;
-        }
-    };
+    let push_manager = registration.push_manager()
+        .map_err(|e| format!("Push manager error: {:?}", e))?;
 
     let opts = web_sys::PushSubscriptionOptionsInit::new();
     opts.set_user_visible_only(true);
     opts.set_application_server_key(&key_array);
 
-    let subscription = match push_manager.subscribe_with_options(&opts) {
-        Ok(promise) => {
-            match JsFuture::from(promise).await {
-                Ok(val) => val.dyn_into::<web_sys::PushSubscription>().ok(),
-                Err(e) => {
-                    log::error!("Push subscribe failed: {:?}", e);
-                    None
-                }
-            }
-        }
-        Err(e) => {
-            log::error!("Push subscribe error: {:?}", e);
-            None
-        }
-    };
+    let promise = push_manager.subscribe_with_options(&opts)
+        .map_err(|e| format!("Push subscribe error: {:?}", e))?;
 
-    let Some(subscription) = subscription else { return };
+    let subscription = JsFuture::from(promise).await
+        .map_err(|e| format!("Push subscribe failed: {:?}", e))?
+        .dyn_into::<web_sys::PushSubscription>()
+        .map_err(|_| "Push subscription returned unexpected type".to_string())?;
 
     // Extract subscription details via to_json()
-    let sub_json = match subscription.to_json() {
-        Ok(js_val) => js_val,
-        Err(e) => {
-            log::error!("Sub to_json error: {:?}", e);
-            return;
-        }
-    };
+    let sub_json = subscription.to_json()
+        .map_err(|e| format!("Subscription to_json error: {:?}", e))?;
 
     // Parse the JS object to extract endpoint, keys
     let endpoint = js_sys::Reflect::get(&sub_json, &"endpoint".into())
@@ -170,13 +145,21 @@ async fn register_and_subscribe() {
         .unwrap_or_default();
 
     if endpoint.is_empty() || p256dh.is_empty() || auth.is_empty() {
-        log::error!("Push subscription missing fields");
-        return;
+        return Err("Push subscription missing endpoint/keys".into());
     }
 
     // Send subscription to server
-    if let Err(e) = crate::server_fns::alerts::subscribe_push(endpoint, p256dh, auth).await {
-        log::error!("Failed to store push subscription: {}", e);
+    crate::server_fns::alerts::subscribe_push(endpoint, p256dh, auth).await
+        .map_err(|e| format!("Failed to store subscription: {}", e))?;
+
+    Ok(())
+}
+
+/// Silent version for the initial notification setup banner (doesn't need error reporting).
+#[cfg(feature = "hydrate")]
+pub(crate) async fn register_and_subscribe_silent() {
+    if let Err(e) = register_and_subscribe().await {
+        log::error!("Push subscribe failed: {}", e);
     }
 }
 
