@@ -2,18 +2,19 @@
 
 ## Project Overview
 
-OrchidTracker is a client-side-only (CSR) web application for managing an orchid collection. It compiles to WebAssembly and runs entirely in the browser with no backend server.
+OrchidTracker is a full-stack web application for managing an orchid collection. It uses Leptos with Server-Side Rendering (SSR) and Axum as the backend server. Data is persisted to a SurrealDB instance.
 
 ## Tech Stack
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Language | **Rust (latest stable)** | Target: `wasm32-unknown-unknown` |
-| Framework | **Leptos 0.8+** (CSR only) | No SSR. Mounted via `leptos::mount::mount_to_body` |
-| Styling | **Tailwind CSS v4** | Standalone CLI via Trunk — no Node.js |
+| Language | **Rust (latest stable)** | Target: `wasm32-unknown-unknown` (frontend) and native (backend) |
+| Framework | **Leptos 0.8+** (SSR) | Server-side rendered with hydration. Axum backend. |
+| Styling | **Tailwind CSS v4** | Standalone CLI via Leptos build |
 | Sorting | **Rustywind** | CLI tool for sorting Tailwind classes (replaces Prettier plugin) |
-| Build | **Trunk** | WASM bundler. Config in `Trunk.toml` |
-| Deployment | GitHub Pages | Static site via `trunk build --release` |
+| Backend | **Axum / Tokio** | HTTP server and async runtime |
+| Database | **SurrealDB** | Document/Graph database |
+| Server Fns| `#[server]` | Leptos Server Functions for RPC calls |
 
 ## Architecture: The Elm Architecture (TEA)
 
@@ -129,11 +130,10 @@ OrchidTracker/
 
 ## Data Persistence
 
-- **LocalStorage** (`gloo-storage`): Primary orchid data, settings (GitHub token, API keys, temp unit).
-- **IndexedDB** (`rexie`): Image blob storage for offline-first photo capture.
-- **GitHub API** (`reqwest`): Sync orchid JSON and images to a user-configured repository.
-
-Data flows: UI signals → LocalStorage (auto-persist via `Effect`) → GitHub (explicit sync).
+- **Database** (`surrealdb`): Primary storage for users, orchids, zones, and climate readings.
+- **Sessions** (`tower-sessions`): User authentication state stored in SurrealDB.
+- **Server Functions** (`#[server]`): RPC calls from the frontend execute database queries on the backend.
+- **Local State**: Limited to UI-specific preferences (e.g., dark mode).
 
 ## Testing
 
@@ -157,16 +157,15 @@ Data flows: UI signals → LocalStorage (auto-persist via `Effect`) → GitHub (
 
 | Crate | Purpose |
 |---|---|
-| `leptos` (CSR) | Reactive UI framework |
+| `leptos` | Reactive UI framework (SSR + Hydration) |
+| `axum` | Backend HTTP server |
+| `tokio` | Async runtime |
+| `surrealdb` | Database client |
 | `serde` / `serde_json` | Serialization for all data types |
-| `gloo-storage` | LocalStorage wrapper |
-| `gloo-file` | File API (image upload) |
-| `gloo-timers` | Async timers |
-| `rexie` | IndexedDB wrapper |
-| `reqwest` (WASM) | HTTP client for GitHub/Gemini APIs |
-| `chrono` (wasm-bindgen) | Date/time handling |
-| `web-sys` / `js-sys` | Raw browser API bindings |
-| `base64` / `sha2` / `hex` | Encoding for GitHub API |
+| `reqwest` | HTTP client for external APIs |
+| `chrono` | Date/time handling |
+| `tower-sessions` | Session management |
+| `argon2` | Password hashing |
 
 ## Common Patterns
 
