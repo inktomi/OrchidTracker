@@ -56,6 +56,7 @@ pub async fn subscribe_push(
         return Err(internal_error("Subscribe push statement error", msg));
     }
 
+    tracing::info!(user = %user_id, "Push subscription stored successfully");
     Ok(())
 }
 
@@ -185,6 +186,8 @@ pub async fn send_test_push() -> Result<String, ServerFnError> {
     let _ = resp.take_errors();
     let subs: Vec<PushSubRow> = resp.take(0).unwrap_or_default();
 
+    tracing::info!(user = %user_id, count = subs.len(), "send_test_push: found subscriptions");
+
     if subs.is_empty() {
         return Ok("No push subscriptions found. Try toggling notifications off and on.".into());
     }
@@ -192,6 +195,12 @@ pub async fn send_test_push() -> Result<String, ServerFnError> {
     let mut sent = 0;
     let mut errors = Vec::new();
     for sub in &subs {
+        tracing::info!(
+            endpoint = %sub.endpoint,
+            p256dh_len = sub.p256dh.len(),
+            auth_len = sub.auth.len(),
+            "send_test_push: sending to subscription"
+        );
         let push_sub = crate::push::PushSubscriptionRow {
             endpoint: sub.endpoint.clone(),
             p256dh: sub.p256dh.clone(),

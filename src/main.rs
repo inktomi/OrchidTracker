@@ -20,9 +20,10 @@ async fn main() {
     // Load .env file
     let _ = dotenvy::dotenv();
 
-    // Init tracing
+    // Init tracing — write to stdout so journald always captures it
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
+        .with_writer(std::io::stdout)
         .init();
 
     // Parse CLI args
