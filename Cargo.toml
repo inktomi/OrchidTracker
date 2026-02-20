@@ -82,6 +82,10 @@ ssr = [
     "dep:web-push",
 ]
 
+[dev-dependencies]
+surrealdb = { version = "3", features = ["kv-mem"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
 [package.metadata.leptos]
 output-name = "orchid-tracker"
 site-root = "target/site"
