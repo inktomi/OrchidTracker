@@ -1,6 +1,20 @@
 // Service Worker for OrchidTracker push notifications
 
+// Activate immediately — don't wait for existing tabs to close
+self.addEventListener('install', function(event) {
+    console.log('[SW] Installing');
+    self.skipWaiting();
+});
+
+// Take control of all clients immediately
+self.addEventListener('activate', function(event) {
+    console.log('[SW] Activating');
+    event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function(event) {
+    console.log('[SW] Push received:', event.data ? event.data.text() : 'no data');
+
     let data = { title: 'OrchidTracker', body: 'You have a new alert', url: '/' };
 
     if (event.data) {
