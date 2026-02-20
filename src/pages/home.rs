@@ -6,6 +6,7 @@ use crate::components::climate_dashboard::ClimateDashboard;
 use crate::components::notification_setup::NotificationSetup;
 use crate::components::orchid_collection::OrchidCollection;
 use crate::components::orchid_detail::OrchidDetail;
+use crate::components::seasonal_calendar::SeasonalCalendar;
 use crate::components::scanner::ScannerModal;
 use crate::components::settings::SettingsModal;
 use crate::orchid::Alert;
@@ -13,7 +14,7 @@ use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
-use crate::server_fns::preferences::{get_temp_unit, save_temp_unit};
+use crate::server_fns::preferences::{get_temp_unit, save_temp_unit, get_hemisphere};
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
 
@@ -73,6 +74,7 @@ pub fn HomePage() -> impl IntoView {
 
     // Load saved temp unit preference from server
     let temp_unit_resource = Resource::new(|| (), |_| get_temp_unit());
+    let hemisphere_resource = Resource::new(|| (), |_| get_hemisphere());
 
     // Initialize model temp_unit from server preference when it loads
     Effect::new(move |_| {
@@ -84,6 +86,19 @@ pub fn HomePage() -> impl IntoView {
             });
         }
     });
+
+    // Initialize model hemisphere from server preference when it loads
+    Effect::new(move |_| {
+        if let Some(Ok(hemi)) = hemisphere_resource.get() {
+            set_model.update(|m| {
+                if m.hemisphere != hemi {
+                    m.hemisphere = hemi;
+                }
+            });
+        }
+    });
+
+    let hemisphere = Memo::new(move |_| model.get().hemisphere.clone());
 
     // Orchid operations via server functions (async I/O — not TEA state)
     let on_add = move |orchid: Orchid| {
@@ -109,6 +124,14 @@ pub fn HomePage() -> impl IntoView {
                 orchid.fertilizer_type,
                 orchid.pot_medium,
                 orchid.pot_size,
+                orchid.rest_start_month,
+                orchid.rest_end_month,
+                orchid.bloom_start_month,
+                orchid.bloom_end_month,
+                orchid.rest_water_multiplier,
+                orchid.rest_fertilizer_multiplier,
+                orchid.active_water_multiplier,
+                orchid.active_fertilizer_multiplier,
             ).await;
             orchids_resource.refetch();
         });
@@ -160,6 +183,7 @@ pub fn HomePage() -> impl IntoView {
                 let _ = migration_resource.get();
                 let _ = zones_resource.get();
                 let _ = temp_unit_resource.get();
+                let _ = hemisphere_resource.get();
 
                 user.get().map(|result| match result {
                     Ok(Some(_user_info)) => {
@@ -203,6 +227,16 @@ pub fn HomePage() -> impl IntoView {
                                     {move || {
                                         let readings = climate_readings.get();
                                         view! { <ClimateDashboard readings=readings unit=temp_unit /> }
+                                    }}
+                                </Suspense>
+
+                                <Suspense fallback=|| ()>
+                                    {move || {
+                                        let orchids = orchids_resource.get()
+                                            .and_then(|r| r.ok())
+                                            .unwrap_or_default();
+                                        let hemi = hemisphere.get();
+                                        view! { <SeasonalCalendar orchids=orchids hemisphere=hemi /> }
                                     }}
                                 </Suspense>
 
@@ -256,11 +290,13 @@ pub fn HomePage() -> impl IntoView {
                             {move || selected_orchid.get().map(|orchid| {
                                 let current_zones = zones_memo.get();
                                 let current_readings = climate_readings.get();
+                                let current_hemi = hemisphere.get();
                                 view! {
                                     <OrchidDetail
                                         orchid=orchid
                                         zones=current_zones
                                         climate_readings=current_readings
+                                        hemisphere=current_hemi
                                         on_close=move || send(Msg::SelectOrchid(None))
                                         on_update=on_update
                                     />
@@ -270,10 +306,12 @@ pub fn HomePage() -> impl IntoView {
                             {move || show_settings.get().then(|| {
                                 let current_zones = zones_memo.get();
                                 let current_temp_unit = temp_unit.get();
+                                let current_hemi = hemisphere.get();
                                 view! {
                                     <SettingsModal
                                         zones=current_zones
                                         initial_temp_unit=current_temp_unit
+                                        initial_hemisphere=current_hemi
                                         on_close=move |new_unit: String| {
                                     let unit_to_save = new_unit.clone();
                                     send(Msg::SettingsClosed { temp_unit: new_unit });

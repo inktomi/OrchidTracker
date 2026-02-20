@@ -28,6 +28,14 @@ fn test_orchid_json_serialization() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     // Serialize

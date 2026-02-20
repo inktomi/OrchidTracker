@@ -140,6 +140,16 @@ async fn main() {
         }
     });
 
+    // Spawn seasonal alert check task (daily)
+    tokio::spawn(async move {
+        // Initial delay to let the server fully start
+        tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+        loop {
+            orchid_tracker::climate::seasonal_alerts::check_seasonal_alerts().await;
+            tokio::time::sleep(std::time::Duration::from_secs(24 * 60 * 60)).await;
+        }
+    });
+
     // Spawn habitat weather polling task (every 2 hours)
     tokio::spawn(async move {
         // Initial delay to let the server fully start

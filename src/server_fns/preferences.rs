@@ -56,3 +56,66 @@ pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
 
     Ok(())
 }
+
+#[server]
+pub async fn get_hemisphere() -> Result<String, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use surrealdb::types::SurrealValue;
+
+    let user_id = require_auth().await?;
+    let owner = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("Owner ID parse failed", e))?;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct PrefRow {
+        hemisphere: String,
+    }
+
+    let mut resp = db()
+        .query("SELECT hemisphere FROM user_preference WHERE owner = $owner LIMIT 1")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Get hemisphere query failed", e))?;
+
+    let _ = resp.take_errors();
+    let row: Option<PrefRow> = resp.take(0).unwrap_or(None);
+    Ok(row.map(|r| r.hemisphere).unwrap_or_else(|| "N".to_string()))
+}
+
+#[server]
+pub async fn save_hemisphere(hemisphere: String) -> Result<(), ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    let user_id = require_auth().await?;
+    let owner = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("Owner ID parse failed", e))?;
+
+    let hemisphere = if hemisphere == "S" { "S" } else { "N" };
+
+    // Update existing preference row (preserves temp_unit and other fields)
+    let mut resp = db()
+        .query("UPDATE user_preference SET hemisphere = $hemi WHERE owner = $owner")
+        .bind(("owner", owner.clone()))
+        .bind(("hemi", hemisphere.to_string()))
+        .await
+        .map_err(|e| internal_error("Save hemisphere query failed", e))?;
+
+    let _ = resp.take_errors();
+
+    // If no row existed, create one
+    let updated: Vec<serde_json::Value> = resp.take(0).unwrap_or_default();
+    if updated.is_empty() {
+        let _ = db()
+            .query("CREATE user_preference SET owner = $owner, hemisphere = $hemi")
+            .bind(("owner", owner))
+            .bind(("hemi", hemisphere.to_string()))
+            .await;
+    }
+
+    Ok(())
+}

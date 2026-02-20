@@ -27,6 +27,15 @@ pub fn AddOrchidForm(
     let (temp_max, set_temp_max) = signal(String::new());
     let (humidity_min, set_humidity_min) = signal(String::new());
     let (humidity_max, set_humidity_max) = signal(String::new());
+    // Seasonal signals
+    let (rest_start_month, set_rest_start_month) = signal::<Option<u32>>(None);
+    let (rest_end_month, set_rest_end_month) = signal::<Option<u32>>(None);
+    let (bloom_start_month, set_bloom_start_month) = signal::<Option<u32>>(None);
+    let (bloom_end_month, set_bloom_end_month) = signal::<Option<u32>>(None);
+    let (rest_water_mult, set_rest_water_mult) = signal::<Option<f64>>(None);
+    let (rest_fert_mult, set_rest_fert_mult) = signal::<Option<f64>>(None);
+    let (active_water_mult, set_active_water_mult) = signal::<Option<f64>>(None);
+    let (active_fert_mult, set_active_fert_mult) = signal::<Option<f64>>(None);
 
     let zones_for_prefill = zones.clone();
 
@@ -69,6 +78,16 @@ pub fn AddOrchidForm(
             if let Some(v) = data.temp_max { set_temp_max.set(v.to_string()); }
             if let Some(v) = data.humidity_min { set_humidity_min.set(v.to_string()); }
             if let Some(v) = data.humidity_max { set_humidity_max.set(v.to_string()); }
+
+            // Seasonal prefill
+            set_rest_start_month.set(data.rest_start_month);
+            set_rest_end_month.set(data.rest_end_month);
+            set_bloom_start_month.set(data.bloom_start_month);
+            set_bloom_end_month.set(data.bloom_end_month);
+            set_rest_water_mult.set(data.rest_water_multiplier);
+            set_rest_fert_mult.set(data.rest_fertilizer_multiplier);
+            set_active_water_mult.set(data.active_water_multiplier);
+            set_active_fert_mult.set(data.active_fertilizer_multiplier);
         }
     });
 
@@ -110,6 +129,14 @@ pub fn AddOrchidForm(
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            rest_start_month: rest_start_month.get(),
+            rest_end_month: rest_end_month.get(),
+            bloom_start_month: bloom_start_month.get(),
+            bloom_end_month: bloom_end_month.get(),
+            rest_water_multiplier: rest_water_mult.get(),
+            rest_fertilizer_multiplier: rest_fert_mult.get(),
+            active_water_multiplier: active_water_mult.get(),
+            active_fertilizer_multiplier: active_fert_mult.get(),
         };
 
         on_add(new_orchid);

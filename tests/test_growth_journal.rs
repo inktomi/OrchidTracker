@@ -112,6 +112,14 @@ fn test_orchid_first_bloom_at_roundtrip() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     let json = serde_json::to_string(&orchid).unwrap();
@@ -177,6 +185,14 @@ fn test_orchid_care_tracking_roundtrip() {
         last_repotted_at: Some(now),
         pot_medium: Some("Bark".into()),
         pot_size: Some("4 inch".into()),
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     let json = serde_json::to_string(&orchid).unwrap();
@@ -218,6 +234,14 @@ fn test_orchid_fertilize_helpers() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     assert_eq!(orchid.days_since_fertilized(), Some(5));
@@ -252,6 +276,14 @@ fn test_orchid_repot_helper() {
         last_repotted_at: Some(Utc::now() - chrono::Duration::days(90)),
         pot_medium: Some("Sphagnum Moss".into()),
         pot_size: Some("6 inch".into()),
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     assert_eq!(orchid.days_since_repotted(), Some(90));
@@ -286,6 +318,14 @@ fn test_orchid_no_fert_schedule_returns_none() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        rest_start_month: None,
+        rest_end_month: None,
+        bloom_start_month: None,
+        bloom_end_month: None,
+        rest_water_multiplier: None,
+        rest_fertilizer_multiplier: None,
+        active_water_multiplier: None,
+        active_fertilizer_multiplier: None,
     };
 
     assert_eq!(orchid.days_since_fertilized(), None);

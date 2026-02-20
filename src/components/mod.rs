@@ -16,6 +16,7 @@ pub mod photo_capture;
 pub mod growth_thread;
 pub mod first_bloom;
 pub mod photo_gallery;
+pub mod seasonal_calendar;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 

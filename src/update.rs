@@ -108,6 +108,14 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            rest_start_month: None,
+            rest_end_month: None,
+            bloom_start_month: None,
+            bloom_end_month: None,
+            rest_water_multiplier: None,
+            rest_fertilizer_multiplier: None,
+            active_water_multiplier: None,
+            active_fertilizer_multiplier: None,
         }
     }
 
@@ -171,6 +179,14 @@ mod tests {
             temp_max: None,
             humidity_min: None,
             humidity_max: None,
+            rest_start_month: None,
+            rest_end_month: None,
+            bloom_start_month: None,
+            bloom_end_month: None,
+            rest_water_multiplier: None,
+            rest_fertilizer_multiplier: None,
+            active_water_multiplier: None,
+            active_fertilizer_multiplier: None,
         };
 
         update(&mut model, Msg::HandleScanResult(result));

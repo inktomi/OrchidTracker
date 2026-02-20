@@ -68,6 +68,22 @@ mod ssr_types {
         pub pot_medium: Option<String>,
         #[surreal(default)]
         pub pot_size: Option<String>,
+        #[surreal(default)]
+        pub rest_start_month: Option<u32>,
+        #[surreal(default)]
+        pub rest_end_month: Option<u32>,
+        #[surreal(default)]
+        pub bloom_start_month: Option<u32>,
+        #[surreal(default)]
+        pub bloom_end_month: Option<u32>,
+        #[surreal(default)]
+        pub rest_water_multiplier: Option<f64>,
+        #[surreal(default)]
+        pub rest_fertilizer_multiplier: Option<f64>,
+        #[surreal(default)]
+        pub active_water_multiplier: Option<f64>,
+        #[surreal(default)]
+        pub active_fertilizer_multiplier: Option<f64>,
     }
 
     #[derive(serde::Deserialize, SurrealValue, Clone)]
@@ -115,6 +131,14 @@ mod ssr_types {
                 last_repotted_at: self.last_repotted_at,
                 pot_medium: self.pot_medium,
                 pot_size: self.pot_size,
+                rest_start_month: self.rest_start_month,
+                rest_end_month: self.rest_end_month,
+                bloom_start_month: self.bloom_start_month,
+                bloom_end_month: self.bloom_end_month,
+                rest_water_multiplier: self.rest_water_multiplier,
+                rest_fertilizer_multiplier: self.rest_fertilizer_multiplier,
+                active_water_multiplier: self.active_water_multiplier,
+                active_fertilizer_multiplier: self.active_fertilizer_multiplier,
             }
         }
     }
@@ -248,6 +272,14 @@ pub async fn create_orchid(
     fertilizer_type: Option<String>,
     pot_medium: Option<String>,
     pot_size: Option<String>,
+    rest_start_month: Option<u32>,
+    rest_end_month: Option<u32>,
+    bloom_start_month: Option<u32>,
+    bloom_end_month: Option<u32>,
+    rest_water_multiplier: Option<f64>,
+    rest_fertilizer_multiplier: Option<f64>,
+    active_water_multiplier: Option<f64>,
+    active_fertilizer_multiplier: Option<f64>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -270,7 +302,11 @@ pub async fn create_orchid(
              temp_min = $temp_min, temp_max = $temp_max, \
              humidity_min = $humidity_min, humidity_max = $humidity_max, \
              fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
-             pot_medium = $pot_medium, pot_size = $pot_size \
+             pot_medium = $pot_medium, pot_size = $pot_size, \
+             rest_start_month = $rest_start, rest_end_month = $rest_end, \
+             bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
+             rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
+             active_water_multiplier = $active_water_mult, active_fertilizer_multiplier = $active_fert_mult \
              RETURN *"
         )
         .bind(("owner", owner))
@@ -294,6 +330,14 @@ pub async fn create_orchid(
         .bind(("fert_type", fertilizer_type))
         .bind(("pot_medium", pot_medium))
         .bind(("pot_size", pot_size))
+        .bind(("rest_start", rest_start_month.map(|v| v as i64)))
+        .bind(("rest_end", rest_end_month.map(|v| v as i64)))
+        .bind(("bloom_start", bloom_start_month.map(|v| v as i64)))
+        .bind(("bloom_end", bloom_end_month.map(|v| v as i64)))
+        .bind(("rest_water_mult", rest_water_multiplier))
+        .bind(("rest_fert_mult", rest_fertilizer_multiplier))
+        .bind(("active_water_mult", active_water_multiplier))
+        .bind(("active_fert_mult", active_fertilizer_multiplier))
         .await
         .map_err(|e| internal_error("Create orchid query failed", e))?;
 
@@ -342,6 +386,10 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
              humidity_min = $humidity_min, humidity_max = $humidity_max, \
              fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
              pot_medium = $pot_medium, pot_size = $pot_size, \
+             rest_start_month = $rest_start, rest_end_month = $rest_end, \
+             bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
+             rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
+             active_water_multiplier = $active_water_mult, active_fertilizer_multiplier = $active_fert_mult, \
              updated_at = time::now() \
              WHERE owner = $owner \
              RETURN *"
@@ -368,6 +416,14 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .bind(("fert_type", orchid.fertilizer_type))
         .bind(("pot_medium", orchid.pot_medium))
         .bind(("pot_size", orchid.pot_size))
+        .bind(("rest_start", orchid.rest_start_month.map(|v| v as i64)))
+        .bind(("rest_end", orchid.rest_end_month.map(|v| v as i64)))
+        .bind(("bloom_start", orchid.bloom_start_month.map(|v| v as i64)))
+        .bind(("bloom_end", orchid.bloom_end_month.map(|v| v as i64)))
+        .bind(("rest_water_mult", orchid.rest_water_multiplier))
+        .bind(("rest_fert_mult", orchid.rest_fertilizer_multiplier))
+        .bind(("active_water_mult", orchid.active_water_multiplier))
+        .bind(("active_fert_mult", orchid.active_fertilizer_multiplier))
         .await
         .map_err(|e| internal_error("Update orchid query failed", e))?;
 

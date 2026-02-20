@@ -1,5 +1,6 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, GrowingZone, ClimateReading, LogEntry};
+use chrono::Datelike;
+use crate::orchid::{Orchid, LightRequirement, GrowingZone, ClimateReading, LogEntry, Hemisphere, SeasonalPhase, month_in_range};
 use crate::components::habitat_weather::HabitatWeatherCard;
 use crate::components::event_type_picker::EventTypePicker;
 use crate::components::photo_capture::PhotoCapture;
@@ -32,6 +33,7 @@ pub fn OrchidDetail(
     orchid: Orchid,
     zones: Vec<GrowingZone>,
     climate_readings: Vec<ClimateReading>,
+    hemisphere: String,
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
@@ -54,6 +56,7 @@ pub fn OrchidDetail(
     // Edit mode state
     let (is_editing, set_is_editing) = signal(false);
     let zones_stored = StoredValue::new(zones);
+    let hemisphere_stored = StoredValue::new(hemisphere);
 
     // Habitat weather data
     let habitat_zone_reading = StoredValue::new({
@@ -115,6 +118,7 @@ pub fn OrchidDetail(
                                 is_editing=is_editing
                                 set_is_editing=set_is_editing
                                 zones=zones_stored
+                                hemisphere=hemisphere_stored
                                 on_update=on_update
                                 habitat_zone_reading=habitat_zone_reading
                                 native_region=native_region
@@ -238,6 +242,7 @@ fn DetailsTab(
     is_editing: ReadSignal<bool>,
     set_is_editing: WriteSignal<bool>,
     zones: StoredValue<Vec<GrowingZone>>,
+    hemisphere: StoredValue<String>,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     habitat_zone_reading: StoredValue<Option<ClimateReading>>,
     native_region: StoredValue<Option<String>>,
@@ -264,6 +269,14 @@ fn DetailsTab(
     let (edit_fert_type, set_edit_fert_type) = signal(String::new());
     let (edit_pot_medium, set_edit_pot_medium) = signal(String::new());
     let (edit_pot_size, set_edit_pot_size) = signal(String::new());
+    let (edit_rest_start, set_edit_rest_start) = signal(String::new());
+    let (edit_rest_end, set_edit_rest_end) = signal(String::new());
+    let (edit_bloom_start, set_edit_bloom_start) = signal(String::new());
+    let (edit_bloom_end, set_edit_bloom_end) = signal(String::new());
+    let (edit_rest_water_mult, set_edit_rest_water_mult) = signal(String::new());
+    let (edit_rest_fert_mult, set_edit_rest_fert_mult) = signal(String::new());
+    let (edit_active_water_mult, set_edit_active_water_mult) = signal(String::new());
+    let (edit_active_fert_mult, set_edit_active_fert_mult) = signal(String::new());
 
     let populate_edit_fields = move || {
         let current = orchid_signal.get();
@@ -284,6 +297,14 @@ fn DetailsTab(
         set_edit_fert_type.set(current.fertilizer_type.unwrap_or_default());
         set_edit_pot_medium.set(current.pot_medium.unwrap_or_default());
         set_edit_pot_size.set(current.pot_size.unwrap_or_default());
+        set_edit_rest_start.set(current.rest_start_month.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_rest_end.set(current.rest_end_month.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_bloom_start.set(current.bloom_start_month.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_bloom_end.set(current.bloom_end_month.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_rest_water_mult.set(current.rest_water_multiplier.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_rest_fert_mult.set(current.rest_fertilizer_multiplier.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_active_water_mult.set(current.active_water_multiplier.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_active_fert_mult.set(current.active_fertilizer_multiplier.map(|v| v.to_string()).unwrap_or_default());
     };
 
     let on_edit_save = move |ev: leptos::ev::SubmitEvent| {
@@ -325,6 +346,14 @@ fn DetailsTab(
             last_repotted_at: current.last_repotted_at,
             pot_medium: if pot_medium_val.is_empty() { None } else { Some(pot_medium_val) },
             pot_size: if pot_size_val.is_empty() { None } else { Some(pot_size_val) },
+            rest_start_month: edit_rest_start.get().parse().ok(),
+            rest_end_month: edit_rest_end.get().parse().ok(),
+            bloom_start_month: edit_bloom_start.get().parse().ok(),
+            bloom_end_month: edit_bloom_end.get().parse().ok(),
+            rest_water_multiplier: edit_rest_water_mult.get().parse().ok(),
+            rest_fertilizer_multiplier: edit_rest_fert_mult.get().parse().ok(),
+            active_water_multiplier: edit_active_water_mult.get().parse().ok(),
+            active_fertilizer_multiplier: edit_active_fert_mult.get().parse().ok(),
         };
         set_orchid_signal.set(updated.clone());
         on_update(updated);
@@ -360,6 +389,14 @@ fn DetailsTab(
                         edit_fert_type=edit_fert_type set_edit_fert_type=set_edit_fert_type
                         edit_pot_medium=edit_pot_medium set_edit_pot_medium=set_edit_pot_medium
                         edit_pot_size=edit_pot_size set_edit_pot_size=set_edit_pot_size
+                        edit_rest_start=edit_rest_start set_edit_rest_start=set_edit_rest_start
+                        edit_rest_end=edit_rest_end set_edit_rest_end=set_edit_rest_end
+                        edit_bloom_start=edit_bloom_start set_edit_bloom_start=set_edit_bloom_start
+                        edit_bloom_end=edit_bloom_end set_edit_bloom_end=set_edit_bloom_end
+                        edit_rest_water_mult=edit_rest_water_mult set_edit_rest_water_mult=set_edit_rest_water_mult
+                        edit_rest_fert_mult=edit_rest_fert_mult set_edit_rest_fert_mult=set_edit_rest_fert_mult
+                        edit_active_water_mult=edit_active_water_mult set_edit_active_water_mult=set_edit_active_water_mult
+                        edit_active_fert_mult=edit_active_fert_mult set_edit_active_fert_mult=set_edit_active_fert_mult
                         zones=zones_ref
                         on_save=on_edit_save
                         on_cancel=on_edit_cancel
@@ -409,6 +446,9 @@ fn DetailsTab(
 
         // Care Schedule: Fertilizer + Pot Info
         <CareScheduleCard orchid_signal=orchid_signal set_orchid_signal=set_orchid_signal />
+
+        // Seasonal care
+        <SeasonalCareCard orchid_signal=orchid_signal hemisphere=hemisphere />
 
         // Habitat weather
         {native_lat.zip(native_lon).map(|(lat, lon)| {
@@ -578,6 +618,129 @@ fn CareScheduleCard(
     }.into_any()
 }
 
+// ── Seasonal Care Card ───────────────────────────────────────────────
+
+#[component]
+fn SeasonalCareCard(
+    orchid_signal: ReadSignal<Orchid>,
+    hemisphere: StoredValue<String>,
+) -> impl IntoView {
+    let hemi = Hemisphere::from_code(&hemisphere.get_value());
+    let hemi_for_bar = hemi.clone();
+    let hemi_for_freq = hemi.clone();
+    let hemi_for_next = hemi.clone();
+
+    view! {
+        {move || {
+            let o = orchid_signal.get();
+            if !o.has_seasonal_data() {
+                return view! { <div></div> }.into_any();
+            }
+
+            let phase = o.current_phase(&hemi);
+            let (badge_class, badge_text) = match &phase {
+                SeasonalPhase::Rest => (
+                    "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+                    "Rest Period"
+                ),
+                SeasonalPhase::Blooming => (
+                    "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+                    "Blooming"
+                ),
+                SeasonalPhase::Active => (
+                    "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+                    "Active Growth"
+                ),
+                SeasonalPhase::Unknown => (
+                    "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400",
+                    "Unknown"
+                ),
+            };
+
+            let eff_water = o.effective_water_frequency(&hemi_for_freq);
+            let eff_fert = o.effective_fertilize_frequency(&hemi_for_freq);
+
+            let next_transition = o.next_transition(&hemi_for_next);
+
+            // Build the 12-month bar
+            let now_month = chrono::Utc::now().month();
+            let month_cells = (1..=12u32).map(|m| {
+                let in_rest = o.rest_start_month.zip(o.rest_end_month)
+                    .map(|(s, e)| month_in_range(m, hemi_for_bar.adjust_month(s), hemi_for_bar.adjust_month(e)))
+                    .unwrap_or(false);
+                let in_bloom = o.bloom_start_month.zip(o.bloom_end_month)
+                    .map(|(s, e)| month_in_range(m, hemi_for_bar.adjust_month(s), hemi_for_bar.adjust_month(e)))
+                    .unwrap_or(false);
+                let is_current = m == now_month;
+
+                let bg = if in_bloom {
+                    "bg-pink-200 dark:bg-pink-900/40"
+                } else if in_rest {
+                    "bg-blue-200 dark:bg-blue-900/40"
+                } else {
+                    "bg-emerald-100 dark:bg-emerald-900/30"
+                };
+
+                let border = if is_current { " ring-2 ring-primary ring-offset-1" } else { "" };
+                let class = format!("flex flex-col justify-center items-center py-1 rounded text-[10px] {}{}", bg, border);
+
+                view! {
+                    <div class=class>
+                        <span class="font-medium">{Orchid::month_name(m)}</span>
+                    </div>
+                }
+            }).collect::<Vec<_>>();
+
+            view! {
+                <div class=CARE_CARD>
+                    <div class="flex gap-2 justify-between items-center mb-3">
+                        <h3 class="m-0 text-sm font-semibold tracking-wide text-stone-500 dark:text-stone-400">"Seasonal Care"</h3>
+                        <span class=badge_class>{badge_text}</span>
+                    </div>
+
+                    // 12-month bar
+                    <div class="grid grid-cols-12 gap-0.5 mb-3">
+                        {month_cells}
+                    </div>
+
+                    // Legend
+                    <div class="flex gap-3 mb-3 text-xs text-stone-400">
+                        <span class="flex gap-1 items-center"><span class="inline-block w-3 h-3 bg-blue-200 rounded dark:bg-blue-900/40"></span>"Rest"</span>
+                        <span class="flex gap-1 items-center"><span class="inline-block w-3 h-3 bg-pink-200 rounded dark:bg-pink-900/40"></span>"Bloom"</span>
+                        <span class="flex gap-1 items-center"><span class="inline-block w-3 h-3 bg-emerald-100 rounded dark:bg-emerald-900/30"></span>"Active"</span>
+                    </div>
+
+                    // Effective frequencies
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <div class=CARE_STAT_LABEL>"Effective Water Freq"</div>
+                            <div class=CARE_STAT_VALUE>{format!("Every {} days", eff_water)}</div>
+                        </div>
+                        <div>
+                            <div class=CARE_STAT_LABEL>"Effective Fert Freq"</div>
+                            <div class=CARE_STAT_VALUE>
+                                {match eff_fert {
+                                    Some(d) => format!("Every {} days", d),
+                                    None => "No schedule".to_string(),
+                                }}
+                            </div>
+                        </div>
+                    </div>
+
+                    // Next transition
+                    {next_transition.map(|(month, label)| {
+                        view! {
+                            <div class="pt-2 mt-2 text-xs border-t text-stone-400 border-stone-100 dark:border-stone-700/50">
+                                {format!("{}: {}", label, Orchid::month_name(month))}
+                            </div>
+                        }
+                    })}
+                </div>
+            }.into_any()
+        }}
+    }.into_any()
+}
+
 // ── Edit Form sub-component ──────────────────────────────────────────
 
 #[component]
@@ -599,6 +762,14 @@ fn EditForm(
     edit_fert_type: ReadSignal<String>, set_edit_fert_type: WriteSignal<String>,
     edit_pot_medium: ReadSignal<String>, set_edit_pot_medium: WriteSignal<String>,
     edit_pot_size: ReadSignal<String>, set_edit_pot_size: WriteSignal<String>,
+    edit_rest_start: ReadSignal<String>, set_edit_rest_start: WriteSignal<String>,
+    edit_rest_end: ReadSignal<String>, set_edit_rest_end: WriteSignal<String>,
+    edit_bloom_start: ReadSignal<String>, set_edit_bloom_start: WriteSignal<String>,
+    edit_bloom_end: ReadSignal<String>, set_edit_bloom_end: WriteSignal<String>,
+    edit_rest_water_mult: ReadSignal<String>, set_edit_rest_water_mult: WriteSignal<String>,
+    edit_rest_fert_mult: ReadSignal<String>, set_edit_rest_fert_mult: WriteSignal<String>,
+    edit_active_water_mult: ReadSignal<String>, set_edit_active_water_mult: WriteSignal<String>,
+    edit_active_fert_mult: ReadSignal<String>, set_edit_active_fert_mult: WriteSignal<String>,
     zones: Vec<GrowingZone>,
     on_save: impl Fn(leptos::ev::SubmitEvent) + 'static + Copy + Send + Sync,
     on_cancel: impl Fn(leptos::ev::MouseEvent) + 'static + Copy + Send + Sync,
@@ -703,6 +874,51 @@ fn EditForm(
                         <div class="flex-1">
                             <label>"Pot Size:"</label>
                             <input type="text" prop:value=edit_pot_size on:input=move |ev| set_edit_pot_size.set(event_target_value(&ev)) placeholder="e.g. 4 inch, 10cm" />
+                        </div>
+                    </div>
+                </div>
+
+                // ── Seasonal Care Section ──
+                <div class="pt-4 mt-4 border-t border-stone-200 dark:border-stone-700">
+                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Seasonal Care"</h4>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Rest Start Month (1-12):"</label>
+                            <input type="number" min="1" max="12" prop:value=edit_rest_start on:input=move |ev| set_edit_rest_start.set(event_target_value(&ev)) placeholder="e.g. 11" />
+                        </div>
+                        <div class="flex-1">
+                            <label>"Rest End Month (1-12):"</label>
+                            <input type="number" min="1" max="12" prop:value=edit_rest_end on:input=move |ev| set_edit_rest_end.set(event_target_value(&ev)) placeholder="e.g. 2" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Bloom Start Month (1-12):"</label>
+                            <input type="number" min="1" max="12" prop:value=edit_bloom_start on:input=move |ev| set_edit_bloom_start.set(event_target_value(&ev)) placeholder="e.g. 3" />
+                        </div>
+                        <div class="flex-1">
+                            <label>"Bloom End Month (1-12):"</label>
+                            <input type="number" min="1" max="12" prop:value=edit_bloom_end on:input=move |ev| set_edit_bloom_end.set(event_target_value(&ev)) placeholder="e.g. 5" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Rest Water Mult:"</label>
+                            <input type="number" step="0.1" min="0" max="1" prop:value=edit_rest_water_mult on:input=move |ev| set_edit_rest_water_mult.set(event_target_value(&ev)) placeholder="e.g. 0.3" />
+                        </div>
+                        <div class="flex-1">
+                            <label>"Rest Fert Mult:"</label>
+                            <input type="number" step="0.1" min="0" max="1" prop:value=edit_rest_fert_mult on:input=move |ev| set_edit_rest_fert_mult.set(event_target_value(&ev)) placeholder="e.g. 0.0" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        <div class="flex-1">
+                            <label>"Active Water Mult:"</label>
+                            <input type="number" step="0.1" min="0" max="2" prop:value=edit_active_water_mult on:input=move |ev| set_edit_active_water_mult.set(event_target_value(&ev)) placeholder="e.g. 1.0" />
+                        </div>
+                        <div class="flex-1">
+                            <label>"Active Fert Mult:"</label>
+                            <input type="number" step="0.1" min="0" max="2" prop:value=edit_active_fert_mult on:input=move |ev| set_edit_active_fert_mult.set(event_target_value(&ev)) placeholder="e.g. 1.0" />
                         </div>
                     </div>
                 </div>

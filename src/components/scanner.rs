@@ -32,6 +32,22 @@ pub struct AnalysisResult {
     pub humidity_min: Option<f64>,
     #[serde(default)]
     pub humidity_max: Option<f64>,
+    #[serde(default)]
+    pub rest_start_month: Option<u32>,
+    #[serde(default)]
+    pub rest_end_month: Option<u32>,
+    #[serde(default)]
+    pub bloom_start_month: Option<u32>,
+    #[serde(default)]
+    pub bloom_end_month: Option<u32>,
+    #[serde(default)]
+    pub rest_water_multiplier: Option<f64>,
+    #[serde(default)]
+    pub rest_fertilizer_multiplier: Option<f64>,
+    #[serde(default)]
+    pub active_water_multiplier: Option<f64>,
+    #[serde(default)]
+    pub active_fertilizer_multiplier: Option<f64>,
 }
 
 #[component]

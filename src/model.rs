@@ -18,6 +18,7 @@ pub struct Model {
     pub show_add_modal: bool,
     pub prefill_data: Option<AnalysisResult>,
     pub temp_unit: String,
+    pub hemisphere: String,
     pub dark_mode: bool,
 }
 
@@ -31,6 +32,7 @@ impl Default for Model {
             show_add_modal: false,
             prefill_data: None,
             temp_unit: "C".to_string(),
+            hemisphere: "N".to_string(),
             dark_mode: false,
         }
     }

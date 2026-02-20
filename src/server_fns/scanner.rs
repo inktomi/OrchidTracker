@@ -54,7 +54,13 @@ pub async fn analyze_orchid_image(
         For native_region, provide a brief description of where this species naturally grows. \
         For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown. \
         For temp_min/temp_max, provide the ideal temperature range in Celsius as numeric values (e.g. 18.0 and 28.0). \
-        For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown.",
+        For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown. \
+        Also include seasonal care data in Northern Hemisphere terms: \
+        \"rest_start_month\": 11, \"rest_end_month\": 2, \"bloom_start_month\": 3, \"bloom_end_month\": 5, \
+        \"rest_water_multiplier\": 0.3, \"rest_fertilizer_multiplier\": 0.0, \
+        \"active_water_multiplier\": 1.0, \"active_fertilizer_multiplier\": 1.0 \
+        Months are 1-12. Multipliers are 0.0-1.0 (0.3 = 30% of normal frequency, 0.0 = stop entirely). \
+        Set seasonal fields to null if the species has no distinct rest period or seasonal cycle.",
         climate_summary,
         zone_list,
         existing_species,

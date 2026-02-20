@@ -10,10 +10,12 @@ const BTN_SM: &str = "py-1.5 px-3 text-xs font-semibold rounded-lg border-none c
 pub fn SettingsModal(
     zones: Vec<GrowingZone>,
     initial_temp_unit: String,
+    initial_hemisphere: String,
     on_close: impl Fn(String) + 'static + Copy + Send + Sync,
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     let (temp_unit, set_temp_unit) = signal(initial_temp_unit);
+    let (hemisphere, set_hemisphere) = signal(initial_hemisphere);
 
     // Zone management state
     let (show_add_zone, set_show_add_zone) = signal(false);
@@ -91,6 +93,22 @@ pub fn SettingsModal(
                     <button class=BTN_CLOSE on:click=move |_| on_close(temp_unit.get_untracked())>"Close"</button>
                 </div>
                 <div>
+                    <div class="mb-4">
+                        <label>"Hemisphere:"</label>
+                        <select
+                            on:change=move |ev| {
+                                let val = event_target_value(&ev);
+                                set_hemisphere.set(val.clone());
+                                leptos::task::spawn_local(async move {
+                                    let _ = crate::server_fns::preferences::save_hemisphere(val).await;
+                                });
+                            }
+                            prop:value=hemisphere
+                        >
+                            <option value="N">"Northern Hemisphere"</option>
+                            <option value="S">"Southern Hemisphere"</option>
+                        </select>
+                    </div>
                     <div class="mb-4">
                         <label>"Temperature Unit:"</label>
                         <select
