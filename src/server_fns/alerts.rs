@@ -25,22 +25,36 @@ pub async fn subscribe_push(
         .map_err(|e| internal_error("Owner ID parse failed", e))?;
 
     // Upsert: delete existing subscriptions for this user + endpoint, then create
-    let _ = db()
+    let mut del_resp = db()
         .query("DELETE push_subscription WHERE owner = $owner AND endpoint = $endpoint")
         .bind(("owner", owner.clone()))
         .bind(("endpoint", endpoint.clone()))
-        .await;
+        .await
+        .map_err(|e| internal_error("Delete push sub query failed", e))?;
 
-    db()
+    let del_errors = del_resp.take_errors();
+    if !del_errors.is_empty() {
+        let msg = del_errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Delete push sub statement error", msg));
+    }
+
+    // Note: bind param is "sub_auth" not "auth" — $auth is a SurrealDB system variable
+    let mut create_resp = db()
         .query(
-            "CREATE push_subscription SET owner = $owner, endpoint = $endpoint, p256dh = $p256dh, auth = $auth"
+            "CREATE push_subscription SET owner = $owner, endpoint = $endpoint, p256dh = $p256dh, auth = $sub_auth"
         )
         .bind(("owner", owner))
         .bind(("endpoint", endpoint))
         .bind(("p256dh", p256dh))
-        .bind(("auth", auth))
+        .bind(("sub_auth", auth))
         .await
         .map_err(|e| internal_error("Subscribe push query failed", e))?;
+
+    let create_errors = create_resp.take_errors();
+    if !create_errors.is_empty() {
+        let msg = create_errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Subscribe push statement error", msg));
+    }
 
     Ok(())
 }
