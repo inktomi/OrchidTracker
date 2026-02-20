@@ -359,7 +359,7 @@ impl Orchid {
             if *m > now_month { *m - now_month } else { *m + 12 - now_month }
         });
 
-        transitions.into_iter().find(|(m, _)| *m != now_month).or_else(|| None)
+        transitions.into_iter().find(|(m, _)| *m != now_month).or(None)
     }
 }
 
