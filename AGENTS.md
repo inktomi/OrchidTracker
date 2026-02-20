@@ -137,20 +137,37 @@ OrchidTracker/
 
 ## Testing
 
+### Philosophy: Deep Testing
+Testing is not merely a box to check; it is the primary mechanism for **validation** and **regression prevention**. A test suite should give you absolute confidence to refactor and deploy. Tests must execute the code in ways that matter, evaluating real outcomes, not superficial execution paths.
+
+- **Depth over Breadth**: It is better to have fewer tests that deeply validate behavior than many tests that only check if a function executes without panicking.
+- **Unit Testing**: Validate domain logic, state transitions (TEA update loops), and complex calculations in isolation.
+- **Integration Testing**: Validate that components work together. For database interactions, we use **SurrealDB in-memory (`surrealdb` with `kv-mem` feature)** to execute real queries against a real database engine, avoiding brittle mocks.
+- **End-to-End (E2E) Testing**: Validate the user journey. We use **Playwright** (configured via `end2end-cmd = "npx playwright test"`) to ensure the full stack (Leptos frontend + Axum backend + SurrealDB) functions correctly from the user's perspective.
+
+### Effective Test Criteria
+1. **Meaningful Assertions**: Assert against specific data states, not just `is_ok()`. Verify that the database state actually changed or that the UI reflects the expected text.
+2. **Edge Cases**: Actively test failure modes, missing data, boundary conditions, and invalid inputs.
+3. **Coverage**: Focus coverage on business logic and complex state management (`update.rs`, `db.rs`, `server_fns/`).
+
+### Anti-Patterns to Avoid
+- **Shallow Checks**: Writing tests that only verify a function returns without error, without checking *what* it returned or what side effects occurred.
+- **Mocks Misuse**: Over-mocking database calls or HTTP requests. Whenever possible, use the real in-memory SurrealDB instance or a local test server to ensure your queries and schemas are actually correct. Mocking should be a last resort for external APIs only.
+
 ### Before every commit or push
 
 1. **`cargo clippy --target wasm32-unknown-unknown`** — zero warnings.
-2. **`cargo test`** — all unit tests pass (domain logic in `orchid.rs`, serialization, etc.).
+2. **`cargo test`** — all tests pass (domain logic, in-memory DB queries, etc.).
 3. **`rustywind . --write`** — sort Tailwind classes.
 4. **`cargo check --target wasm32-unknown-unknown`** — full WASM compilation check.
 5. **`trunk build`** — confirm Tailwind compiles and WASM bundles correctly.
+6. **`npx playwright test`** — confirm E2E user flows remain intact.
 
 ### Testing guidelines
 
 - Write unit tests for all domain logic, data transformations, and serialization/deserialization.
-- Test files live alongside their modules using `#[cfg(test)] mod tests { ... }`.
-- Test edge cases: empty collections, missing optional fields, enum variant round-trips.
-- Component/integration testing via `trunk serve` + manual verification for UI behavior (modals, drag-drop, camera, sync).
+- Test files live alongside their modules using `#[cfg(test)] mod tests { ... }` or in the `tests/` directory for integration.
+- Component/integration testing via `trunk serve` + manual verification for UI behavior (modals, drag-drop, camera, sync), supplemented by Playwright.
 - Do NOT commit code that has `cargo clippy` warnings or failing tests.
 
 ## Key Dependencies
