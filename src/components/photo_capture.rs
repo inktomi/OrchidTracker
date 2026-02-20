@@ -11,6 +11,10 @@ pub fn PhotoCapture(
     let (is_dragging, set_is_dragging) = signal(false);
     let file_input_ref = NodeRef::<leptos::html::Input>::new();
     let on_clear_stored = StoredValue::new(on_clear);
+    // These are only used in #[cfg(feature = "hydrate")] blocks
+    let _ = &on_photo_ready;
+    let _ = &set_is_uploading;
+    let _ = &set_error_msg;
 
     #[cfg(feature = "hydrate")]
     let do_upload = move |file: web_sys::File| {

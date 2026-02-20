@@ -68,3 +68,86 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
 pub fn get_event_info(key: &str) -> Option<&'static EventTypeInfo> {
     EVENT_TYPES.iter().find(|e| e.key == key)
 }
+
+/// The allowed event type keys, matching the DB ASSERT constraint in migration 0008.
+pub const ALLOWED_EVENT_TYPE_KEYS: &[&str] = &[
+    "Flowering", "NewGrowth", "Repotted", "Fertilized",
+    "PestTreatment", "Purchased", "Watered", "Note",
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_event_types_present() {
+        assert_eq!(EVENT_TYPES.len(), 8);
+    }
+
+    #[test]
+    fn test_event_types_match_allowed_keys() {
+        // Ensure every EVENT_TYPES entry has a key in ALLOWED_EVENT_TYPE_KEYS
+        for et in EVENT_TYPES {
+            assert!(
+                ALLOWED_EVENT_TYPE_KEYS.contains(&et.key),
+                "EVENT_TYPES key '{}' is not in ALLOWED_EVENT_TYPE_KEYS",
+                et.key
+            );
+        }
+        // And vice versa
+        for key in ALLOWED_EVENT_TYPE_KEYS {
+            assert!(
+                EVENT_TYPES.iter().any(|et| et.key == *key),
+                "ALLOWED_EVENT_TYPE_KEYS entry '{}' has no EVENT_TYPES entry",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn test_no_duplicate_keys() {
+        let mut seen = std::collections::HashSet::new();
+        for et in EVENT_TYPES {
+            assert!(seen.insert(et.key), "Duplicate event type key: {}", et.key);
+        }
+    }
+
+    #[test]
+    fn test_get_event_info_found() {
+        let info = get_event_info("Flowering");
+        assert!(info.is_some());
+        let info = info.unwrap();
+        assert_eq!(info.label, "Flowering");
+        assert!(!info.emoji.is_empty());
+        assert!(!info.color_class.is_empty());
+        assert!(!info.bg_class.is_empty());
+    }
+
+    #[test]
+    fn test_get_event_info_all_keys() {
+        for key in ALLOWED_EVENT_TYPE_KEYS {
+            assert!(
+                get_event_info(key).is_some(),
+                "get_event_info('{}') returned None",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_event_info_not_found() {
+        assert!(get_event_info("NonExistent").is_none());
+        assert!(get_event_info("").is_none());
+    }
+
+    #[test]
+    fn test_every_type_has_nonempty_fields() {
+        for et in EVENT_TYPES {
+            assert!(!et.key.is_empty(), "Event type has empty key");
+            assert!(!et.label.is_empty(), "Event type '{}' has empty label", et.key);
+            assert!(!et.emoji.is_empty(), "Event type '{}' has empty emoji", et.key);
+            assert!(!et.color_class.is_empty(), "Event type '{}' has empty color_class", et.key);
+            assert!(!et.bg_class.is_empty(), "Event type '{}' has empty bg_class", et.key);
+        }
+    }
+}

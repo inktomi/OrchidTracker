@@ -404,4 +404,78 @@ mod tests {
         let medium: LightRequirement = serde_json::from_str("\"Medium\"").unwrap();
         assert_eq!(medium, LightRequirement::Medium);
     }
+
+    #[test]
+    fn test_log_entry_serde_with_event_type() {
+        let entry = LogEntry {
+            id: "log_entry:abc".into(),
+            timestamp: Utc::now(),
+            note: "New spike emerging".into(),
+            image_filename: Some("user1/photo.jpg".into()),
+            event_type: Some("Flowering".into()),
+        };
+
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: LogEntry = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.id, entry.id);
+        assert_eq!(deserialized.note, entry.note);
+        assert_eq!(deserialized.image_filename, Some("user1/photo.jpg".into()));
+        assert_eq!(deserialized.event_type, Some("Flowering".into()));
+    }
+
+    #[test]
+    fn test_log_entry_serde_without_event_type() {
+        // Backward compat: older entries have no event_type or image_filename
+        let json = r#"{"id":"log_entry:old","timestamp":"2025-01-01T00:00:00Z","note":"Watered"}"#;
+        let entry: LogEntry = serde_json::from_str(json).unwrap();
+
+        assert_eq!(entry.id, "log_entry:old");
+        assert_eq!(entry.note, "Watered");
+        assert_eq!(entry.event_type, None);
+        assert_eq!(entry.image_filename, None);
+    }
+
+    #[test]
+    fn test_orchid_serde_with_first_bloom_at() {
+        let now = Utc::now();
+        let orchid = Orchid {
+            id: "orchid:bloom1".into(),
+            name: "Blooming Beauty".into(),
+            species: "Cattleya".into(),
+            water_frequency_days: 5,
+            light_requirement: LightRequirement::High,
+            notes: String::new(),
+            placement: "South Window".into(),
+            light_lux: "8000".into(),
+            temperature_range: "18-30C".into(),
+            conservation_status: None,
+            native_region: Some("Brazil".into()),
+            native_latitude: Some(-15.78),
+            native_longitude: Some(-47.93),
+            last_watered_at: Some(now),
+            temp_min: Some(18.0),
+            temp_max: Some(30.0),
+            humidity_min: Some(60.0),
+            humidity_max: Some(80.0),
+            first_bloom_at: Some(now),
+        };
+
+        let json = serde_json::to_string(&orchid).unwrap();
+        let deserialized: Orchid = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.first_bloom_at.is_some(), true);
+        assert_eq!(deserialized.name, "Blooming Beauty");
+        assert_eq!(deserialized.native_region, Some("Brazil".into()));
+    }
+
+    #[test]
+    fn test_orchid_serde_without_first_bloom_at() {
+        // Backward compat: older orchids have no first_bloom_at
+        let json = r#"{"id":"orchid:old","name":"Old","species":"Phal","water_frequency_days":7,"light_requirement":"Medium","notes":"","placement":"Zone A","light_lux":"","temperature_range":""}"#;
+        let orchid: Orchid = serde_json::from_str(json).unwrap();
+
+        assert_eq!(orchid.first_bloom_at, None);
+        assert_eq!(orchid.name, "Old");
+    }
 }
