@@ -4,6 +4,7 @@ pub struct EventTypeInfo {
     pub emoji: &'static str,
     pub color_class: &'static str,
     pub bg_class: &'static str,
+    pub quick_action: bool,
 }
 
 pub const EVENT_TYPES: &[EventTypeInfo] = &[
@@ -13,6 +14,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F338}",
         color_class: "text-pink-600 dark:text-pink-400",
         bg_class: "bg-pink-100 dark:bg-pink-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "NewGrowth",
@@ -20,6 +22,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F331}",
         color_class: "text-emerald-600 dark:text-emerald-400",
         bg_class: "bg-emerald-100 dark:bg-emerald-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "Repotted",
@@ -27,6 +30,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1FAB4}",
         color_class: "text-amber-600 dark:text-amber-400",
         bg_class: "bg-amber-100 dark:bg-amber-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "Fertilized",
@@ -34,6 +38,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{2728}",
         color_class: "text-yellow-600 dark:text-yellow-400",
         bg_class: "bg-yellow-100 dark:bg-yellow-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "PestTreatment",
@@ -41,6 +46,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F41B}",
         color_class: "text-red-600 dark:text-red-400",
         bg_class: "bg-red-100 dark:bg-red-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "Purchased",
@@ -48,6 +54,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F3F7}\u{FE0F}",
         color_class: "text-violet-600 dark:text-violet-400",
         bg_class: "bg-violet-100 dark:bg-violet-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "Watered",
@@ -55,6 +62,7 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F4A7}",
         color_class: "text-sky-600 dark:text-sky-400",
         bg_class: "bg-sky-100 dark:bg-sky-900/30",
+        quick_action: true,
     },
     EventTypeInfo {
         key: "Note",
@@ -62,11 +70,16 @@ pub const EVENT_TYPES: &[EventTypeInfo] = &[
         emoji: "\u{1F4DD}",
         color_class: "text-stone-600 dark:text-stone-400",
         bg_class: "bg-stone-100 dark:bg-stone-800",
+        quick_action: true,
     },
 ];
 
 pub fn get_event_info(key: &str) -> Option<&'static EventTypeInfo> {
     EVENT_TYPES.iter().find(|e| e.key == key)
+}
+
+pub fn quick_action_types() -> impl Iterator<Item = &'static EventTypeInfo> {
+    EVENT_TYPES.iter().filter(|e| e.quick_action)
 }
 
 /// The allowed event type keys, matching the DB ASSERT constraint in migration 0008.
@@ -148,6 +161,23 @@ mod tests {
             assert!(!et.emoji.is_empty(), "Event type '{}' has empty emoji", et.key);
             assert!(!et.color_class.is_empty(), "Event type '{}' has empty color_class", et.key);
             assert!(!et.bg_class.is_empty(), "Event type '{}' has empty bg_class", et.key);
+        }
+    }
+
+    #[test]
+    fn test_quick_action_types_count() {
+        let count = quick_action_types().count();
+        assert_eq!(count, 8, "All 8 event types should be quick actions");
+    }
+
+    #[test]
+    fn test_quick_action_types_are_subset_of_event_types() {
+        for qa in quick_action_types() {
+            assert!(
+                EVENT_TYPES.iter().any(|et| et.key == qa.key),
+                "Quick action '{}' not found in EVENT_TYPES",
+                qa.key
+            );
         }
     }
 }

@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use chrono::Datelike;
 use crate::orchid::{Orchid, LightRequirement, GrowingZone, ClimateReading, LogEntry, Hemisphere, SeasonalPhase, month_in_range};
 use crate::components::habitat_weather::HabitatWeatherCard;
-use crate::components::event_type_picker::EventTypePicker;
+use crate::components::quick_actions::QuickActions;
 use crate::components::photo_capture::PhotoCapture;
 use crate::components::growth_thread::GrowthThread;
 use crate::components::first_bloom::FirstBloomCelebration;
@@ -153,70 +153,57 @@ fn JournalTab(
     #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (note, set_note) = signal(String::new());
-    let (selected_event_type, set_selected_event_type) = signal(Option::<String>::None);
     let (uploaded_filename, set_uploaded_filename) = signal(Option::<String>::None);
     let (is_syncing, set_is_syncing) = signal(false);
 
-    let on_submit_log = move |ev: leptos::ev::SubmitEvent| {
+    let on_submit_note = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
 
         let current_note = note.get();
-        let event_type = selected_event_type.get();
         let image = uploaded_filename.get();
 
-        // Require at least a note, photo, or event type
-        if current_note.is_empty() && image.is_none() && event_type.is_none() {
+        // Require at least a note or photo
+        if current_note.is_empty() && image.is_none() {
             return;
         }
 
         set_is_syncing.set(true);
         let orchid_id = orchid_signal.get().id.clone();
-        let event_type_for_update = event_type.clone();
 
         leptos::task::spawn_local(async move {
             match crate::server_fns::orchids::add_log_entry(
                 orchid_id,
                 current_note,
                 image,
-                event_type,
+                None,
             ).await {
                 Ok(response) => {
                     if response.is_first_bloom {
                         set_show_first_bloom.set(true);
                     }
-                    // Update orchid care timestamps so Details tab reflects the change
-                    let now = chrono::Utc::now();
-                    match event_type_for_update.as_deref() {
-                        Some("Watered") => set_orchid_signal.update(|o| o.last_watered_at = Some(now)),
-                        Some("Fertilized") => set_orchid_signal.update(|o| o.last_fertilized_at = Some(now)),
-                        Some("Repotted") => set_orchid_signal.update(|o| o.last_repotted_at = Some(now)),
-                        _ => {}
-                    }
                     set_log_entries.update(|entries| entries.insert(0, response.entry));
                 }
-                Err(e) => log::error!("Failed to add log entry: {}", e),
+                Err(e) => log::error!("Failed to add note: {}", e),
             }
             set_is_syncing.set(false);
             set_note.set(String::new());
-            set_selected_event_type.set(None);
             set_uploaded_filename.set(None);
         });
     };
 
     view! {
-        // Add Entry form (hidden in read-only mode)
+        // Quick Actions + Detailed Note form (hidden in read-only mode)
         {(!read_only).then(|| view! {
-            <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
-                <form on:submit=on_submit_log>
-                    // Event type picker
-                    <div class="mb-3">
-                        <label class="mb-2">"What happened?"</label>
-                        <EventTypePicker
-                            selected=selected_event_type
-                            on_select=move |val| set_selected_event_type.set(val)
-                        />
-                    </div>
+            <QuickActions
+                orchid_signal=orchid_signal
+                set_orchid_signal=set_orchid_signal
+                set_log_entries=set_log_entries
+                set_show_first_bloom=set_show_first_bloom
+            />
 
+            <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
+                <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Add a detailed note"</h4>
+                <form on:submit=on_submit_note>
                     // Photo upload
                     <div class="mb-3">
                         <PhotoCapture
@@ -229,14 +216,14 @@ fn JournalTab(
                         <textarea
                             prop:value=note
                             on:input=move |ev| set_note.set(event_target_value(&ev))
-                            placeholder="Add a note about this moment..."
+                            placeholder="Write a note about this orchid..."
                             rows="2"
                             class="py-2 px-3 w-full text-sm bg-white rounded-lg border border-stone-300 dark:bg-stone-800 dark:border-stone-600 dark:text-stone-200"
                         ></textarea>
                     </div>
 
                     <button type="submit" class=BTN_PRIMARY disabled=move || is_syncing.get()>
-                        {move || if is_syncing.get() { "Saving..." } else { "Add Entry" }}
+                        {move || if is_syncing.get() { "Saving..." } else { "Add Note" }}
                     </button>
                 </form>
             </div>

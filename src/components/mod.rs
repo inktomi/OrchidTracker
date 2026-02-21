@@ -13,6 +13,7 @@ pub mod habitat_weather;
 pub mod notification_setup;
 pub mod event_types;
 pub mod event_type_picker;
+pub mod quick_actions;
 pub mod photo_capture;
 pub mod growth_thread;
 pub mod first_bloom;
