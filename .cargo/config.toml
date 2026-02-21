@@ -1,3 +1,11 @@
 # Enable detailed hydration error messages in WASM builds (even release)
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "leptos_debuginfo"]
+
+# Use LLD for faster native linking on macOS
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/lld/bin/ld64.lld"]
+
+# Use bundled rust-lld for faster native linking on Linux
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-self-contained=+linker", "-C", "linker-flavor=gnu-lld-cc"]
