@@ -1,18 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::GrowingZone;
 use crate::estimation::*;
-use super::{MODAL_OVERLAY, MODAL_CONTENT, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
+use super::{MODAL_OVERLAY, MODAL_CONTENT, BTN_PRIMARY, BTN_SECONDARY};
 
-const WIZARD_STEP_DOT_ACTIVE: &str = "w-2.5 h-2.5 rounded-full bg-primary scale-125 transition-all duration-300";
-const WIZARD_STEP_DOT_DONE: &str = "w-2.5 h-2.5 rounded-full bg-primary/40 transition-all duration-300";
-const WIZARD_STEP_DOT_FUTURE: &str = "w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 transition-all duration-300";
-
-const INPUT_WIZ: &str = "w-full px-3 py-2.5 text-sm bg-white/80 border border-stone-300/50 rounded-lg outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_WIZ: &str = "block mb-1.5 text-xs font-semibold tracking-wider uppercase text-stone-400 dark:text-stone-500";
-const RADIO_OPTION: &str = "flex gap-2 items-center p-2.5 rounded-lg border transition-colors cursor-pointer border-stone-200 dark:border-stone-700 hover:border-primary/30 dark:hover:border-primary-light/30";
-const RADIO_OPTION_SELECTED: &str = "flex gap-2 items-center p-2.5 rounded-lg border transition-colors cursor-pointer border-primary bg-primary/5 dark:border-primary-light dark:bg-primary-light/10";
-const CHECK_OPTION: &str = "flex gap-2 items-center p-2 rounded-lg border transition-colors cursor-pointer border-stone-200 dark:border-stone-700 hover:border-primary/30";
-const CHECK_OPTION_SELECTED: &str = "flex gap-2 items-center p-2 rounded-lg border transition-colors cursor-pointer border-primary bg-primary/5 dark:border-primary-light dark:bg-primary-light/10";
+const INPUT_WIZ: &str = "w-full px-3.5 py-2.5 text-sm bg-white/60 border border-stone-200/80 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/60 dark:border-stone-600/60 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_WIZ: &str = "block mb-1.5 text-[11px] font-semibold tracking-wider uppercase text-stone-400 dark:text-stone-500";
+const RADIO_OPTION: &str = "flex gap-2.5 items-center p-3 rounded-xl border transition-all cursor-pointer border-stone-200/80 dark:border-stone-700 hover:border-primary/30 dark:hover:border-primary-light/30 wizard-option bg-white/40 dark:bg-stone-800/30";
+const RADIO_OPTION_SELECTED: &str = "flex gap-2.5 items-center p-3 rounded-xl border-2 transition-all cursor-pointer border-primary bg-primary/5 dark:border-primary-light dark:bg-primary-light/10 shadow-sm";
+const CHECK_OPTION: &str = "flex gap-2.5 items-center p-2.5 rounded-xl border transition-all cursor-pointer border-stone-200/80 dark:border-stone-700 hover:border-primary/30 wizard-option bg-white/40 dark:bg-stone-800/30";
+const CHECK_OPTION_SELECTED: &str = "flex gap-2.5 items-center p-2.5 rounded-xl border-2 transition-all cursor-pointer border-primary bg-primary/5 dark:border-primary-light dark:bg-primary-light/10 shadow-sm";
 
 /// Main wizard component — branches on indoor vs outdoor.
 #[component]
@@ -37,19 +33,38 @@ pub fn ZoneConditionWizard(
     }
 }
 
-/// Progress dots indicator.
+/// Labeled step progress bar with connecting track line.
 #[component]
-fn ProgressDots(current: ReadSignal<usize>, total: usize) -> impl IntoView {
+fn WizardProgress(current: ReadSignal<usize>, labels: Vec<String>) -> impl IntoView {
+    let len = labels.len();
+    let labels = StoredValue::new(labels);
     view! {
-        <div class="flex gap-2 justify-center mb-6">
-            {(0..total).map(|i| {
+        <div class="flex justify-between items-start px-2 mb-8 wizard-track">
+            {(0..len).map(|i| {
+                let label = labels.get_value()[i].clone();
                 view! {
-                    <span class=move || {
-                        let cur = current.get();
-                        if i == cur { WIZARD_STEP_DOT_ACTIVE }
-                        else if i < cur { WIZARD_STEP_DOT_DONE }
-                        else { WIZARD_STEP_DOT_FUTURE }
-                    }></span>
+                    <div class="flex flex-col gap-1.5 items-center min-w-0">
+                        <div class=move || {
+                            let cur = current.get();
+                            if i == cur { "wizard-node wizard-node-active" }
+                            else if i < cur { "wizard-node wizard-node-done" }
+                            else { "wizard-node wizard-node-future" }
+                        }>
+                            {move || {
+                                let cur = current.get();
+                                if i < cur {
+                                    "\u{2713}".to_string() // checkmark for done steps
+                                } else {
+                                    (i + 1).to_string()
+                                }
+                            }}
+                        </div>
+                        <span class=move || {
+                            let cur = current.get();
+                            if i <= cur { "text-[10px] font-bold tracking-wide text-primary dark:text-primary-light" }
+                            else { "text-[10px] font-medium tracking-wide text-stone-400 dark:text-stone-500" }
+                        }>{label}</span>
+                    </div>
                 }
             }).collect::<Vec<_>>()}
         </div>
@@ -143,6 +158,7 @@ fn IndoorWizard(
     let (override_temp, set_override_temp) = signal::<Option<String>>(None);
     let (override_humidity, set_override_humidity) = signal::<Option<String>>(None);
 
+    let zone_name = zone.name.clone();
     let zone_stored = StoredValue::new(zone);
 
     let save = move || {
@@ -175,12 +191,23 @@ fn IndoorWizard(
 
     view! {
         <div>
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="m-0 text-lg">"Estimate Conditions"</h2>
-                <button class=BTN_CLOSE on:click=move |_| on_close()>"Close"</button>
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="m-0 text-lg font-display">"Estimate Conditions"</h2>
+                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">{zone_name}</p>
+                </div>
+                <button
+                    class="flex justify-center items-center w-8 h-8 rounded-full border-none transition-colors cursor-pointer text-stone-400 bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 hover:text-stone-600"
+                    on:click=move |_| on_close()
+                    aria-label="Close"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
             </div>
 
-            <ProgressDots current=step total=4 />
+            <WizardProgress current=step labels=vec!["Space".into(), "Light".into(), "Humidity".into(), "Review".into()] />
 
             {move || match step.get() {
                 0 => view! { <Step1Room room_type=room_type set_room_type=set_room_type
@@ -196,25 +223,43 @@ fn IndoorWizard(
                     override_humidity=override_humidity set_override_humidity=set_override_humidity /> }.into_any(),
             }}
 
-            <div class="flex gap-3 justify-between mt-6">
-                {move || if step.get() > 0 {
-                    view! {
-                        <button class=BTN_SECONDARY on:click=move |_| set_step.update(|s| *s -= 1)>"Back"</button>
-                    }.into_any()
-                } else {
-                    view! { <div></div> }.into_any()
-                }}
-                {move || if step.get() < 3 {
-                    view! {
-                        <button class=BTN_PRIMARY on:click=move |_| set_step.update(|s| *s += 1)>"Next"</button>
-                    }.into_any()
-                } else {
-                    view! {
-                        <button class=BTN_PRIMARY disabled=move || is_saving.get()
-                            on:click=move |_| save()
-                        >{move || if is_saving.get() { "Saving..." } else { "Save Estimate" }}</button>
-                    }.into_any()
-                }}
+            <div class="pt-5 mt-6 border-t border-stone-200/60 dark:border-stone-700/40">
+                <div class="flex gap-3 justify-between">
+                    {move || if step.get() > 0 {
+                        view! {
+                            <button class=BTN_SECONDARY on:click=move |_| set_step.update(|s| *s -= 1)>
+                                <span class="flex gap-1.5 items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    "Back"
+                                </span>
+                            </button>
+                        }.into_any()
+                    } else {
+                        view! { <div></div> }.into_any()
+                    }}
+                    {move || if step.get() < 3 {
+                        view! {
+                            <button class=BTN_PRIMARY on:click=move |_| set_step.update(|s| *s += 1)>
+                                <span class="flex gap-1.5 items-center">
+                                    "Next"
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            </button>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <button
+                                class="py-2.5 px-6 text-sm font-semibold text-white rounded-xl border-none shadow-sm transition-all cursor-pointer hover:shadow-md bg-accent hover:bg-accent-dark"
+                                disabled=move || is_saving.get()
+                                on:click=move |_| save()
+                            >{move || if is_saving.get() { "Saving..." } else { "Save Estimate" }}</button>
+                        }.into_any()
+                    }}
+                </div>
             </div>
         </div>
     }
@@ -403,7 +448,7 @@ fn Step3Humidity(
     }.into_any()
 }
 
-/// Step 4: Review & save
+/// Step 4: Review & save — dramatic estimation display with animated result cards.
 #[component]
 fn Step4Review(
     estimation: Memo<EstimationResult>,
@@ -418,68 +463,87 @@ fn Step4Review(
     view! {
         <div class="wizard-step-in">
             <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Review & Save"</h3>
-            <p class="mb-4 text-xs text-stone-400">"Here's our estimate. You can adjust the values before saving."</p>
+            <p class="mb-5 text-xs text-stone-400">"Here's our estimate based on your answers."</p>
 
-            <div class="p-4 mb-4 rounded-xl border bg-primary/5 border-primary/20 dark:bg-primary-light/5 dark:border-primary-light/20">
-                <div class="flex flex-wrap gap-6 justify-center">
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Temperature"</span>
-                        <span class="text-2xl font-semibold text-primary dark:text-primary-light">
-                            {move || {
-                                let est = estimation.get();
-                                if is_f {
-                                    format!("{:.0}-{:.0}°F", c_to_f(est.temperature_low_c), c_to_f(est.temperature_high_c))
-                                } else {
-                                    format!("{:.0}-{:.0}°C", est.temperature_low_c, est.temperature_high_c)
-                                }
-                            }}
-                        </span>
+            // Estimation result cards — spring animation reveals
+            <div class="flex gap-3 mb-5">
+                <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-primary/5 to-primary/10 border-primary/15 wizard-result-reveal dark:from-primary-light/5 dark:to-primary-light/10 dark:border-primary-light/15">
+                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Temperature"</div>
+                    <div class="text-3xl font-display text-primary dark:text-primary-light">
+                        {move || {
+                            let est = estimation.get();
+                            if is_f {
+                                format!("{:.0}-{:.0}", c_to_f(est.temperature_low_c), c_to_f(est.temperature_high_c))
+                            } else {
+                                format!("{:.0}-{:.0}", est.temperature_low_c, est.temperature_high_c)
+                            }
+                        }}
                     </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Humidity"</span>
-                        <span class="text-2xl font-semibold text-primary dark:text-primary-light">
-                            {move || format!("{:.0}%", estimation.get().humidity_pct)}
-                        </span>
-                    </div>
+                    <div class="text-xs font-medium text-primary/60 dark:text-primary-light/60">{if is_f { "\u{00B0}F" } else { "\u{00B0}C" }}</div>
                 </div>
+                <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-accent/5 to-accent/10 border-accent/15 wizard-result-reveal wizard-result-delay-1 dark:from-accent-light/5 dark:to-accent-light/10 dark:border-accent-light/15">
+                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Humidity"</div>
+                    <div class="text-3xl font-display text-accent dark:text-accent-light">
+                        {move || format!("{:.0}", estimation.get().humidity_pct)}
+                    </div>
+                    <div class="text-xs font-medium text-accent/60 dark:text-accent-light/60">"%"</div>
+                </div>
+                {move || {
+                    let est = estimation.get();
+                    let vpd = crate::estimation::calculate_vpd(
+                        (est.temperature_low_c + est.temperature_high_c) / 2.0,
+                        est.humidity_pct,
+                    );
+                    view! {
+                        <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-stone-100/80 to-stone-50 border-stone-200/60 wizard-result-reveal wizard-result-delay-2 dark:from-stone-800/50 dark:to-stone-800/30 dark:border-stone-700/40">
+                            <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"VPD"</div>
+                            <div class="text-3xl font-display text-stone-600 dark:text-stone-300">
+                                {format!("{:.2}", vpd)}
+                            </div>
+                            <div class="text-xs font-medium text-stone-400 dark:text-stone-500">"kPa"</div>
+                        </div>
+                    }
+                }}
             </div>
 
-            <p class="mb-3 text-xs font-medium text-stone-400">"Override (optional):"</p>
-            <div class="flex gap-3">
-                <div class="flex-1">
-                    <label class=LABEL_WIZ>{if is_f { "Temperature (°F)" } else { "Temperature (°C)" }}</label>
-                    <input type="number" class=INPUT_WIZ
-                        placeholder=move || {
-                            let est = estimation.get();
-                            let mid = (est.temperature_low_c + est.temperature_high_c) / 2.0;
-                            if is_f { format!("{:.0}", c_to_f(mid)) } else { format!("{:.0}", mid) }
-                        }
-                        prop:value=move || override_temp.get().unwrap_or_default()
-                        on:input=move |ev| {
-                            let v = event_target_value(&ev);
-                            if v.is_empty() {
-                                set_override_temp.set(None);
-                            } else if is_f {
-                                // Convert F input to C for storage
-                                if let Ok(f_val) = v.parse::<f64>() {
-                                    set_override_temp.set(Some(format!("{:.1}", f_to_c(f_val))));
-                                }
-                            } else {
-                                set_override_temp.set(Some(v));
+            // Override section — visually secondary
+            <div class="p-3.5 rounded-xl border border-dashed border-stone-200/80 dark:border-stone-700/60">
+                <p class="mb-3 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Fine-tune (optional)"</p>
+                <div class="flex gap-3">
+                    <div class="flex-1">
+                        <label class=LABEL_WIZ>{if is_f { "Temperature (\u{00B0}F)" } else { "Temperature (\u{00B0}C)" }}</label>
+                        <input type="number" class=INPUT_WIZ
+                            placeholder=move || {
+                                let est = estimation.get();
+                                let mid = (est.temperature_low_c + est.temperature_high_c) / 2.0;
+                                if is_f { format!("{:.0}", c_to_f(mid)) } else { format!("{:.0}", mid) }
                             }
-                        }
-                    />
-                </div>
-                <div class="flex-1">
-                    <label class=LABEL_WIZ>"Humidity (%)"</label>
-                    <input type="number" class=INPUT_WIZ
-                        placeholder=move || format!("{:.0}", estimation.get().humidity_pct)
-                        prop:value=move || override_humidity.get().unwrap_or_default()
-                        on:input=move |ev| {
-                            let v = event_target_value(&ev);
-                            set_override_humidity.set(if v.is_empty() { None } else { Some(v) });
-                        }
-                    />
+                            prop:value=move || override_temp.get().unwrap_or_default()
+                            on:input=move |ev| {
+                                let v = event_target_value(&ev);
+                                if v.is_empty() {
+                                    set_override_temp.set(None);
+                                } else if is_f {
+                                    if let Ok(f_val) = v.parse::<f64>() {
+                                        set_override_temp.set(Some(format!("{:.1}", f_to_c(f_val))));
+                                    }
+                                } else {
+                                    set_override_temp.set(Some(v));
+                                }
+                            }
+                        />
+                    </div>
+                    <div class="flex-1">
+                        <label class=LABEL_WIZ>"Humidity (%)"</label>
+                        <input type="number" class=INPUT_WIZ
+                            placeholder=move || format!("{:.0}", estimation.get().humidity_pct)
+                            prop:value=move || override_humidity.get().unwrap_or_default()
+                            on:input=move |ev| {
+                                let v = event_target_value(&ev);
+                                set_override_humidity.set(if v.is_empty() { None } else { Some(v) });
+                            }
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -493,6 +557,7 @@ fn OutdoorWizard(
     on_close: impl Fn() + 'static + Copy + Send + Sync,
     on_saved: impl Fn() + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
+    let zone_name = zone.name.clone();
     let (step, set_step) = signal(0usize);
     let (latitude, set_latitude) = signal(String::new());
     let (longitude, set_longitude) = signal(String::new());
@@ -604,12 +669,23 @@ fn OutdoorWizard(
 
     view! {
         <div>
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="m-0 text-lg">"Outdoor Weather Setup"</h2>
-                <button class=BTN_CLOSE on:click=move |_| on_close()>"Close"</button>
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="m-0 text-lg font-display">"Outdoor Weather Setup"</h2>
+                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">{zone_name}</p>
+                </div>
+                <button
+                    class="flex justify-center items-center w-8 h-8 rounded-full border-none transition-colors cursor-pointer text-stone-400 bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 hover:text-stone-600"
+                    on:click=move |_| on_close()
+                    aria-label="Close"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
             </div>
 
-            <ProgressDots current=step total=2 />
+            <WizardProgress current=step labels=vec!["Location".into(), "Preview".into()] />
 
             {move || match step.get() {
                 0 => view! {
@@ -618,10 +694,13 @@ fn OutdoorWizard(
                         <p class="mb-4 text-xs text-stone-400">"We'll fetch live weather data for this location."</p>
 
                         <button
-                            class=format!("{} mb-4 w-full", BTN_PRIMARY)
+                            class="flex gap-2 justify-center items-center py-3 mb-4 w-full text-sm font-semibold text-white rounded-xl border-none shadow-sm transition-all cursor-pointer hover:shadow-md bg-primary hover:bg-primary-dark"
                             disabled=move || is_locating.get()
                             on:click=get_location
                         >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                            </svg>
                             {move || if is_locating.get() { "Getting location..." } else { "Use My Location" }}
                         </button>
 

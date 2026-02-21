@@ -1,8 +1,9 @@
 use leptos::prelude::*;
 use crate::orchid::{ClimateReading, GrowingZone};
 
-const BADGE_ESTIMATED: &str = "inline-flex py-0.5 px-2 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
-const BADGE_MANUAL: &str = "inline-flex py-0.5 px-2 text-[10px] font-semibold rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
+const BADGE_ESTIMATED: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-amber-100/80 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+const BADGE_MANUAL: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-sky-100/80 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
+const BADGE_LIVE: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
 
 #[component]
 pub fn ClimateDashboard(
@@ -35,9 +36,9 @@ pub fn ClimateDashboard(
                 readings.get_value().iter().map(|r| {
                     let (temp_val, temp_unit_label) = if u == "F" {
                         let f = (r.temperature * 9.0 / 5.0) + 32.0;
-                        (format!("{:.1}", f), "F")
+                        (format!("{:.1}", f), "\u{00B0}F")
                     } else {
-                        (format!("{:.1}", r.temperature), "C")
+                        (format!("{:.1}", r.temperature), "\u{00B0}C")
                     };
 
                     let name = r.zone_name.clone();
@@ -47,31 +48,38 @@ pub fn ClimateDashboard(
                     let source = r.source.clone();
 
                     view! {
-                        <div class="p-4 mx-auto mb-6 rounded-xl border shadow-sm bg-surface border-stone-200 max-w-[700px] dark:border-stone-700">
-                            <div class="flex flex-wrap gap-4 justify-between items-center">
-                                <div class="flex gap-2 items-center">
-                                    <h3 class="m-0 text-base text-stone-700 dark:text-stone-300">{name}</h3>
-                                    {source_badge(&source)}
-                                </div>
-                                <div class="flex flex-wrap gap-6 items-center">
-                                    <div class="flex flex-col items-center">
-                                        <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Temp"</span>
-                                        <span class="text-xl font-semibold text-primary">{temp_val}" "{temp_unit_label}</span>
+                        <div class="overflow-hidden p-5 pl-6 mx-auto mb-4 rounded-2xl border shadow-sm bg-surface border-stone-200/60 max-w-[700px] climate-card dark:border-stone-700/60">
+                            <div class="flex flex-wrap gap-4 justify-between items-start">
+                                <div class="flex flex-col gap-1.5">
+                                    <div class="flex gap-2.5 items-center">
+                                        <h3 class="m-0 text-base font-display text-stone-700 dark:text-stone-300">{name}</h3>
+                                        {source_badge(&source)}
                                     </div>
-                                    <div class="flex flex-col items-center">
-                                        <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"Humidity"</span>
-                                        <span class="text-xl font-semibold text-primary">{format!("{:.1}", humidity)}"%"</span>
+                                    <div class="text-[11px] text-stone-400 dark:text-stone-500">
+                                        {ago}
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap gap-5 items-center">
+                                    <div class="flex flex-col items-center climate-value-in">
+                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Temp"</span>
+                                        <span class="text-2xl font-display text-primary dark:text-primary-light">{temp_val}</span>
+                                        <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">{temp_unit_label}</span>
+                                    </div>
+                                    <div class="w-px h-8 bg-stone-200 dark:bg-stone-700"></div>
+                                    <div class="flex flex-col items-center climate-value-in" style="animation-delay: 0.05s">
+                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Humidity"</span>
+                                        <span class="text-2xl font-display text-primary dark:text-primary-light">{format!("{:.0}", humidity)}</span>
+                                        <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">"%"</span>
                                     </div>
                                     {vpd.map(|v| view! {
-                                        <div class="flex flex-col items-center">
-                                            <span class="text-xs font-medium tracking-wider uppercase text-stone-400">"VPD"</span>
-                                            <span class="text-xl font-semibold text-primary">{format!("{:.2}", v)}" kPa"</span>
+                                        <div class="w-px h-8 bg-stone-200 dark:bg-stone-700"></div>
+                                        <div class="flex flex-col items-center climate-value-in" style="animation-delay: 0.1s">
+                                            <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"VPD"</span>
+                                            <span class="text-2xl font-display text-primary dark:text-primary-light">{format!("{:.2}", v)}</span>
+                                            <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">"kPa"</span>
                                         </div>
                                     })}
                                 </div>
-                            </div>
-                            <div class="mt-2 text-xs text-right text-stone-400">
-                                "Updated: " {ago}
                             </div>
                         </div>
                     }
@@ -92,21 +100,31 @@ pub fn ClimateDashboard(
                     let tu = temp_unit_stored.get_value();
 
                     view! {
-                        <div class="p-4 mx-auto mb-6 rounded-xl border border-dashed shadow-sm bg-surface/50 border-stone-300 max-w-[700px] dark:border-stone-600">
+                        <div class="p-5 mx-auto mb-4 rounded-2xl border border-dashed bg-surface/40 border-stone-300/70 max-w-[700px] dark:border-stone-600/60 empty-zone-shimmer">
                             <div class="flex flex-wrap gap-3 justify-between items-center">
                                 <div>
-                                    <h3 class="m-0 text-base text-stone-500 dark:text-stone-400">{zone_name}</h3>
-                                    <p class="mt-1 text-xs text-stone-400">"No conditions recorded yet"</p>
+                                    <h3 class="m-0 text-base font-display text-stone-400 dark:text-stone-500">{zone_name}</h3>
+                                    <p class="mt-1.5 text-xs text-stone-400/80 dark:text-stone-500/80">"No conditions recorded yet"</p>
                                 </div>
                                 <div class="flex gap-2">
                                     <button
-                                        class="py-1.5 px-3 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg border-none transition-colors cursor-pointer dark:text-amber-400 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40"
+                                        class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-accent-dark bg-accent/10 dark:text-accent-light dark:bg-accent/10 dark:hover:bg-accent/20 hover:bg-accent/20"
                                         on:click=move |_| on_show_wizard(zone_for_wizard.clone())
-                                    >"Estimate Conditions"</button>
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
+                                        </svg>
+                                        "Estimate"
+                                    </button>
                                     <button
-                                        class="py-1.5 px-3 text-xs font-semibold rounded-lg border-none transition-colors cursor-pointer text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 hover:bg-sky-100"
+                                        class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 hover:bg-sky-100"
                                         on:click=move |_| set_show_manual.update(|v| *v = !*v)
-                                    >"Log Reading"</button>
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        "Log Reading"
+                                    </button>
                                 </div>
                             </div>
                             {move || show_manual.get().then(|| {
@@ -139,6 +157,9 @@ fn source_badge(source: &Option<String>) -> Option<leptos::tachys::view::any_vie
         ).into_any()),
         Some("manual") => Some(leptos::IntoView::into_view(
             leptos::view! { <span class=BADGE_MANUAL>"Manual"</span> }
+        ).into_any()),
+        Some(s) if !s.is_empty() => Some(leptos::IntoView::into_view(
+            leptos::view! { <span class=BADGE_LIVE>"Live"</span> }
         ).into_any()),
         _ => None,
     }

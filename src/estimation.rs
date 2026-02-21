@@ -117,6 +117,14 @@ pub fn c_to_f(c: f64) -> f64 {
     (c * 9.0 / 5.0) + 32.0
 }
 
+/// Calculate VPD (Vapor Pressure Deficit) from temperature and humidity
+/// using the August-Roche-Magnus formula.
+pub fn calculate_vpd(temp_c: f64, humidity_pct: f64) -> f64 {
+    let saturation_pressure = 0.6108 * ((17.27 * temp_c) / (temp_c + 237.3)).exp();
+    let actual_pressure = saturation_pressure * (humidity_pct / 100.0);
+    saturation_pressure - actual_pressure
+}
+
 /// Estimate indoor climate conditions from wizard answers.
 pub fn estimate_indoor(input: &IndoorEstimationInput) -> EstimationResult {
     // ── Temperature ──
@@ -222,6 +230,38 @@ mod tests {
         for t in temps {
             assert!((f_to_c(c_to_f(t)) - t).abs() < 0.001, "Roundtrip failed for {}C", t);
         }
+    }
+
+    // ── VPD calculation tests ──
+
+    #[test]
+    fn test_calculate_vpd_typical_orchid_conditions() {
+        // At 22°C / 60% RH, VPD ~1.06 kPa (good for orchids: 0.8-1.2 range)
+        let vpd = calculate_vpd(22.0, 60.0);
+        assert!(vpd > 0.9 && vpd < 1.2, "Expected VPD ~1.06 at 22C/60%, got {:.3}", vpd);
+    }
+
+    #[test]
+    fn test_calculate_vpd_100_percent_humidity() {
+        // At 100% RH, VPD should be ~0
+        let vpd = calculate_vpd(25.0, 100.0);
+        assert!(vpd.abs() < 0.01, "Expected VPD ~0 at 100% RH, got {:.3}", vpd);
+    }
+
+    #[test]
+    fn test_calculate_vpd_very_dry() {
+        // At 25°C / 10% RH, VPD should be quite high
+        let vpd = calculate_vpd(25.0, 10.0);
+        assert!(vpd > 2.5, "Expected high VPD at 10% RH, got {:.3}", vpd);
+    }
+
+    #[test]
+    fn test_calculate_vpd_zero_humidity() {
+        // At 0% humidity, VPD equals saturation pressure
+        let vpd = calculate_vpd(20.0, 0.0);
+        let exponent: f64 = (17.27 * 20.0) / (20.0 + 237.3);
+        let expected_svp = 0.6108 * exponent.exp();
+        assert!((vpd - expected_svp).abs() < 0.001);
     }
 
     // ── Room type temperature adjustments ──

@@ -1,9 +1,8 @@
 use leptos::prelude::*;
 use crate::orchid::GrowingZone;
-use super::BTN_PRIMARY;
 
-const INPUT_MR: &str = "w-full px-3 py-2 text-sm bg-white/80 border border-stone-300/50 rounded-lg outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_MR: &str = "block mb-1 text-xs font-semibold tracking-wider uppercase text-stone-400 dark:text-stone-500";
+const INPUT_MR: &str = "w-full px-3 py-2 text-sm bg-white/60 border border-stone-200/80 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-sky-400/40 focus:ring-2 focus:ring-sky-400/10 dark:bg-stone-800/60 dark:border-stone-600/60 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-sky-400/40 dark:focus:ring-sky-400/10";
+const LABEL_MR: &str = "block mb-1 text-[10px] font-bold tracking-widest uppercase text-stone-400 dark:text-stone-500";
 
 /// Compact inline form for logging a manual climate reading.
 #[component]
@@ -60,10 +59,13 @@ pub fn ManualReadingForm(
     };
 
     view! {
-        <div class="p-3 mt-2 rounded-xl border animate-fade-in bg-stone-50/80 border-stone-200/60 dark:bg-stone-800/50 dark:border-stone-700/60">
+        <div class="overflow-hidden relative p-3.5 mt-3 rounded-xl border animate-fade-in bg-sky-50/40 border-sky-200/40 dark:bg-sky-900/10 dark:border-sky-800/30">
+            // Accent line at top
+            <div class="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r to-transparent from-sky-400/40 via-sky-300/20"></div>
+
             <div class="flex gap-3 items-end">
                 <div class="flex-1">
-                    <label class=LABEL_MR>{if is_f { "Temp (°F)" } else { "Temp (°C)" }}</label>
+                    <label class=LABEL_MR>{if is_f { "Temp (\u{00B0}F)" } else { "Temp (\u{00B0}C)" }}</label>
                     <input type="number" class=INPUT_MR step="0.1"
                         placeholder=if is_f { "72" } else { "22" }
                         prop:value=temperature
@@ -79,18 +81,24 @@ pub fn ManualReadingForm(
                     />
                 </div>
                 <div class="flex flex-shrink-0 gap-1.5">
-                    <button class=BTN_PRIMARY
+                    <button
+                        class="py-2 px-4 text-sm font-semibold text-white rounded-xl border-none shadow-sm transition-all cursor-pointer disabled:opacity-40 bg-sky-500 hover:bg-sky-600"
                         disabled=move || is_saving.get() || temperature.get().is_empty() || humidity.get().is_empty()
                         on:click=save
                     >{move || if is_saving.get() { "..." } else { "Log" }}</button>
                     <button
-                        class="py-2 px-3 text-sm rounded-lg border-none transition-colors cursor-pointer text-stone-400 bg-stone-100 dark:bg-stone-700 dark:hover:bg-stone-600 hover:bg-stone-200"
+                        class="flex justify-center items-center w-9 h-9 rounded-xl border-none transition-colors cursor-pointer text-stone-400 bg-stone-100/80 dark:bg-stone-700/50 dark:hover:bg-stone-600 dark:hover:text-stone-300 hover:bg-stone-200 hover:text-stone-600"
                         on:click=move |_| on_cancel()
-                    >"X"</button>
+                        aria-label="Cancel"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
                 </div>
             </div>
             {move || error_msg.get().map(|msg| {
-                view! { <p class="mt-2 text-xs text-red-600 dark:text-red-400">{msg}</p> }
+                view! { <p class="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{msg}</p> }
             })}
         </div>
     }.into_any()
