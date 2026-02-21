@@ -1,6 +1,286 @@
 use leptos::prelude::*;
 use crate::components::scanner::AnalysisResult;
 
+// ── AI Provider Helpers ─────────────────────────────────────────────
+
+/// Call Gemini API with a vision (image + text) prompt.
+#[cfg(feature = "ssr")]
+async fn call_gemini_vision(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+    image_base64: &str,
+) -> Result<String, String> {
+    let request_body = serde_json::json!({
+        "contents": [{
+            "parts": [
+                { "text": prompt },
+                { "inline_data": { "mime_type": "image/jpeg", "data": image_base64 } }
+            ]
+        }]
+    });
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+        model
+    );
+
+    let client = reqwest::Client::new();
+    let resp = client.post(&url)
+        .header("x-goog-api-key", api_key)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Gemini network error: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Gemini API error: {} {}", status, body));
+    }
+
+    let json_resp: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Gemini parse error: {}", e))?;
+
+    extract_gemini_text(&json_resp)
+}
+
+/// Call Gemini API with a text-only prompt.
+#[cfg(feature = "ssr")]
+async fn call_gemini_text(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+) -> Result<String, String> {
+    let request_body = serde_json::json!({
+        "contents": [{
+            "parts": [{ "text": prompt }]
+        }]
+    });
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+        model
+    );
+
+    let client = reqwest::Client::new();
+    let resp = client.post(&url)
+        .header("x-goog-api-key", api_key)
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Gemini network error: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Gemini API error: {} {}", status, body));
+    }
+
+    let json_resp: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Gemini parse error: {}", e))?;
+
+    extract_gemini_text(&json_resp)
+}
+
+/// Extract text from a Gemini API response.
+#[cfg(feature = "ssr")]
+fn extract_gemini_text(json: &serde_json::Value) -> Result<String, String> {
+    json.get("candidates")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("content"))
+        .and_then(|c| c.get("parts"))
+        .and_then(|p| p.get(0))
+        .and_then(|p| p.get("text"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.replace("```json", "").replace("```", "").trim().to_string())
+        .ok_or_else(|| "Could not extract text from Gemini response".to_string())
+}
+
+/// Call Claude Messages API with a vision (image + text) prompt.
+#[cfg(feature = "ssr")]
+async fn call_claude_vision(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+    image_base64: &str,
+) -> Result<String, String> {
+    let request_body = serde_json::json!({
+        "model": model,
+        "max_tokens": 4096,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": image_base64
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": prompt
+                }
+            ]
+        }]
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client.post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Claude network error: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Claude API error: {} {}", status, body));
+    }
+
+    let json_resp: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Claude parse error: {}", e))?;
+
+    extract_claude_text(&json_resp)
+}
+
+/// Call Claude Messages API with a text-only prompt.
+#[cfg(feature = "ssr")]
+async fn call_claude_text(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+) -> Result<String, String> {
+    let request_body = serde_json::json!({
+        "model": model,
+        "max_tokens": 1024,
+        "messages": [{
+            "role": "user",
+            "content": prompt
+        }]
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client.post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Claude network error: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Claude API error: {} {}", status, body));
+    }
+
+    let json_resp: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Claude parse error: {}", e))?;
+
+    extract_claude_text(&json_resp)
+}
+
+/// Extract text from a Claude Messages API response.
+#[cfg(feature = "ssr")]
+fn extract_claude_text(json: &serde_json::Value) -> Result<String, String> {
+    json.get("content")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("text"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.replace("```json", "").replace("```", "").trim().to_string())
+        .ok_or_else(|| "Could not extract text from Claude response".to_string())
+}
+
+// ── Fallback Orchestration ──────────────────────────────────────────
+
+/// Call AI vision with automatic fallback: tries Gemini first, then Claude.
+#[cfg(feature = "ssr")]
+async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, ServerFnError> {
+    use crate::config::config;
+    let cfg = config();
+
+    let has_gemini = !cfg.gemini_api_key.is_empty();
+    let has_claude = !cfg.claude_api_key.is_empty();
+
+    if !has_gemini && !has_claude {
+        return Err(ServerFnError::new(
+            "No AI API keys configured. Set GEMINI_API_KEY and/or CLAUDE_API_KEY in your .env file."
+        ));
+    }
+
+    // Try Gemini first
+    if has_gemini {
+        match call_gemini_vision(&cfg.gemini_api_key, &cfg.gemini_model, prompt, image_base64).await {
+            Ok(text) => return Ok(text),
+            Err(e) => {
+                if has_claude {
+                    log::warn!("Gemini failed ({}), falling back to Claude", e);
+                } else {
+                    return Err(ServerFnError::new(e));
+                }
+            }
+        }
+    }
+
+    // Fallback to Claude
+    if has_claude {
+        match call_claude_vision(&cfg.claude_api_key, &cfg.claude_model, prompt, image_base64).await {
+            Ok(text) => return Ok(text),
+            Err(e) => {
+                return Err(ServerFnError::new(format!(
+                    "AI analysis failed (both providers). Last error: {}", e
+                )));
+            }
+        }
+    }
+
+    unreachable!()
+}
+
+/// Call AI text with automatic fallback: tries Gemini first, then Claude.
+#[cfg(feature = "ssr")]
+async fn call_ai_text(prompt: &str) -> Result<String, String> {
+    use crate::config::config;
+    let cfg = config();
+
+    let has_gemini = !cfg.gemini_api_key.is_empty();
+    let has_claude = !cfg.claude_api_key.is_empty();
+
+    if !has_gemini && !has_claude {
+        return Err("No AI API keys configured".to_string());
+    }
+
+    // Try Gemini first
+    if has_gemini {
+        match call_gemini_text(&cfg.gemini_api_key, &cfg.gemini_model, prompt).await {
+            Ok(text) => return Ok(text),
+            Err(e) => {
+                if has_claude {
+                    log::warn!("Gemini text failed ({}), falling back to Claude", e);
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    // Fallback to Claude
+    if has_claude {
+        return call_claude_text(&cfg.claude_api_key, &cfg.claude_model, prompt).await;
+    }
+
+    unreachable!()
+}
+
+// ── Server Functions ────────────────────────────────────────────────
+
 #[server]
 pub async fn analyze_orchid_image(
     image_base64: String,
@@ -9,7 +289,6 @@ pub async fn analyze_orchid_image(
     zone_names: Option<Vec<String>>,
 ) -> Result<AnalysisResult, ServerFnError> {
     use crate::auth::require_auth;
-    use crate::config::config;
 
     require_auth().await?;
 
@@ -19,14 +298,6 @@ pub async fn analyze_orchid_image(
     // Cap base64 payload at ~15MB to prevent abuse
     if image_base64.len() > 15 * 1024 * 1024 {
         return Err(ServerFnError::new("Image too large (max 15MB)"));
-    }
-
-    let cfg = config();
-    let api_key = &cfg.gemini_api_key;
-    let model = &cfg.gemini_model;
-
-    if api_key.is_empty() {
-        return Err(ServerFnError::new("Gemini API key not configured on server"));
     }
 
     let zone_list = if zone_names.is_empty() {
@@ -67,47 +338,7 @@ pub async fn analyze_orchid_image(
         zone_list,
     );
 
-    let request_body = serde_json::json!({
-        "contents": [{
-            "parts": [
-                { "text": prompt },
-                { "inline_data": { "mime_type": "image/jpeg", "data": image_base64 } }
-            ]
-        }]
-    });
-
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-        model
-    );
-
-    let client = reqwest::Client::new();
-    let resp = client.post(&url)
-        .header("x-goog-api-key", api_key)
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| ServerFnError::new(format!("Network error: {}", e)))?;
-
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
-        return Err(ServerFnError::new(format!("Gemini API error: {} - {}", status, body)));
-    }
-
-    let json_resp: serde_json::Value = resp.json().await
-        .map_err(|e| ServerFnError::new(format!("Parse error: {}", e)))?;
-
-    let text = json_resp
-        .get("candidates")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("content"))
-        .and_then(|c| c.get("parts"))
-        .and_then(|p| p.get(0))
-        .and_then(|p| p.get("text"))
-        .and_then(|t| t.as_str())
-        .map(|s| s.replace("```json", "").replace("```", "").trim().to_string())
-        .ok_or_else(|| ServerFnError::new("Could not extract text from Gemini response"))?;
+    let text = call_ai_vision(&prompt, &image_base64).await?;
 
     let result: AnalysisResult = serde_json::from_str(&text)
         .map_err(|e| ServerFnError::new(format!("Failed to parse AI response: {}", e)))?;
@@ -121,19 +352,10 @@ pub async fn generate_care_recap(
     event_type: String,
 ) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
-    use crate::config::config;
     use crate::db::db;
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
-
-    let cfg = config();
-    let api_key = &cfg.gemini_api_key;
-    let model = &cfg.gemini_model;
-
-    if api_key.is_empty() {
-        return Err(ServerFnError::new("Gemini API key not configured"));
-    }
 
     let orchid_record = surrealdb::types::RecordId::parse_simple(&orchid_id)
         .map_err(|e| internal_error("Parse orchid ID failed", e))?;
@@ -188,6 +410,11 @@ pub async fn generate_care_recap(
         }
     }
 
+    let fallback_stats = format!(
+        "Over the past 6 months: {} waterings, {} care events recorded.",
+        watering_count, care_events.len()
+    );
+
     let care_summary = serde_json::json!({
         "species": species,
         "event_type": event_type,
@@ -203,49 +430,11 @@ pub async fn generate_care_recap(
         species, event_type, care_summary
     );
 
-    let request_body = serde_json::json!({
-        "contents": [{
-            "parts": [{ "text": prompt }]
-        }]
-    });
-
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-        model
-    );
-
-    let client = reqwest::Client::new();
-    let resp = client.post(&url)
-        .header("x-goog-api-key", api_key)
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| ServerFnError::new(format!("Network error: {}", e)))?;
-
-    if !resp.status().is_success() {
-        // Fallback: return raw stats
-        return Ok(format!(
-            "Over the past 6 months: {} waterings, {} care events recorded.",
-            watering_count, care_events.len()
-        ));
+    match call_ai_text(&prompt).await {
+        Ok(text) => Ok(text),
+        Err(e) => {
+            log::warn!("AI care recap failed ({}), returning fallback stats", e);
+            Ok(fallback_stats)
+        }
     }
-
-    let json_resp: serde_json::Value = resp.json().await
-        .map_err(|_| ServerFnError::new("Parse error"))?;
-
-    let text = json_resp
-        .get("candidates")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("content"))
-        .and_then(|c| c.get("parts"))
-        .and_then(|p| p.get(0))
-        .and_then(|p| p.get("text"))
-        .and_then(|t| t.as_str())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| format!(
-            "Over the past 6 months: {} waterings, {} care events recorded.",
-            watering_count, care_events.len()
-        ));
-
-    Ok(text)
 }
