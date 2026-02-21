@@ -1,6 +1,6 @@
 [package]
 name = "orchid-tracker"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 
 [lib]
@@ -98,6 +98,7 @@ reload-port = 3001
 env = "DEV"
 bin-features = ["ssr"]
 lib-features = ["hydrate"]
+hash-files = true
 end2end-cmd = "npx playwright test"
 end2end-dir = "end2end"
 

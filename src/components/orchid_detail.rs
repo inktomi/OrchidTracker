@@ -118,6 +118,7 @@ pub fn OrchidDetail(
                                 zones=zones_stored
                                 hemisphere=hemisphere_stored
                                 on_update=on_update
+                                set_log_entries=set_log_entries
                                 habitat_zone_reading=habitat_zone_reading
                                 native_region=native_region
                                 native_lat=native_lat
@@ -246,6 +247,7 @@ fn DetailsTab(
     zones: StoredValue<Vec<GrowingZone>>,
     hemisphere: StoredValue<String>,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
+    set_log_entries: WriteSignal<Vec<LogEntry>>,
     habitat_zone_reading: StoredValue<Option<ClimateReading>>,
     native_region: StoredValue<Option<String>>,
     native_lat: Option<f64>,
@@ -493,9 +495,16 @@ fn DetailsTab(
                     on:click=move |_| {
                         set_is_watering.set(true);
                         let orchid_id = orchid_signal.get().id.clone();
+                        let orchid_id_for_log = orchid_id.clone();
                         leptos::task::spawn_local(async move {
                             match crate::server_fns::orchids::mark_watered(orchid_id).await {
-                                Ok(updated) => set_orchid_signal.set(updated),
+                                Ok(updated) => {
+                                    set_orchid_signal.set(updated);
+                                    // Refresh journal so the watering entry appears
+                                    if let Ok(entries) = crate::server_fns::orchids::get_log_entries(orchid_id_for_log).await {
+                                        set_log_entries.set(entries);
+                                    }
+                                }
                                 Err(e) => log::error!("Failed to mark watered: {}", e),
                             }
                             set_is_watering.set(false);
