@@ -532,6 +532,32 @@ pub async fn add_log_entry(
     let entry = db_row.map(|r| r.into_log_entry())
         .ok_or_else(|| ServerFnError::new("Failed to create log entry"))?;
 
+    // Update orchid care timestamps based on event type
+    match event_type.as_deref() {
+        Some("Watered") => {
+            let _ = db()
+                .query("UPDATE $orchid_id SET last_watered_at = time::now() WHERE owner = $owner")
+                .bind(("orchid_id", orchid_record.clone()))
+                .bind(("owner", owner.clone()))
+                .await;
+        }
+        Some("Fertilized") => {
+            let _ = db()
+                .query("UPDATE $orchid_id SET last_fertilized_at = time::now() WHERE owner = $owner")
+                .bind(("orchid_id", orchid_record.clone()))
+                .bind(("owner", owner.clone()))
+                .await;
+        }
+        Some("Repotted") => {
+            let _ = db()
+                .query("UPDATE $orchid_id SET last_repotted_at = time::now() WHERE owner = $owner")
+                .bind(("orchid_id", orchid_record.clone()))
+                .bind(("owner", owner.clone()))
+                .await;
+        }
+        _ => {}
+    }
+
     // Check for first bloom
     let mut is_first_bloom = false;
     if event_type.as_deref() == Some("Flowering") {

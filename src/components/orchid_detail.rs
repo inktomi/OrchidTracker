@@ -100,6 +100,7 @@ pub fn OrchidDetail(
                         DetailTab::Journal => view! {
                             <JournalTab
                                 orchid_signal=orchid_signal
+                                set_orchid_signal=set_orchid_signal
                                 log_entries=log_entries
                                 set_log_entries=set_log_entries
                                 set_show_first_bloom=set_show_first_bloom
@@ -145,6 +146,7 @@ pub fn OrchidDetail(
 #[component]
 fn JournalTab(
     orchid_signal: ReadSignal<Orchid>,
+    set_orchid_signal: WriteSignal<Orchid>,
     log_entries: ReadSignal<Vec<LogEntry>>,
     set_log_entries: WriteSignal<Vec<LogEntry>>,
     set_show_first_bloom: WriteSignal<bool>,
@@ -169,6 +171,7 @@ fn JournalTab(
 
         set_is_syncing.set(true);
         let orchid_id = orchid_signal.get().id.clone();
+        let event_type_for_update = event_type.clone();
 
         leptos::task::spawn_local(async move {
             match crate::server_fns::orchids::add_log_entry(
@@ -180,6 +183,14 @@ fn JournalTab(
                 Ok(response) => {
                     if response.is_first_bloom {
                         set_show_first_bloom.set(true);
+                    }
+                    // Update orchid care timestamps so Details tab reflects the change
+                    let now = chrono::Utc::now();
+                    match event_type_for_update.as_deref() {
+                        Some("Watered") => set_orchid_signal.update(|o| o.last_watered_at = Some(now)),
+                        Some("Fertilized") => set_orchid_signal.update(|o| o.last_fertilized_at = Some(now)),
+                        Some("Repotted") => set_orchid_signal.update(|o| o.last_repotted_at = Some(now)),
+                        _ => {}
                     }
                     set_log_entries.update(|entries| entries.insert(0, response.entry));
                 }
