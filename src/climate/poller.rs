@@ -1,6 +1,6 @@
 use crate::db::db;
 use surrealdb::types::SurrealValue;
-use super::{tempest, ac_infinity};
+use super::{tempest, ac_infinity, open_meteo};
 
 /// Poll all zones that have a configured data source, fetch readings, and store them.
 /// Called periodically by the background task in main.rs.
@@ -78,6 +78,22 @@ pub async fn poll_all_zones() {
                 )
                 .await
             }
+            "weather_api" => {
+                let config: WeatherApiConfig = match serde_json::from_str(&config_str) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!("Climate poll: bad weather_api config for zone '{}': {}", zone_name, e);
+                        continue;
+                    }
+                };
+                open_meteo::fetch_habitat_weather(&client, config.latitude, config.longitude)
+                    .await
+                    .map(|h| super::RawReading {
+                        temperature_c: h.temperature_c,
+                        humidity_pct: h.humidity_pct,
+                        vpd_kpa: Some(super::calculate_vpd(h.temperature_c, h.humidity_pct)),
+                    })
+            }
             other => {
                 tracing::warn!("Climate poll: unknown data source type '{}' for zone '{}'", other, zone_name);
                 continue;
@@ -91,13 +107,14 @@ pub async fn poll_all_zones() {
                         "CREATE climate_reading SET \
                          zone = $zone_id, zone_name = $zone_name, \
                          temperature = $temp, humidity = $humidity, \
-                         vpd = $vpd, recorded_at = time::now()",
+                         vpd = $vpd, source = $source, recorded_at = time::now()",
                     )
                     .bind(("zone_id", zone_id.clone()))
                     .bind(("zone_name", zone_name.clone()))
                     .bind(("temp", raw.temperature_c))
                     .bind(("humidity", raw.humidity_pct))
                     .bind(("vpd", raw.vpd_kpa))
+                    .bind(("source", source_type.to_string()))
                     .await
                 {
                     tracing::warn!("Climate poll: failed to store reading for zone '{}': {}", zone_name, e);
@@ -158,4 +175,10 @@ pub struct AcInfinityConfig {
 
 fn default_port() -> u32 {
     1
+}
+
+#[derive(serde::Deserialize)]
+pub struct WeatherApiConfig {
+    pub latitude: f64,
+    pub longitude: f64,
 }

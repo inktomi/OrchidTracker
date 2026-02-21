@@ -40,6 +40,10 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
             model.dark_mode = !model.dark_mode;
             vec![Cmd::ApplyDarkMode(model.dark_mode)]
         }
+        Msg::ShowWizard(zone) => {
+            model.wizard_zone = zone;
+            vec![]
+        }
     }
 }
 
@@ -213,6 +217,33 @@ mod tests {
 
         assert!(!model.show_settings);
         assert_eq!(model.temp_unit, "F");
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn test_show_wizard() {
+        let mut model = Model::default();
+        assert!(model.wizard_zone.is_none());
+
+        let zone = crate::orchid::GrowingZone {
+            id: "gz:1".into(),
+            name: "Test Zone".into(),
+            light_level: LightRequirement::Medium,
+            location_type: crate::orchid::LocationType::Indoor,
+            temperature_range: String::new(),
+            humidity: String::new(),
+            description: String::new(),
+            sort_order: 0,
+            data_source_type: None,
+            data_source_config: String::new(),
+        };
+
+        let cmds = update(&mut model, Msg::ShowWizard(Some(zone.clone())));
+        assert_eq!(model.wizard_zone.as_ref().unwrap().id, "gz:1");
+        assert!(cmds.is_empty());
+
+        let cmds = update(&mut model, Msg::ShowWizard(None));
+        assert!(model.wizard_zone.is_none());
         assert!(cmds.is_empty());
     }
 

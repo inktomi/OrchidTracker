@@ -3,6 +3,7 @@ use crate::components::add_orchid_form::AddOrchidForm;
 use crate::components::app_header::AppHeader;
 use crate::components::botanical_art::OrchidAccent;
 use crate::components::climate_dashboard::ClimateDashboard;
+use crate::components::zone_wizard::ZoneConditionWizard;
 use crate::components::notification_setup::NotificationSetup;
 use crate::components::orchid_collection::OrchidCollection;
 use crate::components::orchid_detail::OrchidDetail;
@@ -53,6 +54,7 @@ pub fn HomePage() -> impl IntoView {
     let prefill_data = Memo::new(move |_| model.get().prefill_data.clone());
     let temp_unit = Memo::new(move |_| model.get().temp_unit.clone());
     let dark_mode = Memo::new(move |_| model.get().dark_mode);
+    let wizard_zone = Memo::new(move |_| model.get().wizard_zone.clone());
 
     // Dynamic climate readings from configured data sources
     let climate_resource = Resource::new(
@@ -238,7 +240,16 @@ pub fn HomePage() -> impl IntoView {
                                 <Suspense fallback=|| ()>
                                     {move || {
                                         let readings = climate_readings.get();
-                                        view! { <ClimateDashboard readings=readings unit=temp_unit /> }
+                                        let current_zones = zones_memo.get();
+                                        let tu = temp_unit.get();
+                                        view! { <ClimateDashboard
+                                            readings=readings
+                                            zones=current_zones
+                                            unit=temp_unit
+                                            on_show_wizard=move |z| send(Msg::ShowWizard(Some(z)))
+                                            on_zones_changed=on_zones_changed
+                                            temp_unit_str=tu
+                                        /> }
                                     }}
                                 </Suspense>
 
@@ -322,7 +333,7 @@ pub fn HomePage() -> impl IntoView {
                                 view! {
                                     <SettingsModal
                                         zones=current_zones
-                                        initial_temp_unit=current_temp_unit
+                                        initial_temp_unit=current_temp_unit.clone()
                                         initial_hemisphere=current_hemi
                                         on_close=move |new_unit: String| {
                                     let unit_to_save = new_unit.clone();
@@ -332,6 +343,7 @@ pub fn HomePage() -> impl IntoView {
                                     });
                                 }
                                         on_zones_changed=on_zones_changed
+                                        on_show_wizard=move |z| send(Msg::ShowWizard(Some(z)))
                                     />
                                 }.into_any()
                             })}
@@ -347,6 +359,21 @@ pub fn HomePage() -> impl IntoView {
                                         existing_orchids=orchids
                                         climate_readings=current_readings
                                         zones=current_zones
+                                    />
+                                }.into_any()
+                            })}
+
+                            {move || wizard_zone.get().map(|zone| {
+                                let current_unit = temp_unit.get();
+                                view! {
+                                    <ZoneConditionWizard
+                                        zone=zone
+                                        temp_unit=current_unit
+                                        on_close=move || send(Msg::ShowWizard(None))
+                                        on_saved=move || {
+                                            on_zones_changed();
+                                            send(Msg::ShowWizard(None));
+                                        }
                                     />
                                 }.into_any()
                             })}

@@ -3,6 +3,7 @@
 pub mod app;
 pub mod components;
 pub mod error;
+pub mod estimation;
 pub mod orchid;
 pub mod model;
 pub mod update;

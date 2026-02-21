@@ -13,6 +13,7 @@ pub fn SettingsModal(
     initial_hemisphere: String,
     on_close: impl Fn(String) + 'static + Copy + Send + Sync,
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
+    on_show_wizard: impl Fn(GrowingZone) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     let (temp_unit, set_temp_unit) = signal(initial_temp_unit);
     let (hemisphere, set_hemisphere) = signal(initial_hemisphere);
@@ -131,7 +132,7 @@ pub fn SettingsModal(
                                 each=move || local_zones.get()
                                 key=|zone| zone.id.clone()
                                 children=move |zone| {
-                                    view! { <ZoneCard zone=zone on_delete=delete_zone on_zones_changed=on_zones_changed is_saving=is_zone_saving set_local_zones=set_local_zones /> }
+                                    view! { <ZoneCard zone=zone on_delete=delete_zone on_zones_changed=on_zones_changed is_saving=is_zone_saving set_local_zones=set_local_zones on_show_wizard=on_show_wizard temp_unit=temp_unit /> }
                                 }
                             />
                         </div>
@@ -245,9 +246,13 @@ fn ZoneCard(
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
     is_saving: ReadSignal<bool>,
     set_local_zones: WriteSignal<Vec<GrowingZone>>,
+    on_show_wizard: impl Fn(GrowingZone) + 'static + Copy + Send + Sync,
+    temp_unit: ReadSignal<String>,
 ) -> impl IntoView {
     let zone_id_for_delete = zone.id.clone();
     let zone_id_for_config = zone.id.clone();
+    let zone_for_wizard = zone.clone();
+    let zone_for_manual = zone.clone();
 
     let light_class = match zone.light_level {
         crate::orchid::LightRequirement::High => "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
@@ -267,6 +272,7 @@ fn ZoneCard(
     };
 
     let (show_config, set_show_config) = signal(false);
+    let (show_manual, set_show_manual) = signal(false);
 
     view! {
         <div class="rounded-xl border bg-secondary/30 border-stone-200/60 dark:border-stone-700">
@@ -281,7 +287,20 @@ fn ZoneCard(
                         <span class=loc_class>{zone.location_type.to_string()}</span>
                     </div>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-1.5">
+                    {(!has_source).then(|| {
+                        let z = zone_for_wizard.clone();
+                        view! {
+                            <button
+                                class=format!("{} text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/20 dark:hover:bg-amber-900/40", BTN_SM)
+                                on:click=move |_| on_show_wizard(z.clone())
+                            >"Estimate"</button>
+                        }
+                    })}
+                    <button
+                        class=format!("{} text-sky-600 bg-sky-50 hover:bg-sky-100 dark:text-sky-400 dark:bg-sky-900/20 dark:hover:bg-sky-900/40", BTN_SM)
+                        on:click=move |_| set_show_manual.update(|v| *v = !*v)
+                    >{move || if show_manual.get() { "Cancel" } else { "Log" }}</button>
                     <button
                         class=format!("{} text-stone-500 bg-stone-100 hover:bg-stone-200 dark:text-stone-400 dark:bg-stone-800 dark:hover:bg-stone-700", BTN_SM)
                         on:click=move |_| set_show_config.update(|v| *v = !*v)
@@ -295,6 +314,24 @@ fn ZoneCard(
                     >"Delete"</button>
                 </div>
             </div>
+
+            {move || show_manual.get().then(|| {
+                let z = zone_for_manual.clone();
+                let unit = temp_unit.get();
+                view! {
+                    <div class="px-3 pb-3">
+                        <crate::components::manual_reading::ManualReadingForm
+                            zone=z
+                            temp_unit=unit
+                            on_saved=move || {
+                                on_zones_changed();
+                                set_show_manual.set(false);
+                            }
+                            on_cancel=move || set_show_manual.set(false)
+                        />
+                    </div>
+                }
+            })}
 
             {move || show_config.get().then(|| {
                 view! {
@@ -351,6 +388,17 @@ fn DataSourceConfig(
         .unwrap_or_else(|| "1".to_string());
     let (aci_port, set_aci_port) = signal(init_port);
 
+    // Weather API fields
+    let get_f64 = |key: &str| -> String {
+        parsed.as_ref()
+            .and_then(|j| j.get(key))
+            .and_then(|v| v.as_f64())
+            .map(|n| format!("{}", n))
+            .unwrap_or_default()
+    };
+    let (wa_lat, set_wa_lat) = signal(get_f64("latitude"));
+    let (wa_lon, set_wa_lon) = signal(get_f64("longitude"));
+
     let (test_result, set_test_result) = signal::<Option<Result<String, String>>>(None);
     let (is_testing, set_is_testing) = signal(false);
     let (is_saving_ds, set_is_saving_ds) = signal(false);
@@ -366,6 +414,10 @@ fn DataSourceConfig(
                 "password": aci_password.get(),
                 "device_id": aci_device.get(),
                 "port": aci_port.get().parse::<u32>().unwrap_or(1),
+            }).to_string(),
+            "weather_api" => serde_json::json!({
+                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
+                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
             }).to_string(),
             _ => String::new(),
         }
@@ -431,6 +483,7 @@ fn DataSourceConfig(
                     <option value="">"None"</option>
                     <option value="tempest">"Tempest Weather Station"</option>
                     <option value="ac_infinity">"AC Infinity Controller"</option>
+                    <option value="weather_api">"Weather API (Outdoor)"</option>
                 </select>
             </div>
 
@@ -490,6 +543,28 @@ fn DataSourceConfig(
                                     min="1" max="10"
                                     prop:value=aci_port
                                     on:input=move |ev| set_aci_port.set(event_target_value(&ev))
+                                />
+                            </div>
+                        </div>
+                    </div>
+                }.into_any(),
+                "weather_api" => view! {
+                    <div class="p-3 mb-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10">
+                        <div class="flex gap-3">
+                            <div class="flex-1">
+                                <label class=LABEL_SM>"Latitude"</label>
+                                <input type="number" class=INPUT_SM step="0.0001"
+                                    placeholder="e.g. 37.7749"
+                                    prop:value=wa_lat
+                                    on:input=move |ev| set_wa_lat.set(event_target_value(&ev))
+                                />
+                            </div>
+                            <div class="flex-1">
+                                <label class=LABEL_SM>"Longitude"</label>
+                                <input type="number" class=INPUT_SM step="0.0001"
+                                    placeholder="e.g. -122.4194"
+                                    prop:value=wa_lon
+                                    on:input=move |ev| set_wa_lon.set(event_target_value(&ev))
                                 />
                             </div>
                         </div>

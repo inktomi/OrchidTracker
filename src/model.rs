@@ -1,5 +1,5 @@
 use crate::components::scanner::AnalysisResult;
-use crate::orchid::Orchid;
+use crate::orchid::{GrowingZone, Orchid};
 
 /// UI view mode toggle
 #[derive(Clone, Debug, PartialEq)]
@@ -20,6 +20,7 @@ pub struct Model {
     pub temp_unit: String,
     pub hemisphere: String,
     pub dark_mode: bool,
+    pub wizard_zone: Option<GrowingZone>,
 }
 
 impl Default for Model {
@@ -34,6 +35,7 @@ impl Default for Model {
             temp_unit: "C".to_string(),
             hemisphere: "N".to_string(),
             dark_mode: false,
+            wizard_zone: None,
         }
     }
 }
@@ -57,6 +59,9 @@ pub enum Msg {
 
     // Theme
     ToggleDarkMode,
+
+    // Wizard
+    ShowWizard(Option<GrowingZone>),
 }
 
 /// Side effects returned by the update function (TEA Commands) — UI only

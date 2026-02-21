@@ -11,9 +11,9 @@ pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError
     let user_id = require_auth().await?;
     let owner = parse_owner(&user_id)?;
 
-    // Get all zones for this user that have a data source
+    // Get all zones for this user (includes wizard/manual readings too)
     let mut zone_resp = db()
-        .query("SELECT id, name FROM growing_zone WHERE owner = $owner AND data_source_type IS NOT NULL")
+        .query("SELECT id, name FROM growing_zone WHERE owner = $owner")
         .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Get climate zones query failed", e))?;
@@ -155,8 +155,150 @@ pub async fn test_data_source(provider: String, config_json: String) -> Result<S
                 reading.temperature_c, reading.humidity_pct, vpd_str
             ))
         }
+        "weather_api" => {
+            let config: crate::climate::poller::WeatherApiConfig = serde_json::from_str(&config_json)
+                .map_err(|e| ServerFnError::new(format!("Invalid Weather API config: {}", e)))?;
+
+            let reading = crate::climate::open_meteo::fetch_habitat_weather(
+                &client,
+                config.latitude,
+                config.longitude,
+            )
+            .await
+            .map_err(|e| ServerFnError::new(format!("Weather API connection failed: {}", e)))?;
+
+            Ok(format!(
+                "Connected! Current: {:.1}C, {:.1}% Humidity, {:.1}mm precip",
+                reading.temperature_c, reading.humidity_pct, reading.precipitation_mm
+            ))
+        }
         _ => Err(ServerFnError::new(format!("Unknown provider: {}", provider))),
     }
+}
+
+/// Save a wizard estimation as a climate reading and update zone fields.
+#[server]
+pub async fn save_wizard_estimation(
+    zone_id: String,
+    zone_name: String,
+    temperature: f64,
+    humidity: f64,
+) -> Result<(), ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::climate::calculate_vpd;
+
+    let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
+    let zone_record = surrealdb::types::RecordId::parse_simple(&zone_id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
+
+    let vpd = calculate_vpd(temperature, humidity);
+
+    // Create climate reading with wizard source
+    let mut resp = db()
+        .query(
+            "CREATE climate_reading SET \
+             zone = $zone_id, zone_name = $zone_name, \
+             temperature = $temp, humidity = $humidity, \
+             vpd = $vpd, source = $source, recorded_at = time::now()"
+        )
+        .bind(("zone_id", zone_record.clone()))
+        .bind(("zone_name", zone_name))
+        .bind(("temp", temperature))
+        .bind(("humidity", humidity))
+        .bind(("vpd", vpd))
+        .bind(("source", "wizard".to_string()))
+        .await
+        .map_err(|e| internal_error("Save wizard reading failed", e))?;
+
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Save wizard reading error", err_msg));
+    }
+
+    // Update zone's text fields too
+    let temp_range = format!("{:.0}-{:.0}C", temperature - 2.0, temperature + 2.0);
+    let humidity_str = format!("{:.0}%", humidity);
+
+    let mut zone_resp = db()
+        .query(
+            "UPDATE $id SET temperature_range = $temp_range, humidity = $hum WHERE owner = $owner"
+        )
+        .bind(("id", zone_record))
+        .bind(("temp_range", temp_range))
+        .bind(("hum", humidity_str))
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Update zone fields failed", e))?;
+
+    let _ = zone_resp.take_errors();
+
+    Ok(())
+}
+
+/// Log a manual climate reading for a zone.
+#[server]
+pub async fn log_manual_reading(
+    zone_id: String,
+    zone_name: String,
+    temperature: f64,
+    humidity: f64,
+) -> Result<(), ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::climate::calculate_vpd;
+
+    let _user_id = require_auth().await?;
+    let zone_record = surrealdb::types::RecordId::parse_simple(&zone_id)
+        .map_err(|e| internal_error("Zone ID parse failed", e))?;
+
+    let vpd = calculate_vpd(temperature, humidity);
+
+    let mut resp = db()
+        .query(
+            "CREATE climate_reading SET \
+             zone = $zone_id, zone_name = $zone_name, \
+             temperature = $temp, humidity = $humidity, \
+             vpd = $vpd, source = $source, recorded_at = time::now()"
+        )
+        .bind(("zone_id", zone_record))
+        .bind(("zone_name", zone_name))
+        .bind(("temp", temperature))
+        .bind(("humidity", humidity))
+        .bind(("vpd", vpd))
+        .bind(("source", "manual".to_string()))
+        .await
+        .map_err(|e| internal_error("Log manual reading failed", e))?;
+
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Log manual reading error", err_msg));
+    }
+
+    Ok(())
+}
+
+/// Test weather API for a lat/lon pair, returning a preview string.
+#[server]
+pub async fn test_weather_api(latitude: f64, longitude: f64) -> Result<String, ServerFnError> {
+    use crate::auth::require_auth;
+
+    require_auth().await?;
+
+    let client = reqwest::Client::new();
+    let reading = crate::climate::open_meteo::fetch_habitat_weather(&client, latitude, longitude)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Weather API failed: {}", e)))?;
+
+    Ok(format!(
+        "Current: {:.1}C, {:.1}% Humidity, {:.1}mm precip",
+        reading.temperature_c, reading.humidity_pct, reading.precipitation_mm
+    ))
 }
 
 /// Configure a zone's data source type and config.
@@ -312,6 +454,8 @@ mod ssr_types {
         pub humidity: f64,
         #[surreal(default)]
         pub vpd: Option<f64>,
+        #[surreal(default)]
+        pub source: Option<String>,
         pub recorded_at: chrono::DateTime<chrono::Utc>,
     }
 
@@ -324,6 +468,7 @@ mod ssr_types {
                 temperature: self.temperature,
                 humidity: self.humidity,
                 vpd: self.vpd,
+                source: self.source,
                 recorded_at: self.recorded_at,
             }
         }

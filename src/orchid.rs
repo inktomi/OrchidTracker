@@ -119,6 +119,9 @@ pub struct ClimateReading {
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub vpd: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub source: Option<String>,
     pub recorded_at: DateTime<Utc>,
 }
 
@@ -474,6 +477,38 @@ pub struct HabitatWeatherSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_climate_reading_serde_with_source() {
+        let reading = ClimateReading {
+            id: "climate_reading:abc".into(),
+            zone_id: "growing_zone:123".into(),
+            zone_name: "Kitchen".into(),
+            temperature: 22.5,
+            humidity: 55.0,
+            vpd: Some(0.85),
+            source: Some("wizard".into()),
+            recorded_at: Utc::now(),
+        };
+
+        let json = serde_json::to_string(&reading).unwrap();
+        let deserialized: ClimateReading = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.source, Some("wizard".into()));
+        assert_eq!(deserialized.zone_name, "Kitchen");
+        assert!((deserialized.temperature - 22.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_climate_reading_serde_without_source() {
+        // Backward compat: older readings without source field
+        let json = r#"{"id":"cr:old","zone_id":"gz:1","zone_name":"Zone A","temperature":21.0,"humidity":50.0,"recorded_at":"2025-01-01T00:00:00Z"}"#;
+        let reading: ClimateReading = serde_json::from_str(json).unwrap();
+
+        assert_eq!(reading.source, None);
+        assert_eq!(reading.vpd, None);
+        assert_eq!(reading.zone_name, "Zone A");
+    }
 
     #[test]
     fn test_zone_compatibility() {
