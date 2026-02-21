@@ -347,6 +347,78 @@ pub async fn analyze_orchid_image(
 }
 
 #[server]
+pub async fn analyze_orchid_by_name(
+    species_name: String,
+    existing_species: Option<Vec<String>>,
+    climate_summary: String,
+    zone_names: Option<Vec<String>>,
+) -> Result<AnalysisResult, ServerFnError> {
+    use crate::auth::require_auth;
+
+    require_auth().await?;
+
+    let species_name = species_name.trim().to_string();
+    if species_name.is_empty() {
+        return Err(ServerFnError::new("Please enter a species name"));
+    }
+
+    let existing_species = existing_species.unwrap_or_default();
+    let zone_names = zone_names.unwrap_or_default();
+
+    let zone_list = if zone_names.is_empty() {
+        "No zones configured".to_string()
+    } else {
+        zone_names.join(", ")
+    };
+
+    let prompt = format!(
+        "I'm considering getting a '{}' orchid. \
+        Think step-by-step: \
+        1. Confirm the species exists and determine its full botanical name. If the name is ambiguous, pick the most common orchid match. \
+        2. Analyze its natural habitat and care requirements. \
+        3. Compare requirements against my conditions: {}. \
+        4. Consider my growing zones: {}. \
+        5. Check if I own it: {:?}. \
+        6. Determine the orchid's native habitat region and approximate center-point coordinates for its primary native range. \
+        Then, evaluate the fit. \
+        Finally, return ONLY valid JSON with this structure (no markdown): \
+        {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"temp_min\": 18.0, \"temp_max\": 28.0, \"humidity_min\": 50.0, \"humidity_max\": 80.0, \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
+        Allowed fit_categories: 'Good Fit', 'Bad Fit', 'Caution Fit'. \
+        For light_req, choose from: 'High', 'Medium', 'Low'. \
+        For placement_suggestion, choose from my zones: {}. \
+        For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common. \
+        For native_region, provide a brief description of where this species naturally grows. \
+        For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown. \
+        For temp_min/temp_max, provide the ideal temperature range in Celsius as numeric values (e.g. 18.0 and 28.0). \
+        For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown. \
+        Also include seasonal care data in Northern Hemisphere terms: \
+        \"rest_start_month\": 11, \"rest_end_month\": 2, \"bloom_start_month\": 3, \"bloom_end_month\": 5, \
+        \"rest_water_multiplier\": 0.3, \"rest_fertilizer_multiplier\": 0.0, \
+        \"active_water_multiplier\": 1.0, \"active_fertilizer_multiplier\": 1.0 \
+        Months are 1-12. Multipliers are 0.0-1.0 (0.3 = 30% of normal frequency, 0.0 = stop entirely). \
+        Set seasonal fields to null if the species has no distinct rest period or seasonal cycle.",
+        species_name,
+        climate_summary,
+        zone_list,
+        existing_species,
+        zone_list,
+    );
+
+    let text = call_ai_text_server(&prompt).await?;
+
+    let result: AnalysisResult = serde_json::from_str(&text)
+        .map_err(|e| ServerFnError::new(format!("Failed to parse AI response: {}", e)))?;
+
+    Ok(result)
+}
+
+/// Internal wrapper: call_ai_text returning ServerFnError.
+#[cfg(feature = "ssr")]
+async fn call_ai_text_server(prompt: &str) -> Result<String, ServerFnError> {
+    call_ai_text(prompt).await.map_err(|e| ServerFnError::new(e))
+}
+
+#[server]
 pub async fn generate_care_recap(
     orchid_id: String,
     event_type: String,
