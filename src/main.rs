@@ -77,6 +77,7 @@ async fn main() {
         .site_pkg_dir("pkg")
         .site_addr(site_addr)
         .reload_port(cfg.reload_port)
+        .hash_files(true)
         .build();
     let routes = generate_route_list(App);
 

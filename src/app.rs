@@ -20,8 +20,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="theme-color" content="#1b4332" />
                 <AutoReload options=options.clone() />
-                <HydrationScripts options />
-                <link rel="stylesheet" href="/pkg/orchid-tracker.css" />
+                <HydrationScripts options=options.clone() />
+                <Stylesheet id="leptos" href=format!("/pkg/{}.css", options.output_name) />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
                 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
