@@ -6,6 +6,9 @@ use super::{MODAL_OVERLAY, BTN_PRIMARY, BTN_GHOST};
 const SCANNER_CONTENT: &str = "scanner-bloom bg-stone-900 text-stone-200 p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-700/60";
 const SCANNER_HEADER: &str = "flex justify-between items-center mb-5 pb-4 border-b border-stone-700";
 const SCANNER_CLOSE: &str = "py-2 px-3 text-sm text-stone-400 bg-stone-800 rounded-lg border-none cursor-pointer hover:bg-stone-700 hover:text-stone-200 transition-colors";
+const TAB_ACTIVE: &str = "flex-1 py-2.5 text-sm font-semibold text-white rounded-lg border-none cursor-pointer transition-colors bg-primary";
+const TAB_INACTIVE: &str = "flex-1 py-2.5 text-sm font-medium rounded-lg border-none cursor-pointer transition-colors text-stone-400 bg-stone-800 hover:text-stone-200 hover:bg-stone-700";
+const SEARCH_INPUT: &str = "w-full py-3 px-4 text-sm text-white rounded-xl border outline-none transition-all duration-200 bg-stone-800 border-stone-700 placeholder:text-stone-500 focus:border-primary/50 focus:ring-2 focus:ring-primary/20";
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnalysisResult {
@@ -53,6 +56,77 @@ pub struct AnalysisResult {
 #[component]
 pub fn ScannerModal(
     on_close: impl Fn() + 'static + Copy + Send + Sync,
+    on_add_to_collection: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
+    on_select_orchid: impl Fn(Orchid) + 'static + Copy + Send + Sync,
+    existing_orchids: Vec<Orchid>,
+    climate_readings: Vec<ClimateReading>,
+    zones: Vec<GrowingZone>,
+) -> impl IntoView {
+    // Tab state: true = scan, false = search
+    let (scan_mode, set_scan_mode) = signal(true);
+
+    #[cfg(not(feature = "hydrate"))]
+    let orchids_for_search = StoredValue::new(Vec::<Orchid>::new());
+    #[cfg(feature = "hydrate")]
+    let orchids_for_search = StoredValue::new(existing_orchids.clone());
+
+    view! {
+        <div class=MODAL_OVERLAY>
+            <div class=SCANNER_CONTENT>
+                // Decorative drifting leaves
+                <div class="overflow-hidden absolute inset-0 pointer-events-none">
+                    <div class="absolute top-3 right-6 text-lg scanner-leaf-drift opacity-15">{"\u{1F33F}"}</div>
+                    <div class="absolute bottom-4 left-5 text-sm opacity-10 scanner-leaf-drift">{"\u{1F343}"}</div>
+                    <div class="absolute right-3 top-1/2 text-xs opacity-10 scanner-leaf-drift">{"\u{1FAB4}"}</div>
+                </div>
+
+                <div class=SCANNER_HEADER>
+                    <div>
+                        <h2 class="m-0 text-white">"ID Orchid"</h2>
+                        <p class="mt-1 mb-0 text-xs text-stone-500">"Scan a tag or search by name"</p>
+                    </div>
+                    <button class=SCANNER_CLOSE on:click=move |_| on_close()>"Close"</button>
+                </div>
+
+                // Tab switcher
+                <div class="flex gap-1.5 p-1 mb-5 rounded-xl bg-stone-800/60">
+                    <button
+                        class=move || if scan_mode.get() { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| set_scan_mode.set(true)
+                    >"Scan Tag"</button>
+                    <button
+                        class=move || if !scan_mode.get() { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| set_scan_mode.set(false)
+                    >"Search by Name"</button>
+                </div>
+
+                <div class="relative">
+                    {move || if scan_mode.get() {
+                        view! {
+                            <ScanTab
+                                on_add_to_collection=on_add_to_collection
+                                existing_orchids=existing_orchids.clone()
+                                climate_readings=climate_readings.clone()
+                                zones=zones.clone()
+                            />
+                        }.into_any()
+                    } else {
+                        view! {
+                            <SearchTab
+                                orchids=orchids_for_search
+                                on_select=on_select_orchid
+                            />
+                        }.into_any()
+                    }}
+                </div>
+            </div>
+        </div>
+    }.into_any()
+}
+
+/// Camera-based tag scanning tab.
+#[component]
+fn ScanTab(
     on_add_to_collection: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
     existing_orchids: Vec<Orchid>,
     climate_readings: Vec<ClimateReading>,
@@ -173,7 +247,7 @@ pub fn ScannerModal(
                 return;
             }
 
-            let data_url = html_canvas.to_data_url().unwrap();
+            let data_url = html_canvas.to_data_url_with_type("image/jpeg").unwrap();
             let base64_image = data_url.split(',').nth(1).unwrap_or("").to_string();
 
             let existing_names: Vec<String> = existing_orchids.with_value(|orchids| {
@@ -211,90 +285,195 @@ pub fn ScannerModal(
     };
 
     view! {
-        <div class=MODAL_OVERLAY>
-            <div class=SCANNER_CONTENT>
-                // Decorative drifting leaves
-                <div class="overflow-hidden absolute inset-0 pointer-events-none">
-                    <div class="absolute top-3 right-6 text-lg scanner-leaf-drift opacity-15">{"\u{1F33F}"}</div>
-                    <div class="absolute bottom-4 left-5 text-sm opacity-10 scanner-leaf-drift">{"\u{1F343}"}</div>
-                    <div class="absolute right-3 top-1/2 text-xs opacity-10 scanner-leaf-drift">{"\u{1FAB4}"}</div>
-                </div>
+        <div>
+            {move || error_msg.get().map(|err| {
+                view! { <div class="p-3 mb-4 text-sm text-red-300 rounded-lg bg-danger/20">{err}</div> }
+            })}
 
-                <div class=SCANNER_HEADER>
-                    <div>
-                        <h2 class="m-0 text-white">"Tag Reader"</h2>
-                        <p class="mt-1 mb-0 text-xs text-stone-500">"Point at a plant tag or label"</p>
-                    </div>
-                    <button class=SCANNER_CLOSE on:click=move |_| on_close()>"Close"</button>
-                </div>
-                <div class="relative">
-                    {move || error_msg.get().map(|err| {
-                        view! { <div class="p-3 mb-4 text-sm text-red-300 rounded-lg bg-danger/20">{err}</div> }
-                    })}
+            <div class="overflow-hidden relative mb-4 w-full bg-black rounded-xl scanner-viewfinder h-[300px]">
+                <video
+                    node_ref=video_element
+                    autoplay
+                    playsinline
+                    muted
+                    class="object-cover w-full h-full"
+                ></video>
+                <canvas node_ref=canvas_element class="hidden"></canvas>
+            </div>
 
-                    <div class="overflow-hidden relative mb-4 w-full bg-black rounded-xl scanner-viewfinder h-[300px]">
-                        <video
-                            node_ref=video_element
-                            autoplay
-                            playsinline
-                            muted
-                            class="object-cover w-full h-full"
-                        ></video>
-                        <canvas node_ref=canvas_element class="hidden"></canvas>
-                    </div>
-
-                    <div class="scanner-controls-rise">
-                    {move || {
-                        if let Some(result) = analysis_result.get() {
-                            let fit_class = match result.fit_category {
-                                FitCategory::GoodFit => "py-1 px-3 text-sm font-semibold rounded-full bg-primary-light/20 text-primary-light",
-                                FitCategory::BadFit => "py-1 px-3 text-sm font-semibold rounded-full bg-danger/20 text-red-300",
-                                FitCategory::CautionFit => "py-1 px-3 text-sm font-semibold rounded-full bg-warning/20 text-amber-300",
-                            };
-                            let result_clone = result.clone();
-
-                            view! {
-                                <div class="p-5 rounded-xl bg-stone-800">
-                                    <h3 class="mt-0 text-white">{result.species_name}</h3>
-                                    <div class=fit_class>{result.fit_category.to_string()}</div>
-                                    <p class="mt-3 text-sm leading-relaxed text-stone-300">{result.reason}</p>
-                                    {result.already_owned.then(|| {
-                                        view! { <p class="mt-2 text-sm font-semibold text-amber-400">"You already own this species!"</p> }
-                                    })}
-                                    <div class="grid grid-cols-2 gap-4 mt-4">
-                                        <button class=BTN_PRIMARY on:click=move |_| on_add_to_collection(result_clone.clone())>
-                                            "Add to Collection"
+            <div class="scanner-controls-rise">
+            {move || {
+                if let Some(result) = analysis_result.get() {
+                    view! { <ScanResult result=result on_add=on_add_to_collection on_reset=move || {
+                        set_analysis_result.set(None);
+                        set_error_msg.set(None);
+                    } /> }.into_any()
+                } else {
+                    view! {
+                        <div class="flex gap-3 justify-center mt-4 text-center">
+                            <button class=BTN_GHOST on:click=flip_camera>"Flip"</button>
+                            {move || {
+                                if is_scanning.get() {
+                                    view! {
+                                        <button class="flex gap-2 items-center py-3 px-6 text-sm font-semibold text-white rounded-lg border-none cursor-not-allowed bg-primary/70" disabled>
+                                            <div class="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
+                                            "Identifying..."
                                         </button>
-                                        <button class="py-3 text-sm font-medium rounded-lg border-none transition-colors cursor-pointer text-stone-300 bg-stone-700 hover:bg-stone-600" on:click=move |_| {
-                                            set_analysis_result.set(None);
-                                            set_error_msg.set(None);
-                                        }>"Read Another"</button>
-                                    </div>
-                                </div>
-                            }.into_any()
-                        } else {
-                            view! {
-                                <div class="flex gap-3 justify-center mt-4 text-center">
-                                    <button class=BTN_GHOST on:click=flip_camera>"Flip"</button>
-                                    {move || {
-                                        if is_scanning.get() {
-                                            view! {
-                                                <button class="flex gap-2 items-center py-3 px-6 text-sm font-semibold text-white rounded-lg border-none cursor-not-allowed bg-primary/70" disabled>
-                                                    <div class="w-4 h-4 rounded-full border-2 border-white animate-spin border-t-transparent"></div>
-                                                    "Looking it up..."
-                                                </button>
-                                            }.into_any()
-                                        } else {
-                                            view! { <button class=BTN_PRIMARY on:click=capture_and_analyze>"Snap"</button> }.into_any()
-                                        }
-                                    }}
-                                </div>
-                            }.into_any()
-                        }
-                    }}
-                    </div>
-                </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <button class=BTN_PRIMARY on:click=capture_and_analyze>"Snap"</button> }.into_any()
+                                }
+                            }}
+                        </div>
+                    }.into_any()
+                }
+            }}
             </div>
         </div>
-    }
+    }.into_any()
+}
+
+/// Scan result card with add/retry actions.
+#[component]
+fn ScanResult(
+    result: AnalysisResult,
+    on_add: impl Fn(AnalysisResult) + 'static + Copy + Send + Sync,
+    on_reset: impl Fn() + 'static + Copy + Send + Sync,
+) -> impl IntoView {
+    let fit_class = match result.fit_category {
+        FitCategory::GoodFit => "py-1 px-3 text-sm font-semibold rounded-full bg-primary-light/20 text-primary-light",
+        FitCategory::BadFit => "py-1 px-3 text-sm font-semibold rounded-full bg-danger/20 text-red-300",
+        FitCategory::CautionFit => "py-1 px-3 text-sm font-semibold rounded-full bg-warning/20 text-amber-300",
+    };
+    let result_clone = result.clone();
+
+    view! {
+        <div class="p-5 rounded-xl bg-stone-800">
+            <h3 class="mt-0 text-white">{result.species_name}</h3>
+            <div class=fit_class>{result.fit_category.to_string()}</div>
+            <p class="mt-3 text-sm leading-relaxed text-stone-300">{result.reason}</p>
+            {result.already_owned.then(|| {
+                view! { <p class="mt-2 text-sm font-semibold text-amber-400">"You already own this species!"</p> }
+            })}
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <button class=BTN_PRIMARY on:click=move |_| on_add(result_clone.clone())>
+                    "Add to Collection"
+                </button>
+                <button class="py-3 text-sm font-medium rounded-lg border-none transition-colors cursor-pointer text-stone-300 bg-stone-700 hover:bg-stone-600" on:click=move |_| on_reset()>
+                    "Scan Another"
+                </button>
+            </div>
+        </div>
+    }.into_any()
+}
+
+/// Name search tab — filter existing orchids by name/species.
+#[component]
+fn SearchTab(
+    orchids: StoredValue<Vec<Orchid>>,
+    on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
+) -> impl IntoView {
+    let (query, set_query) = signal(String::new());
+
+    let filtered = Memo::new(move |_| {
+        let q = query.get().to_lowercase();
+        if q.is_empty() {
+            return Vec::new();
+        }
+        orchids.with_value(|all| {
+            all.iter()
+                .filter(|o| {
+                    o.name.to_lowercase().contains(&q)
+                        || o.species.to_lowercase().contains(&q)
+                })
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+    });
+
+    view! {
+        <div>
+            <div class="relative mb-4">
+                <input
+                    type="text"
+                    class=SEARCH_INPUT
+                    placeholder="Type an orchid name or species..."
+                    prop:value=query
+                    on:input=move |ev| set_query.set(event_target_value(&ev))
+                />
+                <div class="flex absolute top-0 right-0 justify-center items-center px-3 h-full pointer-events-none text-stone-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </div>
+
+            {move || {
+                let q = query.get();
+                let results = filtered.get();
+
+                if q.is_empty() {
+                    view! {
+                        <div class="py-10 text-center">
+                            <div class="mb-3 text-3xl opacity-30">{"\u{1F50D}"}</div>
+                            <p class="text-sm text-stone-500">"Start typing to search your collection"</p>
+                        </div>
+                    }.into_any()
+                } else if results.is_empty() {
+                    view! {
+                        <div class="py-10 text-center">
+                            <div class="mb-3 text-3xl opacity-30">{"\u{1F33E}"}</div>
+                            <p class="text-sm text-stone-500">"No orchids match \""{ q }"\""</p>
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div class="flex overflow-y-auto flex-col gap-2 max-h-[50vh]">
+                            <For
+                                each=move || filtered.get()
+                                key=|o| o.id.clone()
+                                children=move |orchid| {
+                                    let orchid_clone = orchid.clone();
+                                    view! {
+                                        <SearchResultCard orchid=orchid on_click=move |_| on_select(orchid_clone.clone()) />
+                                    }
+                                }
+                            />
+                        </div>
+                    }.into_any()
+                }
+            }}
+        </div>
+    }.into_any()
+}
+
+/// A single orchid search result card.
+#[component]
+fn SearchResultCard(
+    orchid: Orchid,
+    on_click: impl Fn(leptos::ev::MouseEvent) + 'static + Send + Sync,
+) -> impl IntoView {
+    let light_badge = match orchid.light_requirement {
+        LightRequirement::High => ("High Light", "bg-amber-900/30 text-amber-300"),
+        LightRequirement::Medium => ("Medium Light", "bg-emerald-900/30 text-emerald-300"),
+        LightRequirement::Low => ("Low Light", "bg-sky-900/30 text-sky-300"),
+    };
+
+    view! {
+        <button
+            class="flex gap-3 items-center p-3 w-full text-left rounded-xl border border-transparent transition-colors cursor-pointer bg-stone-800 hover:bg-stone-700 hover:border-primary/30"
+            on:click=on_click
+        >
+            <div class="flex flex-col flex-1 gap-0.5 min-w-0">
+                <span class="text-sm font-medium text-white truncate">{orchid.name}</span>
+                <span class="text-xs italic truncate text-stone-400">{orchid.species}</span>
+            </div>
+            <span class=format!("shrink-0 py-0.5 px-2 text-xs font-medium rounded-full {}", light_badge.1)>
+                {light_badge.0}
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
+    }.into_any()
 }

@@ -370,6 +370,10 @@ pub fn HomePage() -> impl IntoView {
                                     <ScannerModal
                                         on_close=move || send(Msg::ShowScanner(false))
                                         on_add_to_collection=move |result| send(Msg::HandleScanResult(result))
+                                        on_select_orchid=move |orchid: Orchid| {
+                                            send(Msg::ShowScanner(false));
+                                            send(Msg::SelectOrchid(Some(orchid)));
+                                        }
                                         existing_orchids=orchids
                                         climate_readings=current_readings
                                         zones=current_zones
