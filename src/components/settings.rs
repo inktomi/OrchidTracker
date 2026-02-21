@@ -369,8 +369,10 @@ fn ZoneCard(
 }
 
 /// Data source configuration form for a single zone.
-/// Supports both device-linked mode (tempest/ac_infinity via shared devices)
-/// and legacy mode (weather_api with zone-level config).
+/// Supports three modes:
+/// - Device-linked: tempest/ac_infinity via shared hardware_device (picker shown)
+/// - Legacy direct: tempest/ac_infinity with zone-level credentials (when no devices exist)
+/// - Weather API: always zone-level lat/lon config
 #[component]
 fn DataSourceConfig(
     zone_id: String,
@@ -401,10 +403,33 @@ fn DataSourceConfig(
         current_hardware_port.map(|p| p.to_string()).unwrap_or_else(|| "1".to_string())
     );
 
-    // Parse existing config to initialize legacy fields
+    // Parse existing config to initialize ALL legacy fields
     let parsed = serde_json::from_str::<serde_json::Value>(&current_config).ok();
 
-    // Weather API fields (only legacy mode)
+    let get_str = |key: &str| -> String {
+        parsed.as_ref()
+            .and_then(|j| j.get(key))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string()
+    };
+
+    // Tempest legacy fields
+    let (tempest_station, set_tempest_station) = signal(get_str("station_id"));
+    let (tempest_token, set_tempest_token) = signal(get_str("token"));
+
+    // AC Infinity legacy fields
+    let (aci_email, set_aci_email) = signal(get_str("email"));
+    let (aci_password, set_aci_password) = signal(get_str("password"));
+    let (aci_device, set_aci_device) = signal(get_str("device_id"));
+    let init_port = parsed.as_ref()
+        .and_then(|j| j.get("port"))
+        .and_then(|v| v.as_u64())
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| "1".to_string());
+    let (aci_port, set_aci_port) = signal(init_port);
+
+    // Weather API fields
     let get_f64 = |key: &str| -> String {
         parsed.as_ref()
             .and_then(|j| j.get(key))
@@ -421,26 +446,46 @@ fn DataSourceConfig(
 
     let had_source = current_type.is_some() || current_hardware_device_id.is_some();
 
+    // Build legacy config JSON for direct zone-level saves
+    let build_legacy_config_json = move || -> String {
+        match provider.get().as_str() {
+            "tempest" => serde_json::json!({
+                "station_id": tempest_station.get(),
+                "token": tempest_token.get(),
+            }).to_string(),
+            "ac_infinity" => serde_json::json!({
+                "email": aci_email.get(),
+                "password": aci_password.get(),
+                "device_id": aci_device.get(),
+                "port": aci_port.get().parse::<u32>().unwrap_or(1),
+            }).to_string(),
+            "weather_api" => serde_json::json!({
+                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
+                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
+            }).to_string(),
+            _ => String::new(),
+        }
+    };
+
+    // Whether the current provider type has shared hardware devices available.
+    let has_devices_for_provider = move || -> bool {
+        let prov = provider.get();
+        let devs = devices.get();
+        match prov.as_str() {
+            "tempest" => devs.iter().any(|d| d.device_type == "tempest"),
+            "ac_infinity" => devs.iter().any(|d| d.device_type == "ac_infinity"),
+            _ => false,
+        }
+    };
+
     let test_connection = move |_| {
         let prov = provider.get();
         if prov.is_empty() { return; }
         set_is_testing.set(true);
         set_test_result.set(None);
 
-        if prov == "weather_api" {
-            let config = serde_json::json!({
-                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
-                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
-            }).to_string();
-            leptos::task::spawn_local(async move {
-                match crate::server_fns::climate::test_data_source("weather_api".into(), config).await {
-                    Ok(msg) => set_test_result.set(Some(Ok(msg))),
-                    Err(e) => set_test_result.set(Some(Err(e.to_string()))),
-                }
-                set_is_testing.set(false);
-            });
-        } else {
-            // For device-linked types, test through the device's stored config
+        // If using device picker and a device is selected, test via device
+        if has_devices_for_provider() && !selected_device_id.get().is_empty() {
             let dev_id = selected_device_id.get();
             let devs = devices.get();
             if let Some(device) = devs.iter().find(|d| d.id == dev_id) {
@@ -457,6 +502,16 @@ fn DataSourceConfig(
                 set_test_result.set(Some(Err("No device selected".into())));
                 set_is_testing.set(false);
             }
+        } else {
+            // Legacy direct config test
+            let config = build_legacy_config_json();
+            leptos::task::spawn_local(async move {
+                match crate::server_fns::climate::test_data_source(prov, config).await {
+                    Ok(msg) => set_test_result.set(Some(Ok(msg))),
+                    Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+                }
+                set_is_testing.set(false);
+            });
         }
     };
 
@@ -485,52 +540,14 @@ fn DataSourceConfig(
                 on_saved();
                 set_is_saving_ds.set(false);
             });
-        } else if prov == "weather_api" {
-            // Legacy zone-level config
-            let config = serde_json::json!({
-                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
-                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
-            }).to_string();
-
-            leptos::task::spawn_local(async move {
-                // Also unlink any device first
-                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
-
-                match crate::server_fns::climate::configure_zone_data_source(
-                    zid.clone(), Some("weather_api".to_string()), config,
-                ).await {
-                    Ok(()) => {
-                        set_local_zones.update(|zones| {
-                            if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
-                                z.data_source_type = Some("weather_api".to_string());
-                                z.data_source_config = String::new();
-                                z.hardware_device_id = None;
-                                z.hardware_port = None;
-                            }
-                        });
-                        set_test_result.set(Some(Ok("Saved successfully!".into())));
-                        on_saved();
-                    }
-                    Err(e) => {
-                        set_test_result.set(Some(Err(format!("Save failed: {}", e))));
-                    }
-                }
-                set_is_saving_ds.set(false);
-            });
-        } else {
-            // Device-linked: tempest or ac_infinity
+        } else if has_devices_for_provider() && !selected_device_id.get().is_empty() {
+            // Device-linked save: link zone to shared device
             let dev_id = selected_device_id.get();
             let port = if prov == "ac_infinity" {
                 Some(selected_port.get().parse::<i32>().unwrap_or(1))
             } else {
                 None
             };
-
-            if dev_id.is_empty() {
-                set_test_result.set(Some(Err("Please select a device".into())));
-                set_is_saving_ds.set(false);
-                return;
-            }
 
             let dev_id_for_update = dev_id.clone();
             leptos::task::spawn_local(async move {
@@ -555,6 +572,36 @@ fn DataSourceConfig(
                 }
                 set_is_saving_ds.set(false);
             });
+        } else {
+            // Legacy zone-level config save (weather_api, or tempest/ac_infinity without devices)
+            let config = build_legacy_config_json();
+            let provider_opt = Some(prov.clone());
+
+            leptos::task::spawn_local(async move {
+                // Unlink any existing device first
+                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
+
+                match crate::server_fns::climate::configure_zone_data_source(
+                    zid.clone(), provider_opt.clone(), config,
+                ).await {
+                    Ok(()) => {
+                        set_local_zones.update(|zones| {
+                            if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
+                                z.data_source_type = provider_opt;
+                                z.data_source_config = String::new();
+                                z.hardware_device_id = None;
+                                z.hardware_port = None;
+                            }
+                        });
+                        set_test_result.set(Some(Ok("Saved successfully!".into())));
+                        on_saved();
+                    }
+                    Err(e) => {
+                        set_test_result.set(Some(Err(format!("Save failed: {}", e))));
+                    }
+                }
+                set_is_saving_ds.set(false);
+            });
         }
     };
 
@@ -568,7 +615,6 @@ fn DataSourceConfig(
                         let val = event_target_value(&ev);
                         set_provider.set(val.clone());
                         set_test_result.set(None);
-                        // Reset device selection when changing provider
                         set_selected_device_id.set(String::new());
                     }
                 >
@@ -587,12 +633,29 @@ fn DataSourceConfig(
                             .filter(|d| d.device_type == "tempest")
                             .collect();
                         if filtered.is_empty() {
+                            // No shared devices — show legacy credential fields
                             view! {
-                                <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">
-                                    "No Tempest devices configured. Add one in the Hardware Devices section above."
-                                </p>
+                                <div class="p-3 mb-3 rounded-lg bg-sky-50/50 dark:bg-sky-900/10">
+                                    <div class="mb-3">
+                                        <label class=LABEL_SM>"Station ID"</label>
+                                        <input type="text" class=INPUT_SM
+                                            placeholder="e.g. 12345"
+                                            prop:value=tempest_station
+                                            on:input=move |ev| set_tempest_station.set(event_target_value(&ev))
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class=LABEL_SM>"API Token"</label>
+                                        <input type="password" class=INPUT_SM
+                                            placeholder="Your WeatherFlow API token"
+                                            prop:value=tempest_token
+                                            on:input=move |ev| set_tempest_token.set(event_target_value(&ev))
+                                        />
+                                    </div>
+                                </div>
                             }.into_any()
                         } else {
+                            // Shared devices available — show picker
                             view! {
                                 <div class="p-3 mb-3 rounded-lg bg-sky-50/50 dark:bg-sky-900/10">
                                     <label class=LABEL_SM>"Device"</label>
@@ -615,12 +678,49 @@ fn DataSourceConfig(
                             .filter(|d| d.device_type == "ac_infinity")
                             .collect();
                         if filtered.is_empty() {
+                            // No shared devices — show legacy credential fields
                             view! {
-                                <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">
-                                    "No AC Infinity devices configured. Add one in the Hardware Devices section above."
-                                </p>
+                                <div class="p-3 mb-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10">
+                                    <div class="flex gap-3 mb-3">
+                                        <div class="flex-1">
+                                            <label class=LABEL_SM>"Email"</label>
+                                            <input type="email" class=INPUT_SM
+                                                placeholder="AC Infinity account email"
+                                                prop:value=aci_email
+                                                on:input=move |ev| set_aci_email.set(event_target_value(&ev))
+                                            />
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class=LABEL_SM>"Password"</label>
+                                            <input type="password" class=INPUT_SM
+                                                placeholder="Account password"
+                                                prop:value=aci_password
+                                                on:input=move |ev| set_aci_password.set(event_target_value(&ev))
+                                            />
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="flex-1">
+                                            <label class=LABEL_SM>"Device ID"</label>
+                                            <input type="text" class=INPUT_SM
+                                                placeholder="e.g. ABC123DEF"
+                                                prop:value=aci_device
+                                                on:input=move |ev| set_aci_device.set(event_target_value(&ev))
+                                            />
+                                        </div>
+                                        <div class="w-20">
+                                            <label class=LABEL_SM>"Port"</label>
+                                            <input type="number" class=INPUT_SM
+                                                min="1" max="10"
+                                                prop:value=aci_port
+                                                on:input=move |ev| set_aci_port.set(event_target_value(&ev))
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             }.into_any()
                         } else {
+                            // Shared devices available — show picker
                             view! {
                                 <div class="p-3 mb-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10">
                                     <div class="mb-3">
@@ -710,7 +810,6 @@ fn DataSourceConfig(
             {move || {
                 let prov = provider.get();
                 if prov.is_empty() && had_source {
-                    // Provider changed to None — show save to remove
                     view! {
                         <div class="flex gap-2">
                             <button
