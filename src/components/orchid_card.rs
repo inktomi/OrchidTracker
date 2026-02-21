@@ -16,16 +16,14 @@ pub fn OrchidCard(
     let orchid_id_water = orchid.id.clone();
     let orchid_clone = orchid.clone();
     let is_misplaced = !check_zone_compatibility(&orchid.placement, &orchid.light_requirement, &zones);
-    let suggestion_msg = if is_misplaced {
-        format!("Needs {}", orchid.light_requirement)
+    let mismatch_reason = if is_misplaced {
+        let zone_light = zones.iter()
+            .find(|z| z.name == orchid.placement)
+            .map(|z| z.light_level.as_str())
+            .unwrap_or("Unknown");
+        Some(format!("{} light zone \u{2014} needs {}", zone_light, orchid.light_requirement.as_str()))
     } else {
-        "Optimal".to_string()
-    };
-
-    let status_class = if is_misplaced {
-        "inline-flex py-1 px-2.5 text-xs font-semibold rounded-full bg-danger/10 text-danger"
-    } else {
-        "inline-flex py-1 px-2.5 text-xs font-semibold rounded-full bg-primary-light/10 text-primary-light"
+        None
     };
 
     let conservation = orchid.conservation_status.clone();
@@ -58,17 +56,25 @@ pub fn OrchidCard(
             <div class="p-5 cursor-pointer" on:click=move |_| on_select(orchid_clone.clone())>
                 <div class="flex gap-2 justify-between items-start mb-1">
                     <h3 class="m-0 text-primary">{orchid.name}</h3>
-                    <span class=status_class>{suggestion_msg}</span>
+                    {is_misplaced.then(|| view! {
+                        <div class="flex-shrink-0 w-5 h-5 [&>svg]:w-full [&>svg]:h-full" inner_html=include_str!("../../public/svg/alert_warning_24.svg")></div>
+                    })}
                 </div>
                 <p class="mt-0 mb-3 text-sm italic text-stone-400">{orchid.species}</p>
 
-                {conservation.map(|status| {
-                    view! { <span class="inline-block py-0.5 px-2 mb-3 text-xs font-medium rounded-full border text-danger bg-danger/5 border-danger/20">{status}</span> }
-                })}
-
-                {has_first_bloom.then(|| {
-                    view! { <span class="inline-block py-0.5 px-2 mb-3 ml-1 text-xs font-medium text-amber-700 rounded-full border dark:text-amber-300 bg-amber-100/80 border-amber-300/40 dark:bg-amber-900/30 dark:border-amber-700/40">"\u{1F33C} First Bloom!"</span> }
-                })}
+                <div class="flex flex-wrap gap-1 justify-between items-center mb-3">
+                    <div class="flex flex-wrap gap-1">
+                        {conservation.map(|status| {
+                            view! { <span class="inline-block py-0.5 px-2 text-xs font-medium rounded-full border text-danger bg-danger/5 border-danger/20">{status}</span> }
+                        })}
+                        {has_first_bloom.then(|| {
+                            view! { <span class="inline-block py-0.5 px-2 text-xs font-medium text-amber-700 rounded-full border dark:text-amber-300 bg-amber-100/80 border-amber-300/40 dark:bg-amber-900/30 dark:border-amber-700/40">"\u{1F33C} First Bloom!"</span> }
+                        })}
+                    </div>
+                    {mismatch_reason.map(|reason| {
+                        view! { <span class="text-xs text-amber-600 dark:text-amber-400">{reason}</span> }
+                    })}
+                </div>
 
                 <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
                     <div>

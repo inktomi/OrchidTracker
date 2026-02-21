@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <style>
+    .alert-group {
+      transform-origin: center;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    svg:hover .alert-group {
+      transform: scale(1.1) rotate(4deg);
+    }
+    .indicator {
+      transform-origin: 12px 17px;
+      animation: alert-pulse 3s ease-in-out infinite;
+    }
+    @keyframes alert-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+    .leaf-shape {
+      fill: #d97706;
+      fill-opacity: 0.15;
+      stroke: #d97706;
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+    }
+    .mark {
+      fill: none;
+      stroke: #d97706;
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+    .dot {
+      fill: #d97706;
+    }
+  </style>
+  <g class="alert-group">
+    <path class="leaf-shape" d="M12 2C8 6 4 11 6 17C8 22 16 22 18 17C20 11 16 6 12 2Z" />
+    <g class="indicator">
+      <path class="mark" d="M12 7L12 14" />
+      <circle class="dot" cx="12" cy="17.5" r="1.25" />
+    </g>
+  </g>
+</svg>
