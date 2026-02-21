@@ -16,6 +16,7 @@ use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
 use crate::server_fns::preferences::{get_temp_unit, save_temp_unit, get_hemisphere};
+use crate::server_fns::devices::get_devices;
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
 
@@ -37,6 +38,17 @@ pub fn HomePage() -> impl IntoView {
 
     let zones_memo = Memo::new(move |_| {
         zones_resource.get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+    });
+
+    // Load hardware devices
+    let devices_resource = Resource::new(
+        move || zones_version.get(), // reload when zones change (devices may be added)
+        |_| get_devices(),
+    );
+    let devices_memo = Memo::new(move |_| {
+        devices_resource.get()
             .and_then(|r| r.ok())
             .unwrap_or_default()
     });
@@ -328,11 +340,13 @@ pub fn HomePage() -> impl IntoView {
 
                             {move || show_settings.get().then(|| {
                                 let current_zones = zones_memo.get();
+                                let current_devices = devices_memo.get();
                                 let current_temp_unit = temp_unit.get();
                                 let current_hemi = hemisphere.get();
                                 view! {
                                     <SettingsModal
                                         zones=current_zones
+                                        devices=current_devices
                                         initial_temp_unit=current_temp_unit.clone()
                                         initial_hemisphere=current_hemi
                                         on_close=move |new_unit: String| {

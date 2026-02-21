@@ -36,6 +36,10 @@ mod ssr_types {
         pub data_source_type: Option<String>,
         #[surreal(default)]
         pub data_source_config: String,
+        #[surreal(default)]
+        pub hardware_device: Option<surrealdb::types::RecordId>,
+        #[surreal(default)]
+        pub hardware_port: Option<i32>,
     }
 
     impl GrowingZoneDbRow {
@@ -51,6 +55,8 @@ mod ssr_types {
                 sort_order: self.sort_order,
                 data_source_type: self.data_source_type,
                 data_source_config: crate::crypto::decrypt_or_raw(&self.data_source_config),
+                hardware_device_id: self.hardware_device.as_ref().map(record_id_to_string),
+                hardware_port: self.hardware_port,
             }
         }
     }

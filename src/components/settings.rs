@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::orchid::GrowingZone;
+use crate::orchid::{GrowingZone, HardwareDevice};
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE, BTN_SECONDARY, BTN_DANGER};
 
 const INPUT_SM: &str = "w-full px-3 py-2 text-sm bg-white/80 border border-stone-300/50 rounded-lg outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
@@ -9,6 +9,8 @@ const BTN_SM: &str = "py-1.5 px-3 text-xs font-semibold rounded-lg border-none c
 #[component]
 pub fn SettingsModal(
     zones: Vec<GrowingZone>,
+    #[prop(default = vec![])]
+    devices: Vec<HardwareDevice>,
     initial_temp_unit: String,
     initial_hemisphere: String,
     on_close: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -17,6 +19,7 @@ pub fn SettingsModal(
 ) -> impl IntoView {
     let (temp_unit, set_temp_unit) = signal(initial_temp_unit);
     let (hemisphere, set_hemisphere) = signal(initial_hemisphere);
+    let (local_devices, set_local_devices) = signal(devices);
 
     // Zone management state
     let (show_add_zone, set_show_add_zone) = signal(false);
@@ -123,6 +126,17 @@ pub fn SettingsModal(
 
                     <hr class="my-6 border-stone-200 dark:border-stone-700" />
 
+                    // Hardware Devices section
+                    <div class="mb-6">
+                        <h3 class="mb-4 text-sm font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Hardware Devices"</h3>
+                        <crate::components::device_management::DeviceList
+                            devices=local_devices
+                            set_devices=set_local_devices
+                        />
+                    </div>
+
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
+
                     // Growing Zones section
                     <div class="mb-6">
                         <h3 class="mb-4 text-sm font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Growing Zones"</h3>
@@ -132,7 +146,7 @@ pub fn SettingsModal(
                                 each=move || local_zones.get()
                                 key=|zone| zone.id.clone()
                                 children=move |zone| {
-                                    view! { <ZoneCard zone=zone on_delete=delete_zone on_zones_changed=on_zones_changed is_saving=is_zone_saving set_local_zones=set_local_zones on_show_wizard=on_show_wizard temp_unit=temp_unit /> }
+                                    view! { <ZoneCard zone=zone on_delete=delete_zone on_zones_changed=on_zones_changed is_saving=is_zone_saving set_local_zones=set_local_zones on_show_wizard=on_show_wizard temp_unit=temp_unit devices=local_devices /> }
                                 }
                             />
                         </div>
@@ -248,6 +262,7 @@ fn ZoneCard(
     set_local_zones: WriteSignal<Vec<GrowingZone>>,
     on_show_wizard: impl Fn(GrowingZone) + 'static + Copy + Send + Sync,
     temp_unit: ReadSignal<String>,
+    devices: ReadSignal<Vec<HardwareDevice>>,
 ) -> impl IntoView {
     let zone_id_for_delete = zone.id.clone();
     let zone_id_for_config = zone.id.clone();
@@ -264,7 +279,7 @@ fn ZoneCard(
         _ => "inline-flex py-0.5 px-2 text-xs font-semibold rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400",
     };
 
-    let has_source = zone.data_source_type.is_some();
+    let has_source = zone.data_source_type.is_some() || zone.hardware_device_id.is_some();
     let source_dot_class = if has_source {
         "inline-block w-2 h-2 rounded-full bg-emerald-500"
     } else {
@@ -339,10 +354,13 @@ fn ZoneCard(
                         zone_id=zone_id_for_config.clone()
                         current_type=zone.data_source_type.clone()
                         current_config=zone.data_source_config.clone()
+                        current_hardware_device_id=zone.hardware_device_id.clone()
+                        current_hardware_port=zone.hardware_port
                         on_saved=move || {
                             on_zones_changed();
                         }
                         set_local_zones=set_local_zones
+                        devices=devices
                     />
                 }
             })}
@@ -350,45 +368,43 @@ fn ZoneCard(
     }
 }
 
-/// Data source configuration form for a single zone
+/// Data source configuration form for a single zone.
+/// Supports both device-linked mode (tempest/ac_infinity via shared devices)
+/// and legacy mode (weather_api with zone-level config).
 #[component]
 fn DataSourceConfig(
     zone_id: String,
     current_type: Option<String>,
     current_config: String,
+    #[prop(default = None)]
+    current_hardware_device_id: Option<String>,
+    #[prop(default = None)]
+    current_hardware_port: Option<i32>,
     on_saved: impl Fn() + 'static + Copy + Send + Sync,
     set_local_zones: WriteSignal<Vec<GrowingZone>>,
+    devices: ReadSignal<Vec<HardwareDevice>>,
 ) -> impl IntoView {
-    let initial_provider = current_type.clone().unwrap_or_default();
-    let (provider, set_provider) = signal(initial_provider);
-
-    // Parse existing config to initialize fields with correct values
-    let parsed = serde_json::from_str::<serde_json::Value>(&current_config).ok();
-
-    let get_str = |key: &str| -> String {
-        parsed.as_ref()
-            .and_then(|j| j.get(key))
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string()
+    // Determine initial provider from hardware device or legacy data_source_type
+    let initial_provider = if current_hardware_device_id.is_some() {
+        "device_linked".to_string()
+    } else {
+        current_type.clone().unwrap_or_default()
     };
 
-    // Tempest fields
-    let (tempest_station, set_tempest_station) = signal(get_str("station_id"));
-    let (tempest_token, set_tempest_token) = signal(get_str("token"));
+    let (provider, set_provider) = signal(initial_provider);
 
-    // AC Infinity fields
-    let (aci_email, set_aci_email) = signal(get_str("email"));
-    let (aci_password, set_aci_password) = signal(get_str("password"));
-    let (aci_device, set_aci_device) = signal(get_str("device_id"));
-    let init_port = parsed.as_ref()
-        .and_then(|j| j.get("port"))
-        .and_then(|v| v.as_u64())
-        .map(|n| n.to_string())
-        .unwrap_or_else(|| "1".to_string());
-    let (aci_port, set_aci_port) = signal(init_port);
+    // Device picker state
+    let (selected_device_id, set_selected_device_id) = signal(
+        current_hardware_device_id.clone().unwrap_or_default()
+    );
+    let (selected_port, set_selected_port) = signal(
+        current_hardware_port.map(|p| p.to_string()).unwrap_or_else(|| "1".to_string())
+    );
 
-    // Weather API fields
+    // Parse existing config to initialize legacy fields
+    let parsed = serde_json::from_str::<serde_json::Value>(&current_config).ok();
+
+    // Weather API fields (only legacy mode)
     let get_f64 = |key: &str| -> String {
         parsed.as_ref()
             .and_then(|j| j.get(key))
@@ -403,70 +419,143 @@ fn DataSourceConfig(
     let (is_testing, set_is_testing) = signal(false);
     let (is_saving_ds, set_is_saving_ds) = signal(false);
 
-    let build_config_json = move || -> String {
-        match provider.get().as_str() {
-            "tempest" => serde_json::json!({
-                "station_id": tempest_station.get(),
-                "token": tempest_token.get(),
-            }).to_string(),
-            "ac_infinity" => serde_json::json!({
-                "email": aci_email.get(),
-                "password": aci_password.get(),
-                "device_id": aci_device.get(),
-                "port": aci_port.get().parse::<u32>().unwrap_or(1),
-            }).to_string(),
-            "weather_api" => serde_json::json!({
-                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
-                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
-            }).to_string(),
-            _ => String::new(),
-        }
-    };
+    let had_source = current_type.is_some() || current_hardware_device_id.is_some();
 
     let test_connection = move |_| {
         let prov = provider.get();
         if prov.is_empty() { return; }
-        let config = build_config_json();
         set_is_testing.set(true);
         set_test_result.set(None);
 
-        leptos::task::spawn_local(async move {
-            match crate::server_fns::climate::test_data_source(prov, config).await {
-                Ok(msg) => set_test_result.set(Some(Ok(msg))),
-                Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+        if prov == "weather_api" {
+            let config = serde_json::json!({
+                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
+                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
+            }).to_string();
+            leptos::task::spawn_local(async move {
+                match crate::server_fns::climate::test_data_source("weather_api".into(), config).await {
+                    Ok(msg) => set_test_result.set(Some(Ok(msg))),
+                    Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+                }
+                set_is_testing.set(false);
+            });
+        } else {
+            // For device-linked types, test through the device's stored config
+            let dev_id = selected_device_id.get();
+            let devs = devices.get();
+            if let Some(device) = devs.iter().find(|d| d.id == dev_id) {
+                let dt = device.device_type.clone();
+                let cfg = device.config.clone();
+                leptos::task::spawn_local(async move {
+                    match crate::server_fns::devices::test_device(dt, cfg).await {
+                        Ok(msg) => set_test_result.set(Some(Ok(msg))),
+                        Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+                    }
+                    set_is_testing.set(false);
+                });
+            } else {
+                set_test_result.set(Some(Err("No device selected".into())));
+                set_is_testing.set(false);
             }
-            set_is_testing.set(false);
-        });
+        }
     };
 
     let zone_id_save = StoredValue::new(zone_id.clone());
     let do_save = move || {
         let prov = provider.get();
-        let provider_opt = if prov.is_empty() { None } else { Some(prov.clone()) };
-        let config = build_config_json();
         let zid = zone_id_save.get_value();
         set_is_saving_ds.set(true);
 
-        leptos::task::spawn_local(async move {
-            match crate::server_fns::climate::configure_zone_data_source(
-                zid.clone(), provider_opt.clone(), config,
-            ).await {
-                Ok(()) => {
-                    set_local_zones.update(|zones| {
-                        if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
-                            z.data_source_type = provider_opt;
-                            z.data_source_config = String::new();
-                        }
-                    });
-                    set_test_result.set(Some(Ok("Saved successfully!".into())));
-                    on_saved();
+        if prov.is_empty() {
+            // Remove: unlink device + clear legacy config
+            leptos::task::spawn_local(async move {
+                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
+                let _ = crate::server_fns::climate::configure_zone_data_source(
+                    zid.clone(), None, String::new()
+                ).await;
+                set_local_zones.update(|zones| {
+                    if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
+                        z.data_source_type = None;
+                        z.data_source_config = String::new();
+                        z.hardware_device_id = None;
+                        z.hardware_port = None;
+                    }
+                });
+                set_test_result.set(Some(Ok("Data source removed".into())));
+                on_saved();
+                set_is_saving_ds.set(false);
+            });
+        } else if prov == "weather_api" {
+            // Legacy zone-level config
+            let config = serde_json::json!({
+                "latitude": wa_lat.get().parse::<f64>().unwrap_or(0.0),
+                "longitude": wa_lon.get().parse::<f64>().unwrap_or(0.0),
+            }).to_string();
+
+            leptos::task::spawn_local(async move {
+                // Also unlink any device first
+                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
+
+                match crate::server_fns::climate::configure_zone_data_source(
+                    zid.clone(), Some("weather_api".to_string()), config,
+                ).await {
+                    Ok(()) => {
+                        set_local_zones.update(|zones| {
+                            if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
+                                z.data_source_type = Some("weather_api".to_string());
+                                z.data_source_config = String::new();
+                                z.hardware_device_id = None;
+                                z.hardware_port = None;
+                            }
+                        });
+                        set_test_result.set(Some(Ok("Saved successfully!".into())));
+                        on_saved();
+                    }
+                    Err(e) => {
+                        set_test_result.set(Some(Err(format!("Save failed: {}", e))));
+                    }
                 }
-                Err(e) => {
-                    set_test_result.set(Some(Err(format!("Save failed: {}", e))));
-                }
+                set_is_saving_ds.set(false);
+            });
+        } else {
+            // Device-linked: tempest or ac_infinity
+            let dev_id = selected_device_id.get();
+            let port = if prov == "ac_infinity" {
+                Some(selected_port.get().parse::<i32>().unwrap_or(1))
+            } else {
+                None
+            };
+
+            if dev_id.is_empty() {
+                set_test_result.set(Some(Err("Please select a device".into())));
+                set_is_saving_ds.set(false);
+                return;
             }
-            set_is_saving_ds.set(false);
-        });
+
+            let dev_id_for_update = dev_id.clone();
+            leptos::task::spawn_local(async move {
+                match crate::server_fns::devices::link_zone_to_device(
+                    zid.clone(), dev_id.clone(), port,
+                ).await {
+                    Ok(()) => {
+                        set_local_zones.update(|zones| {
+                            if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
+                                z.hardware_device_id = Some(dev_id_for_update);
+                                z.hardware_port = port;
+                                z.data_source_type = None;
+                                z.data_source_config = String::new();
+                            }
+                        });
+                        set_test_result.set(Some(Ok("Linked to device!".into())));
+                        on_saved();
+                    }
+                    Err(e) => {
+                        set_test_result.set(Some(Err(format!("Link failed: {}", e))));
+                    }
+                }
+                set_is_saving_ds.set(false);
+            });
+        }
     };
 
     view! {
@@ -476,8 +565,11 @@ fn DataSourceConfig(
                 <select class=INPUT_SM
                     prop:value=provider
                     on:change=move |ev| {
-                        set_provider.set(event_target_value(&ev));
+                        let val = event_target_value(&ev);
+                        set_provider.set(val.clone());
                         set_test_result.set(None);
+                        // Reset device selection when changing provider
+                        set_selected_device_id.set(String::new());
                     }
                 >
                     <option value="">"None"</option>
@@ -487,92 +579,119 @@ fn DataSourceConfig(
                 </select>
             </div>
 
-            {move || match provider.get().as_str() {
-                "tempest" => view! {
-                    <div class="p-3 mb-3 rounded-lg bg-sky-50/50 dark:bg-sky-900/10">
-                        <div class="mb-3">
-                            <label class=LABEL_SM>"Station ID"</label>
-                            <input type="text" class=INPUT_SM
-                                placeholder="e.g. 12345"
-                                prop:value=tempest_station
-                                on:input=move |ev| set_tempest_station.set(event_target_value(&ev))
-                            />
+            {move || {
+                let prov = provider.get();
+                match prov.as_str() {
+                    "tempest" => {
+                        let filtered: Vec<HardwareDevice> = devices.get().into_iter()
+                            .filter(|d| d.device_type == "tempest")
+                            .collect();
+                        if filtered.is_empty() {
+                            view! {
+                                <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">
+                                    "No Tempest devices configured. Add one in the Hardware Devices section above."
+                                </p>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <div class="p-3 mb-3 rounded-lg bg-sky-50/50 dark:bg-sky-900/10">
+                                    <label class=LABEL_SM>"Device"</label>
+                                    <select class=INPUT_SM
+                                        prop:value=selected_device_id
+                                        on:change=move |ev| set_selected_device_id.set(event_target_value(&ev))
+                                    >
+                                        <option value="">"Select device..."</option>
+                                        {filtered.into_iter().map(|d| {
+                                            let id = d.id.clone();
+                                            view! { <option value=id>{d.name}</option> }
+                                        }).collect::<Vec<_>>()}
+                                    </select>
+                                </div>
+                            }.into_any()
+                        }
+                    }
+                    "ac_infinity" => {
+                        let filtered: Vec<HardwareDevice> = devices.get().into_iter()
+                            .filter(|d| d.device_type == "ac_infinity")
+                            .collect();
+                        if filtered.is_empty() {
+                            view! {
+                                <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">
+                                    "No AC Infinity devices configured. Add one in the Hardware Devices section above."
+                                </p>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <div class="p-3 mb-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10">
+                                    <div class="mb-3">
+                                        <label class=LABEL_SM>"Device"</label>
+                                        <select class=INPUT_SM
+                                            prop:value=selected_device_id
+                                            on:change=move |ev| set_selected_device_id.set(event_target_value(&ev))
+                                        >
+                                            <option value="">"Select device..."</option>
+                                            {filtered.into_iter().map(|d| {
+                                                let id = d.id.clone();
+                                                view! { <option value=id>{d.name}</option> }
+                                            }).collect::<Vec<_>>()}
+                                        </select>
+                                    </div>
+                                    <div class="w-24">
+                                        <label class=LABEL_SM>"Port"</label>
+                                        <input type="number" class=INPUT_SM
+                                            min="1" max="10"
+                                            prop:value=selected_port
+                                            on:input=move |ev| set_selected_port.set(event_target_value(&ev))
+                                        />
+                                    </div>
+                                </div>
+                            }.into_any()
+                        }
+                    }
+                    "weather_api" => view! {
+                        <div class="p-3 mb-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10">
+                            <div class="flex gap-3">
+                                <div class="flex-1">
+                                    <label class=LABEL_SM>"Latitude"</label>
+                                    <input type="number" class=INPUT_SM step="0.0001"
+                                        placeholder="e.g. 37.7749"
+                                        prop:value=wa_lat
+                                        on:input=move |ev| set_wa_lat.set(event_target_value(&ev))
+                                    />
+                                </div>
+                                <div class="flex-1">
+                                    <label class=LABEL_SM>"Longitude"</label>
+                                    <input type="number" class=INPUT_SM step="0.0001"
+                                        placeholder="e.g. -122.4194"
+                                        prop:value=wa_lon
+                                        on:input=move |ev| set_wa_lon.set(event_target_value(&ev))
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class=LABEL_SM>"API Token"</label>
-                            <input type="password" class=INPUT_SM
-                                placeholder="Your WeatherFlow API token"
-                                prop:value=tempest_token
-                                on:input=move |ev| set_tempest_token.set(event_target_value(&ev))
-                            />
-                        </div>
-                    </div>
-                }.into_any(),
-                "ac_infinity" => view! {
-                    <div class="p-3 mb-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10">
-                        <div class="flex gap-3 mb-3">
-                            <div class="flex-1">
-                                <label class=LABEL_SM>"Email"</label>
-                                <input type="email" class=INPUT_SM
-                                    placeholder="AC Infinity account email"
-                                    prop:value=aci_email
-                                    on:input=move |ev| set_aci_email.set(event_target_value(&ev))
-                                />
+                    }.into_any(),
+                    "device_linked" => {
+                        // Currently linked to a device — show which one
+                        let dev_id = selected_device_id.get();
+                        let devs = devices.get();
+                        let device_name = devs.iter()
+                            .find(|d| d.id == dev_id)
+                            .map(|d| format!("{} ({})", d.name, d.device_type))
+                            .unwrap_or_else(|| "Unknown device".to_string());
+                        view! {
+                            <div class="p-3 mb-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10">
+                                <p class="text-sm text-stone-600 dark:text-stone-400">
+                                    "Linked to: " <strong>{device_name}</strong>
+                                    {current_hardware_port.map(|p| format!(" (Port {})", p)).unwrap_or_default()}
+                                </p>
+                                <p class="mt-1 text-xs text-stone-400">"Change the data source type above to reconfigure."</p>
                             </div>
-                            <div class="flex-1">
-                                <label class=LABEL_SM>"Password"</label>
-                                <input type="password" class=INPUT_SM
-                                    placeholder="Account password"
-                                    prop:value=aci_password
-                                    on:input=move |ev| set_aci_password.set(event_target_value(&ev))
-                                />
-                            </div>
-                        </div>
-                        <div class="flex gap-3">
-                            <div class="flex-1">
-                                <label class=LABEL_SM>"Device ID"</label>
-                                <input type="text" class=INPUT_SM
-                                    placeholder="e.g. ABC123DEF"
-                                    prop:value=aci_device
-                                    on:input=move |ev| set_aci_device.set(event_target_value(&ev))
-                                />
-                            </div>
-                            <div class="w-20">
-                                <label class=LABEL_SM>"Port"</label>
-                                <input type="number" class=INPUT_SM
-                                    min="1" max="10"
-                                    prop:value=aci_port
-                                    on:input=move |ev| set_aci_port.set(event_target_value(&ev))
-                                />
-                            </div>
-                        </div>
-                    </div>
-                }.into_any(),
-                "weather_api" => view! {
-                    <div class="p-3 mb-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10">
-                        <div class="flex gap-3">
-                            <div class="flex-1">
-                                <label class=LABEL_SM>"Latitude"</label>
-                                <input type="number" class=INPUT_SM step="0.0001"
-                                    placeholder="e.g. 37.7749"
-                                    prop:value=wa_lat
-                                    on:input=move |ev| set_wa_lat.set(event_target_value(&ev))
-                                />
-                            </div>
-                            <div class="flex-1">
-                                <label class=LABEL_SM>"Longitude"</label>
-                                <input type="number" class=INPUT_SM step="0.0001"
-                                    placeholder="e.g. -122.4194"
-                                    prop:value=wa_lon
-                                    on:input=move |ev| set_wa_lon.set(event_target_value(&ev))
-                                />
-                            </div>
-                        </div>
-                    </div>
-                }.into_any(),
-                _ => view! {
-                    <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">"No data source configured for this zone."</p>
-                }.into_any(),
+                        }.into_any()
+                    }
+                    _ => view! {
+                        <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">"No data source configured for this zone."</p>
+                    }.into_any(),
+                }
             }}
 
             // Test result display
@@ -590,7 +709,7 @@ fn DataSourceConfig(
             // Action buttons
             {move || {
                 let prov = provider.get();
-                if prov.is_empty() && current_type.is_some() {
+                if prov.is_empty() && had_source {
                     // Provider changed to None — show save to remove
                     view! {
                         <div class="flex gap-2">
@@ -601,7 +720,7 @@ fn DataSourceConfig(
                             >"Remove Data Source"</button>
                         </div>
                     }.into_any()
-                } else if !prov.is_empty() {
+                } else if !prov.is_empty() && prov != "device_linked" {
                     view! {
                         <div class="flex gap-2">
                             <button

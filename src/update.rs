@@ -236,6 +236,8 @@ mod tests {
             sort_order: 0,
             data_source_type: None,
             data_source_config: String::new(),
+            hardware_device_id: None,
+            hardware_port: None,
         };
 
         let cmds = update(&mut model, Msg::ShowWizard(Some(zone.clone())));

@@ -1,6 +1,7 @@
 pub mod alerts;
 pub mod auth;
 pub mod climate;
+pub mod devices;
 pub mod orchids;
 pub mod images;
 pub mod preferences;

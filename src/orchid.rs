@@ -105,6 +105,21 @@ pub struct GrowingZone {
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub data_source_config: String,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub hardware_device_id: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub hardware_port: Option<i32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct HardwareDevice {
+    pub id: String,
+    pub name: String,
+    pub device_type: String,
+    #[serde(default)]
+    pub config: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -524,6 +539,8 @@ mod tests {
                 sort_order: 0,
                 data_source_type: None,
                 data_source_config: String::new(),
+                hardware_device_id: None,
+                hardware_port: None,
             },
             GrowingZone {
                 id: "2".into(),
@@ -536,6 +553,8 @@ mod tests {
                 sort_order: 1,
                 data_source_type: None,
                 data_source_config: String::new(),
+                hardware_device_id: None,
+                hardware_port: None,
             },
         ];
 
@@ -1274,5 +1293,68 @@ mod tests {
             let deserialized: SeasonalPhase = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized, phase);
         }
+    }
+
+    // ── HardwareDevice tests ────────────────────────────────────────
+
+    #[test]
+    fn test_hardware_device_serde_roundtrip() {
+        let device = HardwareDevice {
+            id: "hardware_device:abc123".into(),
+            name: "My Tempest".into(),
+            device_type: "tempest".into(),
+            config: r#"{"station_id":"12345","token":"tok"}"#.into(),
+        };
+
+        let json = serde_json::to_string(&device).unwrap();
+        let deserialized: HardwareDevice = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.id, "hardware_device:abc123");
+        assert_eq!(deserialized.name, "My Tempest");
+        assert_eq!(deserialized.device_type, "tempest");
+        assert_eq!(deserialized.config, r#"{"station_id":"12345","token":"tok"}"#);
+    }
+
+    #[test]
+    fn test_hardware_device_default_config() {
+        let json = r#"{"id":"hardware_device:x","name":"Dev","device_type":"ac_infinity"}"#;
+        let device: HardwareDevice = serde_json::from_str(json).unwrap();
+        assert_eq!(device.config, "");
+    }
+
+    // ── GrowingZone backward compat with hardware fields ────────────
+
+    #[test]
+    fn test_growing_zone_backward_compat_without_hardware_fields() {
+        let json = r#"{"id":"gz:1","name":"Zone A","light_level":"Low","location_type":"Indoor","sort_order":0}"#;
+        let zone: GrowingZone = serde_json::from_str(json).unwrap();
+
+        assert_eq!(zone.hardware_device_id, None);
+        assert_eq!(zone.hardware_port, None);
+        assert_eq!(zone.data_source_type, None);
+    }
+
+    #[test]
+    fn test_growing_zone_serde_with_hardware_fields() {
+        let zone = GrowingZone {
+            id: "gz:1".into(),
+            name: "Test Zone".into(),
+            light_level: LightRequirement::Medium,
+            location_type: LocationType::Indoor,
+            temperature_range: String::new(),
+            humidity: String::new(),
+            description: String::new(),
+            sort_order: 0,
+            data_source_type: None,
+            data_source_config: String::new(),
+            hardware_device_id: Some("hardware_device:abc".into()),
+            hardware_port: Some(3),
+        };
+
+        let json = serde_json::to_string(&zone).unwrap();
+        let deserialized: GrowingZone = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.hardware_device_id, Some("hardware_device:abc".into()));
+        assert_eq!(deserialized.hardware_port, Some(3));
     }
 }
