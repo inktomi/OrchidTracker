@@ -6,6 +6,6 @@ rustflags = ["--cfg", "leptos_debuginfo"]
 [target.aarch64-apple-darwin]
 rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/lld/bin/ld64.lld"]
 
-# Use bundled rust-lld for faster native linking on Linux
+# Use LLD for faster native linking on Linux (requires: apt install lld)
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-self-contained=+linker", "-C", "linker-flavor=gnu-lld-cc"]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
