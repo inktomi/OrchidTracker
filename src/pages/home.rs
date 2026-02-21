@@ -151,7 +151,7 @@ pub fn HomePage() -> impl IntoView {
                 orchid.active_fertilizer_multiplier,
             ).await {
                 Ok(_) => {},
-                Err(e) => set_toast_msg.set(Some(format!("Failed to add orchid: {}", e))),
+                Err(e) => set_toast_msg.set(Some(format!("Failed to add plant: {}", e))),
             }
             orchids_resource.refetch();
         });
@@ -160,7 +160,7 @@ pub fn HomePage() -> impl IntoView {
     let on_update = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
             if let Err(e) = update_orchid(orchid.clone()).await {
-                set_toast_msg.set(Some(format!("Failed to update orchid: {}", e)));
+                set_toast_msg.set(Some(format!("Failed to update plant: {}", e)));
             }
             orchids_resource.refetch();
         });
@@ -170,14 +170,14 @@ pub fn HomePage() -> impl IntoView {
         #[cfg(feature = "hydrate")]
         {
             if let Some(window) = web_sys::window() {
-                if !window.confirm_with_message("Are you sure you want to delete this orchid?").unwrap_or(false) {
+                if !window.confirm_with_message("Are you sure you want to delete this plant?").unwrap_or(false) {
                     return;
                 }
             }
         }
         leptos::task::spawn_local(async move {
             if let Err(e) = delete_orchid(id).await {
-                set_toast_msg.set(Some(format!("Failed to delete orchid: {}", e)));
+                set_toast_msg.set(Some(format!("Failed to delete plant: {}", e)));
             }
             orchids_resource.refetch();
         });

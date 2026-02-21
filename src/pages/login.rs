@@ -57,7 +57,7 @@ pub fn LoginPage() -> impl IntoView {
                     <div class="max-w-lg">
                         <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Cultivate with confidence"</h1>
                         <p class="text-lg leading-relaxed text-white/60">
-                            "Track your orchid collection, monitor growing conditions, and get AI-powered care recommendations\u{2014}all in one place."
+                            "Track your plant collection, monitor growing conditions, and get AI-powered care recommendations\u{2014}all in one place."
                         </p>
                     </div>
 

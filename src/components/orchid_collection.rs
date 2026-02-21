@@ -22,7 +22,7 @@ pub fn OrchidCollection(
 ) -> impl IntoView {
     let (sort_needs_water, set_sort_needs_water) = signal(false);
     view! {
-        <Suspense fallback=move || view! { <p class="text-center text-stone-500">"Loading orchids..."</p> }>
+        <Suspense fallback=move || view! { <p class="text-center text-stone-500">"Loading plants..."</p> }>
             {move || orchids_resource.get().map(|result| {
                 let orchids = result.unwrap_or_default();
 
@@ -132,7 +132,7 @@ fn EmptyCollection(
 
             <h2 class="mb-3 text-2xl sm:text-3xl text-stone-800 dark:text-stone-100">"Your collection awaits"</h2>
             <p class="mb-8 max-w-sm text-sm leading-relaxed text-stone-400 dark:text-stone-500">
-                "Your growing zones are all set up. Now add your first orchid \u{2014} "
+                "Your growing zones are all set up. Now add your first plant \u{2014} "
                 "enter it by hand, or snap a photo of a plant tag and let AI look it up for you."
             </p>
 
@@ -145,7 +145,7 @@ fn EmptyCollection(
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
                     </svg>
-                    "Add Your First Orchid"
+                    "Add Your First Plant"
                 </button>
                 <button
                     class="flex gap-2 justify-center items-center py-3 px-6 text-sm font-medium rounded-xl border transition-all duration-200 cursor-pointer text-stone-600 bg-surface border-stone-200/60 dark:text-stone-300 dark:bg-stone-800 dark:border-stone-700 dark:hover:border-primary-light/30 dark:hover:bg-primary-light/5 hover:border-primary/30 hover:bg-primary/5 active:scale-[0.98]"
@@ -154,7 +154,7 @@ fn EmptyCollection(
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
                     </svg>
-                    "ID an Orchid"
+                    "ID a Plant"
                 </button>
             </div>
 

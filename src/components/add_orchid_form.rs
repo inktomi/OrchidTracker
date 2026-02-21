@@ -157,7 +157,7 @@ pub fn AddOrchidForm(
         <div class=MODAL_OVERLAY>
             <div class=MODAL_CONTENT>
                 <div class=MODAL_HEADER>
-                    <h2 class="m-0">"Add New Orchid"</h2>
+                    <h2 class="m-0">"Add New Plant"</h2>
                     <button class=BTN_CLOSE on:click=move |_| on_close()>"Close"</button>
                 </div>
                 <div>

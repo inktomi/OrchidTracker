@@ -190,7 +190,7 @@ fn LeftPanel(step: ReadSignal<u32>) -> impl IntoView {
                         0 => view! {
                             <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Welcome to your growing space"</h1>
                             <p class="text-lg leading-relaxed text-white/60">
-                                "Before adding orchids, let's define where they'll live. Each zone represents a physical location with its own light, temperature, and humidity conditions."
+                                "Before adding plants, let's define where they'll live. Each zone represents a physical location with its own light, temperature, and humidity conditions."
                             </p>
                         }.into_any(),
                         1 => view! {
@@ -238,7 +238,7 @@ fn StepWelcome(
         <div>
             <h2 class="mb-2 text-3xl text-stone-800 dark:text-stone-100">"Set up your growing space"</h2>
             <p class="mb-8 text-sm leading-relaxed text-stone-400 dark:text-stone-500">
-                "Zones represent the different places where your orchids grow \u{2014} a shelf, a windowsill, a patio. Each zone tracks light, temperature, and humidity so the app can suggest the best placement for each orchid."
+                "Zones represent the different places where your plants grow \u{2014} a shelf, a windowsill, a patio. Each zone tracks light, temperature, and humidity so the app can suggest the best placement for each plant."
             </p>
 
             <div class="p-5 mb-8 rounded-xl border bg-secondary/50 border-stone-200/60 dark:border-stone-700/60">

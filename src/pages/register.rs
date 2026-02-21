@@ -65,7 +65,7 @@ pub fn RegisterPage() -> impl IntoView {
                     <div class="max-w-lg">
                         <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Start your collection"</h1>
                         <p class="text-lg leading-relaxed text-white/60">
-                            "Join a growing community of orchid enthusiasts. Catalog your plants, track their care, and discover new species with AI assistance."
+                            "Join a growing community of plant enthusiasts. Catalog your plants, track their care, and discover new species with AI assistance."
                         </p>
                     </div>
 
@@ -106,7 +106,7 @@ pub fn RegisterPage() -> impl IntoView {
                     <div class="mb-2">
                         <h2 class="text-3xl text-stone-800 dark:text-stone-100">"Create account"</h2>
                     </div>
-                    <p class="mb-8 text-sm text-stone-400 dark:text-stone-500">"Set up your orchid collection"</p>
+                    <p class="mb-8 text-sm text-stone-400 dark:text-stone-500">"Set up your plant collection"</p>
 
                     {move || error.get().map(|err| view! {
                         <div class="flex gap-2 items-center p-3 mb-6 text-sm rounded-xl border animate-fade-in text-danger bg-danger/5 border-danger/10">

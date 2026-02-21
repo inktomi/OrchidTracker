@@ -76,7 +76,7 @@ pub fn ScannerModal(
 
                 <div class=SCANNER_HEADER>
                     <div>
-                        <h2 class="m-0 text-white">"ID Orchid"</h2>
+                        <h2 class="m-0 text-white">"ID Plant"</h2>
                         <p class="mt-1 mb-0 text-xs text-stone-500">"Scan a tag or search by name"</p>
                     </div>
                     <button class=SCANNER_CLOSE on:click=move |_| on_close()>"Close"</button>
@@ -500,7 +500,7 @@ fn SearchTab(
 
                         <div class="py-8 text-center">
                             <div class="mb-3 text-3xl opacity-20">{"\u{1F3F7}\u{FE0F}"}</div>
-                            <p class="text-sm text-stone-500">"Type an orchid species name and we'll check if it suits your zones"</p>
+                            <p class="text-sm text-stone-500">"Type a species name and we'll check if it suits your zones"</p>
                         </div>
                     </div>
                 }.into_any()

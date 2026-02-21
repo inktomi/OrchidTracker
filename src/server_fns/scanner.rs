@@ -307,14 +307,14 @@ pub async fn analyze_orchid_image(
     };
 
     let prompt = format!(
-        "Identify the orchid species from this image. \
+        "Identify the plant species from this image. This is most likely an orchid but could be any houseplant or companion plant (e.g. Rhipsalis, Hoya, fern, Tillandsia). \
         Think step-by-step: \
         1. Identify the species with high confidence (look for tags). \
         2. Analyze its natural habitat and care requirements. \
         3. Compare requirements against my conditions: {}. \
         4. Consider my growing zones: {}. \
         5. Check if I own it: {:?}. \
-        6. Determine the orchid's native habitat region and approximate center-point coordinates for its primary native range. \
+        6. Determine the plant's native habitat region and approximate center-point coordinates for its primary native range. \
         Then, evaluate the fit. \
         Finally, return ONLY valid JSON with this structure (no markdown): \
         {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"temp_min\": 18.0, \"temp_max\": 28.0, \"humidity_min\": 50.0, \"humidity_max\": 80.0, \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
@@ -372,14 +372,14 @@ pub async fn analyze_orchid_by_name(
     };
 
     let prompt = format!(
-        "I'm considering getting a '{}' orchid. \
+        "I'm considering getting a plant: '{}'. \
         Think step-by-step: \
-        1. Confirm the species exists and determine its full botanical name. If the name is ambiguous, pick the most common orchid match. \
+        1. Confirm the species exists and determine its full botanical name. If the name is ambiguous, pick the most common match for this species name. Do not assume it is an orchid \u{2014} identify the correct genus and family. \
         2. Analyze its natural habitat and care requirements. \
         3. Compare requirements against my conditions: {}. \
         4. Consider my growing zones: {}. \
         5. Check if I own it: {:?}. \
-        6. Determine the orchid's native habitat region and approximate center-point coordinates for its primary native range. \
+        6. Determine the plant's native habitat region and approximate center-point coordinates for its primary native range. \
         Then, evaluate the fit. \
         Finally, return ONLY valid JSON with this structure (no markdown): \
         {{ \"species_name\": \"...\", \"fit_category\": \"Good Fit\", \"reason\": \"...\", \"already_owned\": false, \"water_freq\": 7, \"light_req\": \"Medium\", \"temp_range\": \"18-28C\", \"temp_min\": 18.0, \"temp_max\": 28.0, \"humidity_min\": 50.0, \"humidity_max\": 80.0, \"placement_suggestion\": \"...\", \"conservation_status\": \"CITES II\", \"native_region\": \"Cloud forests of Ecuador\", \"native_latitude\": -1.83, \"native_longitude\": -78.18 }} \
@@ -496,7 +496,7 @@ pub async fn generate_care_recap(
     });
 
     let prompt = format!(
-        "Given this {} orchid's care history over the past 6 months, explain in 2-3 sentences \
+        "Given this {}'s care history over the past 6 months, explain in 2-3 sentences \
          what likely contributed to this {}. Be specific about which care actions helped. \
          Keep the tone warm and encouraging. Data: {}",
         species, event_type, care_summary
