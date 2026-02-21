@@ -510,3 +510,106 @@ pub async fn generate_care_recap(
         }
     }
 }
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+
+    // ── extract_gemini_text ─────────────────────────────────────────
+
+    #[test]
+    fn test_extract_gemini_text_valid_response() {
+        let json = serde_json::json!({
+            "candidates": [{
+                "content": {
+                    "parts": [{ "text": "{\"species_name\": \"Phalaenopsis bellina\"}" }]
+                }
+            }]
+        });
+        let result = extract_gemini_text(&json);
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("Phalaenopsis bellina"));
+    }
+
+    #[test]
+    fn test_extract_gemini_text_strips_markdown_fences() {
+        let json = serde_json::json!({
+            "candidates": [{
+                "content": {
+                    "parts": [{ "text": "```json\n{\"species_name\": \"Dendrobium\"}\n```" }]
+                }
+            }]
+        });
+        let result = extract_gemini_text(&json).unwrap();
+        assert!(!result.contains("```"));
+        assert!(result.contains("Dendrobium"));
+    }
+
+    #[test]
+    fn test_extract_gemini_text_missing_candidates() {
+        let json = serde_json::json!({});
+        assert!(extract_gemini_text(&json).is_err());
+    }
+
+    #[test]
+    fn test_extract_gemini_text_empty_candidates() {
+        let json = serde_json::json!({ "candidates": [] });
+        assert!(extract_gemini_text(&json).is_err());
+    }
+
+    #[test]
+    fn test_extract_gemini_text_missing_parts() {
+        let json = serde_json::json!({
+            "candidates": [{ "content": {} }]
+        });
+        assert!(extract_gemini_text(&json).is_err());
+    }
+
+    // ── extract_claude_text ─────────────────────────────────────────
+
+    #[test]
+    fn test_extract_claude_text_valid_response() {
+        let json = serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": "{\"species_name\": \"Oncidium sharry baby\"}"
+            }]
+        });
+        let result = extract_claude_text(&json);
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("Oncidium sharry baby"));
+    }
+
+    #[test]
+    fn test_extract_claude_text_strips_markdown_fences() {
+        let json = serde_json::json!({
+            "content": [{
+                "type": "text",
+                "text": "```json\n{\"species_name\": \"Cattleya\"}\n```"
+            }]
+        });
+        let result = extract_claude_text(&json).unwrap();
+        assert!(!result.contains("```"));
+        assert!(result.contains("Cattleya"));
+    }
+
+    #[test]
+    fn test_extract_claude_text_missing_content() {
+        let json = serde_json::json!({});
+        assert!(extract_claude_text(&json).is_err());
+    }
+
+    #[test]
+    fn test_extract_claude_text_empty_content() {
+        let json = serde_json::json!({ "content": [] });
+        assert!(extract_claude_text(&json).is_err());
+    }
+
+    #[test]
+    fn test_extract_claude_text_missing_text_field() {
+        let json = serde_json::json!({
+            "content": [{ "type": "text" }]
+        });
+        assert!(extract_claude_text(&json).is_err());
+    }
+}
