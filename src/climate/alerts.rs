@@ -204,9 +204,9 @@ pub async fn check_and_send_alerts() {
         return;
     }
 
-    // 2. Get latest readings per zone
+    // 2. Get latest readings per zone (fetch recent, deduplicate by zone in Rust)
     let mut reading_resp = match db()
-        .query("SELECT zone, zone_name, temperature, humidity FROM climate_reading GROUP BY zone ORDER BY recorded_at DESC LIMIT 1")
+        .query("SELECT zone, zone_name, temperature, humidity FROM climate_reading WHERE recorded_at > time::now() - 2h ORDER BY recorded_at DESC")
         .await
     {
         Ok(r) => r,
@@ -216,8 +216,13 @@ pub async fn check_and_send_alerts() {
         }
     };
     let _ = reading_resp.take_errors();
-    // Fallback: get latest reading per zone using a different approach
-    let reading_rows: Vec<ReadingRow> = reading_resp.take(0).unwrap_or_default();
+    let all_readings: Vec<ReadingRow> = reading_resp.take(0).unwrap_or_default();
+    // Keep only the latest reading per zone (first occurrence since ordered DESC)
+    let mut seen_zones = std::collections::HashSet::new();
+    let reading_rows: Vec<ReadingRow> = all_readings
+        .into_iter()
+        .filter(|r| seen_zones.insert(format!("{:?}", r.zone)))
+        .collect();
 
     let orchid_reqs: Vec<OrchidRequirements> = orchid_rows
         .into_iter()
