@@ -206,7 +206,7 @@ pub async fn check_and_send_alerts() {
 
     // 2. Get latest readings per zone (fetch recent, deduplicate by zone in Rust)
     let mut reading_resp = match db()
-        .query("SELECT zone, zone_name, temperature, humidity FROM climate_reading WHERE recorded_at > time::now() - 2h ORDER BY recorded_at DESC")
+        .query("SELECT zone, zone_name, temperature, humidity, recorded_at FROM climate_reading WHERE recorded_at > time::now() - 2h ORDER BY recorded_at DESC")
         .await
     {
         Ok(r) => r,

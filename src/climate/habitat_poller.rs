@@ -183,7 +183,7 @@ pub async fn compact_habitat_data() {
              IF array::len($old_weekly) > 0 { \
                  LET $groups = (SELECT \
                      latitude, longitude, \
-                     time::floor(period_start, 1mo) AS month_start, \
+                     time::floor(period_start, 4w) AS month_start, \
                      math::sum(avg_temperature * sample_count) / math::sum(sample_count) AS avg_temperature, \
                      math::min(min_temperature) AS min_temperature, \
                      math::max(max_temperature) AS max_temperature, \

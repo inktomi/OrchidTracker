@@ -140,13 +140,13 @@ pub fn estimate_indoor(input: &IndoorEstimationInput) -> EstimationResult {
     }
 
     // Window direction
-    if input.has_window {
-        if let Some(ref dir) = input.window_direction {
-            match dir {
-                WindowDirection::South | WindowDirection::West => temp_adj += 1.0,
-                _ => {}
-            }
-        }
+    if input.has_window
+        && matches!(
+            input.window_direction,
+            Some(WindowDirection::South | WindowDirection::West)
+        )
+    {
+        temp_adj += 1.0;
     }
 
     // Grow lights
