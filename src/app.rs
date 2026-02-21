@@ -5,8 +5,9 @@ use leptos_router::path;
 
 use crate::pages::home::HomePage;
 use crate::pages::login::LoginPage;
-use crate::pages::register::RegisterPage;
 use crate::pages::onboarding::OnboardingPage;
+use crate::pages::public_collection::PublicCollectionPage;
+use crate::pages::register::RegisterPage;
 
 /// SSR shell function — renders the outer HTML document
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -46,6 +47,7 @@ pub fn App() -> impl IntoView {
                 <Route path=path!("/login") view=LoginPage />
                 <Route path=path!("/register") view=RegisterPage />
                 <Route path=path!("/onboarding") view=OnboardingPage />
+                <Route path=path!("/u/:username") view=PublicCollectionPage />
             </Routes>
         </Router>
     }

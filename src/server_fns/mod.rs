@@ -6,4 +6,5 @@ pub mod orchids;
 pub mod images;
 pub mod preferences;
 pub mod scanner;
+pub mod public;
 pub mod zones;

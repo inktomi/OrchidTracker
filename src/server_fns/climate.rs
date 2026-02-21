@@ -346,7 +346,7 @@ pub async fn configure_zone_data_source(
 
 /// Parse the "table:key" user_id string into a SurrealDB RecordId
 #[cfg(feature = "ssr")]
-fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
+pub(crate) fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
     use crate::error::internal_error;
     surrealdb::types::RecordId::parse_simple(user_id)
         .map_err(|e| internal_error("Owner ID parse failed", e))
@@ -431,7 +431,7 @@ pub async fn get_habitat_history(
 }
 
 #[cfg(feature = "ssr")]
-mod ssr_types {
+pub(crate) mod ssr_types {
     use surrealdb::types::SurrealValue;
     use crate::orchid::{ClimateReading, HabitatWeather, HabitatWeatherSummary};
 

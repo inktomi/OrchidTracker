@@ -13,12 +13,16 @@ pub fn SettingsModal(
     devices: Vec<HardwareDevice>,
     initial_temp_unit: String,
     initial_hemisphere: String,
+    #[prop(optional)] initial_collection_public: bool,
+    #[prop(optional)] username: String,
     on_close: impl Fn(String) + 'static + Copy + Send + Sync,
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
     on_show_wizard: impl Fn(GrowingZone) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
     let (temp_unit, set_temp_unit) = signal(initial_temp_unit);
     let (hemisphere, set_hemisphere) = signal(initial_hemisphere);
+    let (collection_public, set_collection_public) = signal(initial_collection_public);
+    let username_stored = StoredValue::new(username);
     let (local_devices, set_local_devices) = signal(devices);
 
     // Zone management state
@@ -122,6 +126,51 @@ pub fn SettingsModal(
                             <option value="C">"Celsius (C)"</option>
                             <option value="F">"Fahrenheit (F)"</option>
                         </select>
+                    </div>
+
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
+
+                    // Public Collection toggle
+                    <div class="mb-6">
+                        <h3 class="mb-4 text-sm font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Public Collection"</h3>
+                        <div class="flex flex-col gap-3">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Share your collection publicly"</div>
+                                    <div class="text-xs text-stone-400">"Allow anyone with the link to view your plants (read-only)"</div>
+                                </div>
+                                <button
+                                    class=move || if collection_public.get() {
+                                        "relative w-11 h-6 bg-primary rounded-full transition-colors cursor-pointer border-none"
+                                    } else {
+                                        "relative w-11 h-6 bg-stone-300 dark:bg-stone-600 rounded-full transition-colors cursor-pointer border-none"
+                                    }
+                                    on:click=move |_| {
+                                        let new_val = !collection_public.get();
+                                        set_collection_public.set(new_val);
+                                        leptos::task::spawn_local(async move {
+                                            let _ = crate::server_fns::preferences::save_collection_public(new_val).await;
+                                        });
+                                    }
+                                >
+                                    <span class=move || if collection_public.get() {
+                                        "absolute top-0.5 left-5.5 w-5 h-5 bg-white rounded-full transition-all shadow-sm"
+                                    } else {
+                                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-all shadow-sm"
+                                    }></span>
+                                </button>
+                            </div>
+                            {move || collection_public.get().then(|| {
+                                let uname = username_stored.get_value();
+                                let url = format!("/u/{}", uname);
+                                view! {
+                                    <div class="p-3 text-sm rounded-lg bg-primary/5 dark:bg-primary-light/5">
+                                        <div class="text-xs font-medium text-stone-500 dark:text-stone-400">"Shareable link:"</div>
+                                        <code class="text-sm text-primary dark:text-primary-light">{url}</code>
+                                    </div>
+                                }
+                            })}
+                        </div>
                     </div>
 
                     <hr class="my-6 border-stone-200 dark:border-stone-700" />

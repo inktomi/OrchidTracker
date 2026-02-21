@@ -15,7 +15,7 @@ use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
-use crate::server_fns::preferences::{get_temp_unit, save_temp_unit, get_hemisphere};
+use crate::server_fns::preferences::{get_temp_unit, save_temp_unit, get_hemisphere, get_collection_public};
 use crate::server_fns::devices::get_devices;
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
@@ -89,6 +89,7 @@ pub fn HomePage() -> impl IntoView {
     // Load saved temp unit preference from server
     let temp_unit_resource = Resource::new(|| (), |_| get_temp_unit());
     let hemisphere_resource = Resource::new(|| (), |_| get_hemisphere());
+    let collection_public_resource = Resource::new(|| (), |_| get_collection_public());
 
     // Initialize model temp_unit from server preference when it loads
     Effect::new(move |_| {
@@ -210,9 +211,11 @@ pub fn HomePage() -> impl IntoView {
                 let _ = zones_resource.get();
                 let _ = temp_unit_resource.get();
                 let _ = hemisphere_resource.get();
+                let _ = collection_public_resource.get();
 
                 user.get().map(|result| match result {
-                    Ok(Some(_user_info)) => {
+                    Ok(Some(ref _user_info)) => {
+                        let current_username = _user_info.username.clone();
                         // Check if user needs onboarding (no zones)
                         let zones = zones_memo.get();
                         if zones.is_empty()
@@ -343,12 +346,18 @@ pub fn HomePage() -> impl IntoView {
                                 let current_devices = devices_memo.get();
                                 let current_temp_unit = temp_unit.get();
                                 let current_hemi = hemisphere.get();
+                                let current_public = collection_public_resource.get()
+                                    .and_then(|r| r.ok())
+                                    .unwrap_or(false);
+                                let uname = current_username.clone();
                                 view! {
                                     <SettingsModal
                                         zones=current_zones
                                         devices=current_devices
                                         initial_temp_unit=current_temp_unit.clone()
                                         initial_hemisphere=current_hemi
+                                        initial_collection_public=current_public
+                                        username=uname
                                         on_close=move |new_unit: String| {
                                     let unit_to_save = new_unit.clone();
                                     send(Msg::SettingsClosed { temp_unit: new_unit });

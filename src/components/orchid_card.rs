@@ -11,6 +11,7 @@ pub fn OrchidCard(
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_water: impl Fn(String) + 'static + Copy + Send + Sync,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let orchid_id = orchid.id.clone();
     let orchid_id_water = orchid.id.clone();
@@ -99,28 +100,30 @@ pub fn OrchidCard(
                     view! { <p class="mt-3 text-sm leading-relaxed text-stone-500 line-clamp-2">{notes.clone()}</p> }
                 })}
             </div>
-            <div class="flex gap-2 justify-end py-3 px-5 border-t border-stone-100 dark:border-stone-800">
-                <button class=BTN_WATER on:click={
-                    let id = orchid_id_water.clone();
-                    move |ev: leptos::ev::MouseEvent| {
-                        ev.stop_propagation();
-                        on_water(id.clone());
-                    }
-                }>
-                    // Droplet SVG icon
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
-                    </svg>
-                    "Water"
-                </button>
-                <button class=BTN_DANGER on:click={
-                    let id = orchid_id.clone();
-                    move |ev: leptos::ev::MouseEvent| {
-                        ev.stop_propagation();
-                        on_delete(id.clone());
-                    }
-                }>"Delete"</button>
-            </div>
+            {(!read_only).then(|| view! {
+                <div class="flex gap-2 justify-end py-3 px-5 border-t border-stone-100 dark:border-stone-800">
+                    <button class=BTN_WATER on:click={
+                        let id = orchid_id_water.clone();
+                        move |ev: leptos::ev::MouseEvent| {
+                            ev.stop_propagation();
+                            on_water(id.clone());
+                        }
+                    }>
+                        // Droplet SVG icon
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
+                        </svg>
+                        "Water"
+                    </button>
+                    <button class=BTN_DANGER on:click={
+                        let id = orchid_id.clone();
+                        move |ev: leptos::ev::MouseEvent| {
+                            ev.stop_propagation();
+                            on_delete(id.clone());
+                        }
+                    }>"Delete"</button>
+                </div>
+            })}
         </div>
     }
 }

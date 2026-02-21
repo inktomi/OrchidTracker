@@ -11,7 +11,7 @@ fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnErro
 
 /// SSR-only struct matching SurrealDB's record shape (id is a RecordId, not a String).
 #[cfg(feature = "ssr")]
-mod ssr_types {
+pub(crate) mod ssr_types {
     use surrealdb::types::SurrealValue;
     use crate::orchid::{GrowingZone, LightRequirement, LocationType};
     use crate::server_fns::auth::record_id_to_string;

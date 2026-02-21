@@ -19,6 +19,7 @@ pub fn OrchidCollection(
     on_water: impl Fn(String) + 'static + Copy + Send + Sync,
     on_add: impl Fn() + 'static + Copy + Send + Sync,
     on_scan: impl Fn() + 'static + Copy + Send + Sync,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (sort_needs_water, set_sort_needs_water) = signal(false);
     view! {
@@ -27,6 +28,9 @@ pub fn OrchidCollection(
                 let orchids = result.unwrap_or_default();
 
                 if orchids.is_empty() {
+                    if read_only {
+                        return view! { <p class="py-12 text-center text-stone-400">"This collection is empty."</p> }.into_any();
+                    }
                     view! { <EmptyCollection on_add=on_add on_scan=on_scan /> }.into_any()
                 } else {
                     let orchids_for_table = orchids.clone();
@@ -93,6 +97,7 @@ pub fn OrchidCollection(
                                                         on_delete=on_delete
                                                         on_select=on_select
                                                         on_water=on_water
+                                                        read_only=read_only
                                                     />
                                                 }
                                             }

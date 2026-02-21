@@ -32,6 +32,7 @@ pub fn OrchidDetail(
     hemisphere: String,
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (orchid_signal, set_orchid_signal) = signal(orchid.clone());
     let (log_entries, set_log_entries) = signal(Vec::<LogEntry>::new());
@@ -102,6 +103,7 @@ pub fn OrchidDetail(
                                 log_entries=log_entries
                                 set_log_entries=set_log_entries
                                 set_show_first_bloom=set_show_first_bloom
+                                read_only=read_only
                             />
                         }.into_any(),
                         DetailTab::Gallery => view! {
@@ -120,6 +122,7 @@ pub fn OrchidDetail(
                                 native_region=native_region
                                 native_lat=native_lat
                                 native_lon=native_lon
+                                read_only=read_only
                             />
                         }.into_any(),
                     }}
@@ -144,6 +147,7 @@ fn JournalTab(
     log_entries: ReadSignal<Vec<LogEntry>>,
     set_log_entries: WriteSignal<Vec<LogEntry>>,
     set_show_first_bloom: WriteSignal<bool>,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (note, set_note) = signal(String::new());
     let (selected_event_type, set_selected_event_type) = signal(Option::<String>::None);
@@ -188,41 +192,43 @@ fn JournalTab(
     };
 
     view! {
-        // Add Entry form
-        <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
-            <form on:submit=on_submit_log>
-                // Event type picker
-                <div class="mb-3">
-                    <label class="mb-2">"What happened?"</label>
-                    <EventTypePicker
-                        selected=selected_event_type
-                        on_select=move |val| set_selected_event_type.set(val)
-                    />
-                </div>
+        // Add Entry form (hidden in read-only mode)
+        {(!read_only).then(|| view! {
+            <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
+                <form on:submit=on_submit_log>
+                    // Event type picker
+                    <div class="mb-3">
+                        <label class="mb-2">"What happened?"</label>
+                        <EventTypePicker
+                            selected=selected_event_type
+                            on_select=move |val| set_selected_event_type.set(val)
+                        />
+                    </div>
 
-                // Photo upload
-                <div class="mb-3">
-                    <PhotoCapture
-                        on_photo_ready=move |fname| set_uploaded_filename.set(Some(fname))
-                    />
-                </div>
+                    // Photo upload
+                    <div class="mb-3">
+                        <PhotoCapture
+                            on_photo_ready=move |fname| set_uploaded_filename.set(Some(fname))
+                        />
+                    </div>
 
-                // Note textarea
-                <div class="mb-3">
-                    <textarea
-                        prop:value=note
-                        on:input=move |ev| set_note.set(event_target_value(&ev))
-                        placeholder="Add a note about this moment..."
-                        rows="2"
-                        class="py-2 px-3 w-full text-sm bg-white rounded-lg border border-stone-300 dark:bg-stone-800 dark:border-stone-600 dark:text-stone-200"
-                    ></textarea>
-                </div>
+                    // Note textarea
+                    <div class="mb-3">
+                        <textarea
+                            prop:value=note
+                            on:input=move |ev| set_note.set(event_target_value(&ev))
+                            placeholder="Add a note about this moment..."
+                            rows="2"
+                            class="py-2 px-3 w-full text-sm bg-white rounded-lg border border-stone-300 dark:bg-stone-800 dark:border-stone-600 dark:text-stone-200"
+                        ></textarea>
+                    </div>
 
-                <button type="submit" class=BTN_PRIMARY disabled=move || is_syncing.get()>
-                    {move || if is_syncing.get() { "Saving..." } else { "Add Entry" }}
-                </button>
-            </form>
-        </div>
+                    <button type="submit" class=BTN_PRIMARY disabled=move || is_syncing.get()>
+                        {move || if is_syncing.get() { "Saving..." } else { "Add Entry" }}
+                    </button>
+                </form>
+            </div>
+        })}
 
         // Growth Thread
         <GrowthThread entries=log_entries orchid_id=orchid_signal.get_untracked().id />
@@ -244,6 +250,7 @@ fn DetailsTab(
     native_region: StoredValue<Option<String>>,
     native_lat: Option<f64>,
     native_lon: Option<f64>,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (is_watering, set_is_watering) = signal(false);
 
@@ -364,7 +371,7 @@ fn DetailsTab(
     view! {
         // View/Edit toggle
         {move || {
-            if is_editing.get() {
+            if !read_only && is_editing.get() {
                 let zones_ref = zones.get_value();
                 view! {
                     <EditForm
@@ -403,10 +410,12 @@ fn DetailsTab(
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="m-0">"Plant Info"</h3>
-                            <button class=EDIT_BTN on:click=move |_| {
-                                populate_edit_fields();
-                                set_is_editing.set(true);
-                            }>"Edit"</button>
+                            {(!read_only).then(|| view! {
+                                <button class=EDIT_BTN on:click=move |_| {
+                                    populate_edit_fields();
+                                    set_is_editing.set(true);
+                                }>"Edit"</button>
+                            })}
                         </div>
                         {move || orchid_signal.get().conservation_status.map(|status| {
                             view! { <p class="my-1 text-sm"><span class="inline-block py-0.5 px-2 text-xs font-medium rounded-full border text-danger bg-danger/5 border-danger/20">{status}</span></p> }
@@ -477,23 +486,25 @@ fn DetailsTab(
                     }}
                 </div>
             </div>
-            <button
-                class=BTN_PRIMARY
-                disabled=move || is_watering.get()
-                on:click=move |_| {
-                    set_is_watering.set(true);
-                    let orchid_id = orchid_signal.get().id.clone();
-                    leptos::task::spawn_local(async move {
-                        match crate::server_fns::orchids::mark_watered(orchid_id).await {
-                            Ok(updated) => set_orchid_signal.set(updated),
-                            Err(e) => log::error!("Failed to mark watered: {}", e),
-                        }
-                        set_is_watering.set(false);
-                    });
-                }
-            >
-                {move || if is_watering.get() { "Watering..." } else { "Water Now" }}
-            </button>
+            {(!read_only).then(|| view! {
+                <button
+                    class=BTN_PRIMARY
+                    disabled=move || is_watering.get()
+                    on:click=move |_| {
+                        set_is_watering.set(true);
+                        let orchid_id = orchid_signal.get().id.clone();
+                        leptos::task::spawn_local(async move {
+                            match crate::server_fns::orchids::mark_watered(orchid_id).await {
+                                Ok(updated) => set_orchid_signal.set(updated),
+                                Err(e) => log::error!("Failed to mark watered: {}", e),
+                            }
+                            set_is_watering.set(false);
+                        });
+                    }
+                >
+                    {move || if is_watering.get() { "Watering..." } else { "Water Now" }}
+                </button>
+            })}
         </div>
     }.into_any()
 }

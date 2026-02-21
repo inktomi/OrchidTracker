@@ -18,7 +18,7 @@ fn parse_record_id(id: &str) -> Result<surrealdb::types::RecordId, ServerFnError
 }
 
 #[cfg(feature = "ssr")]
-mod ssr_types {
+pub(crate) mod ssr_types {
     use surrealdb::types::SurrealValue;
     use crate::orchid::{Orchid, LogEntry, LightRequirement};
     use crate::server_fns::auth::record_id_to_string;

@@ -1,0 +1,247 @@
+use leptos::prelude::*;
+use crate::orchid::{Orchid, GrowingZone, ClimateReading, LogEntry};
+
+/// Resolve a username to a user_id, verifying that their collection is public.
+/// Returns the user_id string (e.g. "user:abc123") or an error.
+#[cfg(feature = "ssr")]
+async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::auth::record_id_to_string;
+    use surrealdb::types::SurrealValue;
+
+    if username.is_empty() || username.len() > 50 {
+        return Err(ServerFnError::new("User not found"));
+    }
+
+    // Look up user by username
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct UserRow {
+        id: surrealdb::types::RecordId,
+    }
+
+    let mut resp = db()
+        .query("SELECT id FROM user WHERE username = $uname LIMIT 1")
+        .bind(("uname", username.to_string()))
+        .await
+        .map_err(|e| internal_error("Public user lookup failed", e))?;
+
+    let _ = resp.take_errors();
+    let user_row: Option<UserRow> = resp.take(0).unwrap_or(None);
+    let user_row = user_row.ok_or_else(|| ServerFnError::new("User not found"))?;
+    let user_id = record_id_to_string(&user_row.id);
+    let owner = user_row.id;
+
+    // Check collection_public preference
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct PrefRow {
+        #[surreal(default)]
+        collection_public: bool,
+    }
+
+    let mut pref_resp = db()
+        .query("SELECT collection_public FROM user_preference WHERE owner = $owner LIMIT 1")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public pref lookup failed", e))?;
+
+    let _ = pref_resp.take_errors();
+    let pref: Option<PrefRow> = pref_resp.take(0).unwrap_or(None);
+    let is_public = pref.map(|p| p.collection_public).unwrap_or(false);
+
+    if !is_public {
+        return Err(ServerFnError::new("This collection is private"));
+    }
+
+    Ok(user_id)
+}
+
+#[server]
+pub async fn get_public_orchids(username: String) -> Result<Vec<Orchid>, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use crate::server_fns::orchids::ssr_types::OrchidDbRow;
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+
+    let mut response = db()
+        .query("SELECT * FROM orchid WHERE owner = $owner ORDER BY created_at DESC")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get orchids query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Public get orchids query error", err_msg));
+    }
+
+    let db_rows: Vec<OrchidDbRow> = response.take(0)
+        .map_err(|e| internal_error("Public get orchids parse failed", e))?;
+
+    Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
+}
+
+#[server]
+pub async fn get_public_zones(username: String) -> Result<Vec<GrowingZone>, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use crate::server_fns::zones::ssr_types::GrowingZoneDbRow;
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+
+    let mut response = db()
+        .query("SELECT * FROM growing_zone WHERE owner = $owner ORDER BY sort_order ASC")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get zones query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Public get zones query error", err_msg));
+    }
+
+    let db_rows: Vec<GrowingZoneDbRow> = response.take(0)
+        .map_err(|e| internal_error("Public get zones parse failed", e))?;
+
+    Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
+}
+
+#[server]
+pub async fn get_public_climate_readings(username: String) -> Result<Vec<ClimateReading>, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use crate::server_fns::climate::ssr_types::{ZoneIdRow, ReadingDbRow};
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+
+    let mut zone_resp = db()
+        .query("SELECT id, name FROM growing_zone WHERE owner = $owner")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get climate zones query failed", e))?;
+
+    let errors = zone_resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Public get climate zones query error", err_msg));
+    }
+
+    let zones: Vec<ZoneIdRow> = zone_resp.take(0)
+        .map_err(|e| internal_error("Public get climate zones parse failed", e))?;
+
+    let mut readings = Vec::new();
+
+    for zone in &zones {
+        let mut resp = db()
+            .query(
+                "SELECT * FROM climate_reading WHERE zone = $zone_id ORDER BY recorded_at DESC LIMIT 1"
+            )
+            .bind(("zone_id", zone.id.clone()))
+            .await
+            .map_err(|e| internal_error("Public get reading query failed", e))?;
+
+        let _ = resp.take_errors();
+
+        let reading: Option<ReadingDbRow> = resp.take(0).unwrap_or(None);
+        if let Some(row) = reading {
+            readings.push(row.into_climate_reading());
+        }
+    }
+
+    Ok(readings)
+}
+
+#[server]
+pub async fn get_public_log_entries(username: String, orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use crate::server_fns::orchids::ssr_types::LogEntryDbRow;
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+    let orchid_record = surrealdb::types::RecordId::parse_simple(&orchid_id)
+        .map_err(|e| internal_error("Orchid ID parse failed", e))?;
+
+    let mut response = db()
+        .query("SELECT * FROM log_entry WHERE orchid = $orchid_id AND owner = $owner ORDER BY timestamp DESC")
+        .bind(("orchid_id", orchid_record))
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get log entries query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Public get log entries query error", err_msg));
+    }
+
+    let db_rows: Vec<LogEntryDbRow> = response.take(0)
+        .map_err(|e| internal_error("Public get log entries parse failed", e))?;
+
+    Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
+}
+
+#[server]
+pub async fn get_public_hemisphere(username: String) -> Result<String, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use surrealdb::types::SurrealValue;
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct PrefRow {
+        hemisphere: String,
+    }
+
+    let mut resp = db()
+        .query("SELECT hemisphere FROM user_preference WHERE owner = $owner LIMIT 1")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get hemisphere query failed", e))?;
+
+    let _ = resp.take_errors();
+    let row: Option<PrefRow> = resp.take(0).unwrap_or(None);
+    Ok(row.map(|r| r.hemisphere).unwrap_or_else(|| "N".to_string()))
+}
+
+#[server]
+pub async fn get_public_temp_unit(username: String) -> Result<String, ServerFnError> {
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::server_fns::climate::parse_owner;
+    use surrealdb::types::SurrealValue;
+
+    let user_id = resolve_public_user(&username).await?;
+    let owner = parse_owner(&user_id)?;
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
+    struct PrefRow {
+        temp_unit: String,
+    }
+
+    let mut resp = db()
+        .query("SELECT temp_unit FROM user_preference WHERE owner = $owner LIMIT 1")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Public get temp_unit query failed", e))?;
+
+    let _ = resp.take_errors();
+    let row: Option<PrefRow> = resp.take(0).unwrap_or(None);
+    Ok(row.map(|r| r.temp_unit).unwrap_or_else(|| "C".to_string()))
+}

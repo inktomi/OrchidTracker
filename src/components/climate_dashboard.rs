@@ -13,6 +13,7 @@ pub fn ClimateDashboard(
     on_show_wizard: impl Fn(GrowingZone) + 'static + Copy + Send + Sync,
     on_zones_changed: impl Fn() + 'static + Copy + Send + Sync,
     temp_unit_str: String,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     // Find zones with no readings
     let zone_ids_with_readings: Vec<String> = readings.iter().map(|r| r.zone_id.clone()).collect();
@@ -106,26 +107,28 @@ pub fn ClimateDashboard(
                                     <h3 class="m-0 text-base font-display text-stone-400 dark:text-stone-500">{zone_name}</h3>
                                     <p class="mt-1.5 text-xs text-stone-400/80 dark:text-stone-500/80">"No conditions recorded yet"</p>
                                 </div>
-                                <div class="flex gap-2">
-                                    <button
-                                        class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-accent-dark bg-accent/10 dark:text-accent-light dark:bg-accent/10 dark:hover:bg-accent/20 hover:bg-accent/20"
-                                        on:click=move |_| on_show_wizard(zone_for_wizard.clone())
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
-                                        </svg>
-                                        "Estimate"
-                                    </button>
-                                    <button
-                                        class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 hover:bg-sky-100"
-                                        on:click=move |_| set_show_manual.update(|v| *v = !*v)
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                        </svg>
-                                        "Log Reading"
-                                    </button>
-                                </div>
+                                {(!read_only).then(|| view! {
+                                    <div class="flex gap-2">
+                                        <button
+                                            class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-accent-dark bg-accent/10 dark:text-accent-light dark:bg-accent/10 dark:hover:bg-accent/20 hover:bg-accent/20"
+                                            on:click=move |_| on_show_wizard(zone_for_wizard.clone())
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
+                                            </svg>
+                                            "Estimate"
+                                        </button>
+                                        <button
+                                            class="flex gap-1.5 items-center py-2 px-3.5 text-xs font-semibold rounded-xl border-none transition-all cursor-pointer text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 hover:bg-sky-100"
+                                            on:click=move |_| set_show_manual.update(|v| *v = !*v)
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                            </svg>
+                                            "Log Reading"
+                                        </button>
+                                    </div>
+                                })}
                             </div>
                             {move || show_manual.get().then(|| {
                                 let zm = zone_for_manual.clone();
