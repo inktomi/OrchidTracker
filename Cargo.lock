@@ -6381,7 +6381,6 @@ dependencies = [
  "http 1.4.0",
  "pin-project",
  "thiserror 2.0.18",
- "tonic",
  "tower",
  "tracing",
 ]

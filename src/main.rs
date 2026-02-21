@@ -15,6 +15,7 @@ async fn main() {
     use orchid_tracker::session_store::SurrealSessionStore;
     use tower_governor::GovernorLayer;
     use tower_governor::governor::GovernorConfigBuilder;
+    use tower_governor::key_extractor::SmartIpKeyExtractor;
     use time::Duration;
 
     // Load .env file
@@ -57,10 +58,11 @@ async fn main() {
         .with_http_only(true)
         .with_secure(true);
 
-    // Rate limiting: 100 requests/sec per IP
+    // Rate limiting: 100 requests/sec per real client IP (reads X-Forwarded-For/X-Real-IP)
     let governor_conf = GovernorConfigBuilder::default()
         .per_second(100)
-        .burst_size(100)
+        .burst_size(200)
+        .key_extractor(SmartIpKeyExtractor)
         .finish()
         .expect("Failed to build rate limiter config");
     let governor_limiter = governor_conf.limiter().clone();
