@@ -35,6 +35,16 @@
     <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#1a0008" flood-opacity="0.6"/>
     </filter>
+
+    <clipPath id="dorsalClip">
+      <path d="M 50,55 C 20,40 5,10 40,5 C 48,3 52,3 60,5 C 95,10 80,40 50,55 Z" />
+    </clipPath>
+    <clipPath id="lateralLClip">
+      <path d="M 45,50 C 10,50 0,80 10,95 C 20,105 35,90 48,60 Z" />
+    </clipPath>
+    <clipPath id="lateralRClip">
+      <path d="M 55,50 C 90,50 100,80 90,95 C 80,105 65,90 52,60 Z" />
+    </clipPath>
   </defs>
 
   <style>
@@ -60,10 +70,13 @@
 
 
   <g class="bg-pulse">
+    <!-- Center base fill to prevent background holes -->
+    <circle cx="50" cy="55" r="10" fill="#590d22" />
+
     <!-- Dorsal Sepal (Top, arched over) -->
     <path d="M 50,55 C 20,40 5,10 40,5 C 48,3 52,3 60,5 C 95,10 80,40 50,55 Z" fill="url(#dorsalGrad)" />
     <!-- Dorsal Sepal Stripes -->
-    <path d="M 50,55 Q 35,30 43,6 M 50,55 Q 50,30 52,5 M 50,55 Q 65,30 57,6 M 50,55 Q 25,25 25,10 M 50,55 Q 75,25 75,10" stroke="#590d22" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round"/>
+    <path d="M 50,55 Q 35,30 43,6 M 50,55 Q 50,30 52,5 M 50,55 Q 65,30 57,6 M 50,55 Q 25,25 25,10 M 50,55 Q 75,25 75,10" stroke="#590d22" stroke-width="1.5" fill="none" opacity="0.6" stroke-linecap="round" clip-path="url(#dorsalClip)" />
 
     <!-- Left Lateral Sepal -->
     <path d="M 45,50 C 10,50 0,80 10,95 C 20,105 35,90 48,60 Z" fill="url(#lateralGradL)" />
@@ -71,8 +84,8 @@
     <path d="M 55,50 C 90,50 100,80 90,95 C 80,105 65,90 52,60 Z" fill="url(#lateralGradR)" />
     
     <!-- Lateral Sepal Stripes -->
-    <path d="M 45,55 Q 15,75 12,92 M 47,57 Q 30,75 22,90 M 43,53 Q 5,65 5,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" />
-    <path d="M 55,55 Q 85,75 88,92 M 53,57 Q 70,75 78,90 M 57,53 Q 95,65 95,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" />
+    <path d="M 45,55 Q 15,75 12,92 M 47,57 Q 30,75 22,90 M 43,53 Q 5,65 5,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" clip-path="url(#lateralLClip)" />
+    <path d="M 55,55 Q 85,75 88,92 M 53,57 Q 70,75 78,90 M 57,53 Q 95,65 95,80" stroke="#390014" stroke-width="1.5" fill="none" opacity="0.5" stroke-linecap="round" clip-path="url(#lateralRClip)" />
 
     <!-- Tiny Petals (often very small and horn-like in Bulbophyllum) -->
     <path d="M 45,50 C 35,42 20,45 25,55 C 28,60 40,55 45,52 Z" fill="#ffb703" />
@@ -94,7 +107,7 @@
     
     <!-- Deep groove down the middle -->
     <path d="M 50,59 Q 47,75 50,94" stroke="#2a0014" stroke-width="2.5" fill="none" stroke-linecap="round" />
-    <path d="M 50,59 Q 53,75 50,94" stroke="#ff8fa3" stroke-width="0.75" fill="none" stroke-linecap="round" />
+    <path d="M 50,59 Q 47,75 50,94" stroke="#ff8fa3" stroke-width="0.75" fill="none" stroke-linecap="round" />
 
     <!-- Fleshy Bulbophyllum textures / spots / warts -->
     <circle cx="43" cy="70" r="1.5" fill="#ffb703" opacity="0.9" />
