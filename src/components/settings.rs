@@ -68,7 +68,7 @@ pub fn SettingsModal(
                     on_zones_changed();
                 }
                 Err(e) => {
-                    log::error!("Failed to create zone: {}", e);
+                    tracing::error!("Failed to create zone: {}", e);
                 }
             }
             set_is_zone_saving.set(false);
@@ -86,7 +86,7 @@ pub fn SettingsModal(
                     on_zones_changed();
                 }
                 Err(e) => {
-                    log::error!("Failed to delete zone: {}", e);
+                    tracing::error!("Failed to delete zone: {}", e);
                 }
             }
             set_is_zone_saving.set(false);

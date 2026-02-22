@@ -168,7 +168,7 @@ async fn register_and_subscribe() -> Result<(), String> {
 #[cfg(feature = "hydrate")]
 pub(crate) async fn register_and_subscribe_silent() {
     if let Err(e) = register_and_subscribe().await {
-        log::error!("Push subscribe failed: {}", e);
+        tracing::error!("Push subscribe failed: {}", e);
     }
 }
 
@@ -184,7 +184,7 @@ async fn ensure_sw_registered() {
 
     let promise = sw_container.register("/sw.js");
     if let Err(e) = JsFuture::from(promise).await {
-        log::error!("SW registration failed: {:?}", e);
+        tracing::error!("SW registration failed: {:?}", e);
     }
 }
 

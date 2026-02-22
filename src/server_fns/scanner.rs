@@ -221,7 +221,7 @@ async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, Serv
             Ok(text) => return Ok(text),
             Err(e) => {
                 if has_claude {
-                    log::warn!("Gemini failed ({}), falling back to Claude", e);
+                    tracing::warn!("Gemini failed ({}), falling back to Claude", e);
                 } else {
                     return Err(ServerFnError::new(e));
                 }
@@ -263,7 +263,7 @@ async fn call_ai_text(prompt: &str) -> Result<String, String> {
             Ok(text) => return Ok(text),
             Err(e) => {
                 if has_claude {
-                    log::warn!("Gemini text failed ({}), falling back to Claude", e);
+                    tracing::warn!("Gemini text failed ({}), falling back to Claude", e);
                 } else {
                     return Err(e);
                 }
@@ -505,7 +505,7 @@ pub async fn generate_care_recap(
     match call_ai_text(&prompt).await {
         Ok(text) => Ok(text),
         Err(e) => {
-            log::warn!("AI care recap failed ({}), returning fallback stats", e);
+            tracing::warn!("AI care recap failed ({}), returning fallback stats", e);
             Ok(fallback_stats)
         }
     }

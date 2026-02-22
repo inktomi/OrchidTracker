@@ -52,6 +52,6 @@ pub async fn run_reset_password(username: &str, password: &str) -> Result<(), Bo
         return Err(format!("No user found with username '{}'", username).into());
     }
 
-    println!("Password reset successfully for user '{}'", username);
+    tracing::info!("Password reset successfully for user '{}'", username);
     Ok(())
 }

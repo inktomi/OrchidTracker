@@ -71,7 +71,7 @@ pub fn QuickActions(
                         }
                     }
                     Err(e) => {
-                        log::error!("Quick action '{}' failed: {}", key, e);
+                        tracing::error!("Quick action '{}' failed: {}", key, e);
                         btn_states.update(|m| { m.insert(key, BtnState::Idle); });
                     }
                 }

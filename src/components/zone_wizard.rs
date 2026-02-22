@@ -182,7 +182,7 @@ fn IndoorWizard(
                     on_close();
                 }
                 Err(e) => {
-                    log::error!("Failed to save wizard estimation: {}", e);
+                    tracing::error!("Failed to save wizard estimation: {}", e);
                     set_is_saving.set(false);
                 }
             }
@@ -593,7 +593,7 @@ fn OutdoorWizard(
 
             let error = Closure::once(move |_: JsValue| {
                 set_is_locating.set(false);
-                log::warn!("Geolocation failed");
+                tracing::warn!("Geolocation failed");
             });
 
             if let Some(window) = web_sys::window() {
@@ -660,7 +660,7 @@ fn OutdoorWizard(
                     on_close();
                 }
                 Err(e) => {
-                    log::error!("Failed to configure weather API: {}", e);
+                    tracing::error!("Failed to configure weather API: {}", e);
                     set_is_saving.set(false);
                 }
             }

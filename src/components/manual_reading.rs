@@ -50,7 +50,7 @@ pub fn ManualReadingForm(
             ).await {
                 Ok(()) => on_saved(),
                 Err(e) => {
-                    log::error!("Failed to log manual reading: {}", e);
+                    tracing::error!("Failed to log manual reading: {}", e);
                     set_error_msg.set(Some("Failed to save reading".into()));
                 }
             }

@@ -45,7 +45,7 @@ pub fn OrchidDetail(
         leptos::task::spawn_local(async move {
             match crate::server_fns::orchids::get_log_entries(orchid_id).await {
                 Ok(entries) => set_log_entries.set(entries),
-                Err(e) => log::error!("Failed to load log entries: {}", e),
+                Err(e) => tracing::error!("Failed to load log entries: {}", e),
             }
         });
     }
@@ -183,7 +183,7 @@ fn JournalTab(
                     }
                     set_log_entries.update(|entries| entries.insert(0, response.entry));
                 }
-                Err(e) => log::error!("Failed to add note: {}", e),
+                Err(e) => tracing::error!("Failed to add note: {}", e),
             }
             set_is_syncing.set(false);
             set_note.set(String::new());
@@ -503,7 +503,7 @@ fn DetailsTab(
                                         set_log_entries.set(entries);
                                     }
                                 }
-                                Err(e) => log::error!("Failed to mark watered: {}", e),
+                                Err(e) => tracing::error!("Failed to mark watered: {}", e),
                             }
                             set_is_watering.set(false);
                         });
@@ -587,7 +587,7 @@ fn CareScheduleCard(
                             leptos::task::spawn_local(async move {
                                 match crate::server_fns::orchids::mark_fertilized(orchid_id).await {
                                     Ok(updated) => set_orchid_signal.set(updated),
-                                    Err(e) => log::error!("Failed to mark fertilized: {}", e),
+                                    Err(e) => tracing::error!("Failed to mark fertilized: {}", e),
                                 }
                                 set_is_fertilizing.set(false);
                             });

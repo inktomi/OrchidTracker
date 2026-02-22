@@ -32,7 +32,7 @@ pub fn DeviceList(
                     set_devices.update(|devs| devs.retain(|d| d.id != device_id));
                 }
                 Err(e) => {
-                    log::error!("Failed to delete device: {}", e);
+                    tracing::error!("Failed to delete device: {}", e);
                 }
             }
         });

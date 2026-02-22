@@ -202,7 +202,7 @@ fn ScanTab(
                                 }
                             }
                             Err(e) => {
-                                log::error!("Camera Error: {:?}", e);
+                                tracing::error!("Camera Error: {:?}", e);
                                 set_error_msg.set(Some("Camera access denied or not available.".into()));
                             }
                         }
@@ -237,7 +237,7 @@ fn ScanTab(
             html_canvas.set_height(height as u32);
 
             if let Err(e) = context.draw_image_with_html_video_element(&video, 0.0, 0.0) {
-                log::error!("Draw Error: {:?}", e);
+                tracing::error!("Draw Error: {:?}", e);
                 set_error_msg.set(Some("Failed to capture image".into()));
                 set_is_scanning.set(false);
                 return;

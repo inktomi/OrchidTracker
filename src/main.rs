@@ -44,7 +44,7 @@ async fn main() {
         match orchid_tracker::cli::run_reset_password(&username, &password).await {
             Ok(()) => std::process::exit(0),
             Err(e) => {
-                eprintln!("Error: {}", e);
+                tracing::error!("Error: {}", e);
                 std::process::exit(1);
             }
         }
@@ -71,14 +71,12 @@ async fn main() {
     // Leptos config
     let site_addr: std::net::SocketAddr = cfg.site_addr.parse()
         .expect("Invalid SITE_ADDR format (expected e.g. 0.0.0.0:3000)");
-    let leptos_options = LeptosOptions::builder()
-        .output_name("orchid-tracker")
-        .site_root("target/site")
-        .site_pkg_dir("pkg")
-        .site_addr(site_addr)
-        .reload_port(cfg.reload_port)
-        .hash_files(true)
-        .build();
+    
+    let conf = leptos_config::get_configuration(None).expect("Failed to get leptos configuration");
+    let mut leptos_options = conf.leptos_options;
+    leptos_options.site_addr = site_addr;
+    leptos_options.reload_port = cfg.reload_port;
+
     let routes = generate_route_list(App);
 
     // Image serving
