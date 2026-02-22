@@ -120,7 +120,13 @@ pub fn SettingsModal(
                     <div class="mb-4">
                         <label>"Temperature Unit:"</label>
                         <select
-                            on:change=move |ev| set_temp_unit.set(event_target_value(&ev))
+                            on:change=move |ev| {
+                                let val = event_target_value(&ev);
+                                set_temp_unit.set(val.clone());
+                                leptos::task::spawn_local(async move {
+                                    let _ = crate::server_fns::preferences::save_temp_unit(val).await;
+                                });
+                            }
                             prop:value=temp_unit
                         >
                             <option value="C">"Celsius (C)"</option>
@@ -292,9 +298,6 @@ pub fn SettingsModal(
                         <NotificationSettings />
                     </div>
 
-                    <div class="mt-6">
-                        <button class=BTN_PRIMARY on:click=move |_| on_close(temp_unit.get_untracked())>"Save Settings"</button>
-                    </div>
                 </div>
             </div>
         </div>

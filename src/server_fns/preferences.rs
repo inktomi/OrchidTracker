@@ -41,18 +41,25 @@ pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
     // Validate
     let unit = if unit == "F" { "F" } else { "C" };
 
-    // Upsert: delete then create (SurrealDB UPSERT with schemafull can be tricky)
-    let _ = db()
-        .query("DELETE user_preference WHERE owner = $owner")
+    // Update existing preference row (preserves other fields)
+    let mut resp = db()
+        .query("UPDATE user_preference SET temp_unit = $unit WHERE owner = $owner")
         .bind(("owner", owner.clone()))
-        .await;
-
-    db()
-        .query("CREATE user_preference SET owner = $owner, temp_unit = $unit")
-        .bind(("owner", owner))
         .bind(("unit", unit.to_string()))
         .await
         .map_err(|e| internal_error("Save preference query failed", e))?;
+
+    let _ = resp.take_errors();
+
+    // If no row existed, create one
+    let updated: Vec<serde_json::Value> = resp.take(0).unwrap_or_default();
+    if updated.is_empty() {
+        let _ = db()
+            .query("CREATE user_preference SET owner = $owner, temp_unit = $unit")
+            .bind(("owner", owner))
+            .bind(("unit", unit.to_string()))
+            .await;
+    }
 
     Ok(())
 }

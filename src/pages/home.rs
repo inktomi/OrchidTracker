@@ -15,7 +15,7 @@ use crate::model::{Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
-use crate::server_fns::preferences::{get_temp_unit, save_temp_unit, get_hemisphere, get_collection_public};
+use crate::server_fns::preferences::{get_temp_unit, get_hemisphere, get_collection_public};
 use crate::server_fns::devices::get_devices;
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
 use crate::update::dispatch;
@@ -359,11 +359,7 @@ pub fn HomePage() -> impl IntoView {
                                         initial_collection_public=current_public
                                         username=uname
                                         on_close=move |new_unit: String| {
-                                    let unit_to_save = new_unit.clone();
                                     send(Msg::SettingsClosed { temp_unit: new_unit });
-                                    leptos::task::spawn_local(async move {
-                                        let _ = save_temp_unit(unit_to_save).await;
-                                    });
                                 }
                                         on_zones_changed=on_zones_changed
                                         on_show_wizard=move |z| send(Msg::ShowWizard(Some(z)))
