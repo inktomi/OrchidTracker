@@ -21,6 +21,7 @@ pub mod photo_gallery;
 pub mod seasonal_calendar;
 pub mod zone_wizard;
 pub mod manual_reading;
+pub mod climate_strip;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 
@@ -33,3 +34,40 @@ pub const BTN_SECONDARY: &str = "py-2.5 px-5 text-sm font-semibold text-stone-60
 pub const BTN_DANGER: &str = "py-1.5 px-3 text-xs font-semibold text-danger bg-danger/10 rounded-lg border-none cursor-pointer hover:bg-danger/20 transition-colors dark:text-red-300 dark:bg-red-900/30 dark:hover:bg-red-900/50";
 pub const BTN_GHOST: &str = "py-2 px-3.5 text-sm font-medium text-white/90 bg-white/10 rounded-lg border border-white/20 cursor-pointer hover:bg-white/20 transition-colors";
 pub const BTN_CLOSE: &str = "py-2 px-3 text-sm text-stone-400 bg-stone-100 rounded-lg border-none cursor-pointer hover:bg-stone-200 hover:text-stone-600 transition-colors dark:text-stone-400 dark:bg-stone-800 dark:hover:bg-stone-700 dark:hover:text-stone-200";
+
+// ── Shared Climate Helpers ───────────────────────────────────────────
+use leptos::prelude::*;
+
+pub const BADGE_ESTIMATED: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-amber-100/80 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+pub const BADGE_MANUAL: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-sky-100/80 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
+pub const BADGE_LIVE: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+
+pub fn source_badge(source: &Option<String>) -> Option<leptos::tachys::view::any_view::AnyView> {
+    match source.as_deref() {
+        Some("wizard") => Some(leptos::IntoView::into_view(
+            leptos::view! { <span class=BADGE_ESTIMATED>"Estimated"</span> }
+        ).into_any()),
+        Some("manual") => Some(leptos::IntoView::into_view(
+            leptos::view! { <span class=BADGE_MANUAL>"Manual"</span> }
+        ).into_any()),
+        Some(s) if !s.is_empty() => Some(leptos::IntoView::into_view(
+            leptos::view! { <span class=BADGE_LIVE>"Live"</span> }
+        ).into_any()),
+        _ => None,
+    }
+}
+
+pub fn format_time_ago(recorded_at: &chrono::DateTime<chrono::Utc>) -> String {
+    let now = chrono::Utc::now();
+    let diff = now.signed_duration_since(*recorded_at);
+
+    if diff.num_minutes() < 1 {
+        "just now".to_string()
+    } else if diff.num_minutes() < 60 {
+        format!("{} min ago", diff.num_minutes())
+    } else if diff.num_hours() < 24 {
+        format!("{} hr ago", diff.num_hours())
+    } else {
+        format!("{} days ago", diff.num_days())
+    }
+}

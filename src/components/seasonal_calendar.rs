@@ -13,7 +13,13 @@ pub fn SeasonalCalendar(
         .collect();
 
     if seasonal_orchids.is_empty() {
-        return view! { <div></div> }.into_any();
+        return view! {
+            <div class="p-6 text-center rounded-xl border border-stone-200 dark:border-stone-700">
+                <p class="text-sm text-stone-400 dark:text-stone-500">
+                    "Add bloom and rest periods to your plants to see their seasonal calendar here."
+                </p>
+            </div>
+        }.into_any();
     }
 
     let now_month = chrono::Utc::now().month();

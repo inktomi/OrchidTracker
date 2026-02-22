@@ -1,9 +1,6 @@
 use leptos::prelude::*;
 use crate::orchid::{ClimateReading, GrowingZone};
-
-const BADGE_ESTIMATED: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-amber-100/80 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
-const BADGE_MANUAL: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-sky-100/80 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300";
-const BADGE_LIVE: &str = "inline-flex gap-1 items-center py-0.5 px-2.5 text-[10px] font-bold tracking-wide rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+use super::{source_badge, format_time_ago};
 
 #[component]
 pub fn ClimateDashboard(
@@ -153,32 +150,3 @@ pub fn ClimateDashboard(
     }.into_any()
 }
 
-fn source_badge(source: &Option<String>) -> Option<leptos::tachys::view::any_view::AnyView> {
-    match source.as_deref() {
-        Some("wizard") => Some(leptos::IntoView::into_view(
-            leptos::view! { <span class=BADGE_ESTIMATED>"Estimated"</span> }
-        ).into_any()),
-        Some("manual") => Some(leptos::IntoView::into_view(
-            leptos::view! { <span class=BADGE_MANUAL>"Manual"</span> }
-        ).into_any()),
-        Some(s) if !s.is_empty() => Some(leptos::IntoView::into_view(
-            leptos::view! { <span class=BADGE_LIVE>"Live"</span> }
-        ).into_any()),
-        _ => None,
-    }
-}
-
-fn format_time_ago(recorded_at: &chrono::DateTime<chrono::Utc>) -> String {
-    let now = chrono::Utc::now();
-    let diff = now.signed_duration_since(*recorded_at);
-
-    if diff.num_minutes() < 1 {
-        "just now".to_string()
-    } else if diff.num_minutes() < 60 {
-        format!("{} min ago", diff.num_minutes())
-    } else if diff.num_hours() < 24 {
-        format!("{} hr ago", diff.num_hours())
-    } else {
-        format!("{} days ago", diff.num_days())
-    }
-}

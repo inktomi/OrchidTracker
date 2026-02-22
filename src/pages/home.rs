@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use crate::components::add_orchid_form::AddOrchidForm;
 use crate::components::app_header::AppHeader;
 use crate::components::botanical_art::OrchidAccent;
-use crate::components::climate_dashboard::ClimateDashboard;
+use crate::components::climate_strip::ClimateStrip;
 use crate::components::zone_wizard::ZoneConditionWizard;
 use crate::components::notification_setup::NotificationSetup;
 use crate::components::orchid_collection::OrchidCollection;
@@ -11,7 +11,7 @@ use crate::components::seasonal_calendar::SeasonalCalendar;
 use crate::components::scanner::ScannerModal;
 use crate::components::settings::SettingsModal;
 use crate::orchid::Alert;
-use crate::model::{Model, Msg};
+use crate::model::{HomeTab, Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
@@ -67,6 +67,7 @@ pub fn HomePage() -> impl IntoView {
     let temp_unit = Memo::new(move |_| model.get().temp_unit.clone());
     let dark_mode = Memo::new(move |_| model.get().dark_mode);
     let wizard_zone = Memo::new(move |_| model.get().wizard_zone.clone());
+    let home_tab = Memo::new(move |_| model.get().home_tab);
 
     // Dynamic climate readings from configured data sources
     let climate_resource = Resource::new(
@@ -252,64 +253,106 @@ pub fn HomePage() -> impl IntoView {
                             </div>
 
                             <main class="relative z-10 py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
-                                <Suspense fallback=|| ()>
-                                    {move || {
-                                        let readings = climate_readings.get();
-                                        let current_zones = zones_memo.get();
-                                        let tu = temp_unit.get();
-                                        view! { <ClimateDashboard
-                                            readings=readings
-                                            zones=current_zones
-                                            unit=temp_unit
-                                            on_show_wizard=move |z| send(Msg::ShowWizard(Some(z)))
-                                            on_zones_changed=on_zones_changed
-                                            temp_unit_str=tu
-                                        /> }
-                                    }}
-                                </Suspense>
+                                // Tab bar
+                                <div class="flex mb-5 border-b border-stone-200 dark:border-stone-700">
+                                    <button
+                                        class=move || if home_tab.get() == HomeTab::MyPlants {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
+                                        } else {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                                        }
+                                        on:click=move |_| send(Msg::SetHomeTab(HomeTab::MyPlants))
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                                        </svg>
+                                        "My Plants"
+                                    </button>
+                                    <button
+                                        class=move || if home_tab.get() == HomeTab::Seasons {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
+                                        } else {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                                        }
+                                        on:click=move |_| send(Msg::SetHomeTab(HomeTab::Seasons))
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                        </svg>
+                                        "Seasons"
+                                    </button>
+                                </div>
 
-                                <Suspense fallback=|| ()>
-                                    {move || {
-                                        let orchids = orchids_resource.get()
-                                            .and_then(|r| r.ok())
-                                            .unwrap_or_default();
-                                        let hemi = hemisphere.get();
-                                        view! { <SeasonalCalendar orchids=orchids hemisphere=hemi /> }
-                                    }}
-                                </Suspense>
+                                // Tab content
+                                {move || {
+                                    match home_tab.get() {
+                                        HomeTab::MyPlants => view! {
+                                            <div>
+                                                <Suspense fallback=|| ()>
+                                                    {move || {
+                                                        let readings = climate_readings.get();
+                                                        let current_zones = zones_memo.get();
+                                                        let tu = temp_unit.get();
+                                                        view! { <ClimateStrip
+                                                            readings=readings
+                                                            zones=current_zones
+                                                            unit=temp_unit
+                                                            on_show_wizard=move |z| send(Msg::ShowWizard(Some(z)))
+                                                            on_zones_changed=on_zones_changed
+                                                            temp_unit_str=tu
+                                                        /> }
+                                                    }}
+                                                </Suspense>
 
-                                <NotificationSetup />
+                                                <NotificationSetup />
 
-                                <Suspense fallback=|| ()>
-                                    {move || {
-                                        alerts_resource.get().map(|result| {
-                                            let alerts = result.unwrap_or_default();
-                                            if alerts.is_empty() {
-                                                view! { <div></div> }.into_any()
-                                            } else {
-                                                view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
-                                                    leptos::task::spawn_local(async move {
-                                                        let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
-                                                        alerts_resource.refetch();
-                                                    });
-                                                } /> }.into_any()
-                                            }
-                                        })
-                                    }}
-                                </Suspense>
+                                                <Suspense fallback=|| ()>
+                                                    {move || {
+                                                        alerts_resource.get().map(|result| {
+                                                            let alerts = result.unwrap_or_default();
+                                                            if alerts.is_empty() {
+                                                                view! { <div></div> }.into_any()
+                                                            } else {
+                                                                view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
+                                                                    leptos::task::spawn_local(async move {
+                                                                        let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
+                                                                        alerts_resource.refetch();
+                                                                    });
+                                                                } /> }.into_any()
+                                                            }
+                                                        })
+                                                    }}
+                                                </Suspense>
 
-                                <OrchidCollection
-                                    orchids_resource=orchids_resource
-                                    zones=zones_memo
-                                    view_mode=view_mode
-                                    on_set_view=move |mode| send(Msg::SetViewMode(mode))
-                                    on_delete=on_delete
-                                    on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
-                                    on_update=on_update
-                                    on_water=on_water
-                                    on_add=move || send(Msg::ShowAddModal(true))
-                                    on_scan=move || send(Msg::ShowScanner(true))
-                                />
+                                                <OrchidCollection
+                                                    orchids_resource=orchids_resource
+                                                    zones=zones_memo
+                                                    view_mode=view_mode
+                                                    on_set_view=move |mode| send(Msg::SetViewMode(mode))
+                                                    on_delete=on_delete
+                                                    on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
+                                                    on_update=on_update
+                                                    on_water=on_water
+                                                    on_add=move || send(Msg::ShowAddModal(true))
+                                                    on_scan=move || send(Msg::ShowScanner(true))
+                                                />
+                                            </div>
+                                        }.into_any(),
+                                        HomeTab::Seasons => view! {
+                                            <div>
+                                                <Suspense fallback=|| ()>
+                                                    {move || {
+                                                        let orchids = orchids_resource.get()
+                                                            .and_then(|r| r.ok())
+                                                            .unwrap_or_default();
+                                                        let hemi = hemisphere.get();
+                                                        view! { <SeasonalCalendar orchids=orchids hemisphere=hemi /> }
+                                                    }}
+                                                </Suspense>
+                                            </div>
+                                        }.into_any(),
+                                    }
+                                }}
                             </main>
 
                             // Modals rendered outside <main> to avoid stacking context constraints

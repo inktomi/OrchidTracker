@@ -8,6 +8,13 @@ pub enum ViewMode {
     Table,
 }
 
+/// Home page tab selection
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HomeTab {
+    MyPlants,
+    Seasons,
+}
+
 /// Centralized UI state (TEA Model) — data now comes from server Resources
 #[derive(Clone, Debug, PartialEq)]
 pub struct Model {
@@ -21,6 +28,7 @@ pub struct Model {
     pub hemisphere: String,
     pub dark_mode: bool,
     pub wizard_zone: Option<GrowingZone>,
+    pub home_tab: HomeTab,
 }
 
 impl Default for Model {
@@ -36,6 +44,7 @@ impl Default for Model {
             hemisphere: "N".to_string(),
             dark_mode: false,
             wizard_zone: None,
+            home_tab: HomeTab::MyPlants,
         }
     }
 }
@@ -62,6 +71,9 @@ pub enum Msg {
 
     // Wizard
     ShowWizard(Option<GrowingZone>),
+
+    // Home tab
+    SetHomeTab(HomeTab),
 }
 
 /// Side effects returned by the update function (TEA Commands) — UI only

@@ -44,6 +44,10 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
             model.wizard_zone = zone;
             vec![]
         }
+        Msg::SetHomeTab(tab) => {
+            model.home_tab = tab;
+            vec![]
+        }
     }
 }
 
@@ -246,6 +250,22 @@ mod tests {
 
         let cmds = update(&mut model, Msg::ShowWizard(None));
         assert!(model.wizard_zone.is_none());
+        assert!(cmds.is_empty());
+    }
+
+    #[test]
+    fn test_set_home_tab() {
+        use crate::model::HomeTab;
+
+        let mut model = Model::default();
+        assert_eq!(model.home_tab, HomeTab::MyPlants);
+
+        let cmds = update(&mut model, Msg::SetHomeTab(HomeTab::Seasons));
+        assert_eq!(model.home_tab, HomeTab::Seasons);
+        assert!(cmds.is_empty());
+
+        let cmds = update(&mut model, Msg::SetHomeTab(HomeTab::MyPlants));
+        assert_eq!(model.home_tab, HomeTab::MyPlants);
         assert!(cmds.is_empty());
     }
 
