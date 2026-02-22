@@ -50,6 +50,7 @@ if [ ! -f "$CARGO_ENV" ]; then
         RUSTUP_INIT_SKIP_PATH_CHECK=yes \
         bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
 fi
+sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && rustup default stable"
 sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && rustup target add wasm32-unknown-unknown"
 sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && cargo install cargo-leptos"
 

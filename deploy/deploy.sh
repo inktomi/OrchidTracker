@@ -10,6 +10,9 @@ HEALTH_URL="http://localhost:3000"
 
 cd "$APP_DIR"
 
+# Use rustup-managed toolchain, not system Rust
+source "$APP_DIR/.cargo/env"
+
 echo "==> Pulling latest changes..."
 git pull --ff-only
 
