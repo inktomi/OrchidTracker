@@ -26,16 +26,6 @@ else
     cd "$APP_DIR" && git pull --ff-only
 fi
 
-echo "==> Installing Rust toolchain for '$SERVICE_USER'..."
-RUSTUP_HOME="$APP_DIR/.rustup"
-CARGO_HOME="$APP_DIR/.cargo"
-if [ ! -f "$CARGO_ENV" ]; then
-    sudo -u "$SERVICE_USER" RUSTUP_HOME="$RUSTUP_HOME" CARGO_HOME="$CARGO_HOME" \
-        bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
-fi
-sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && rustup target add wasm32-unknown-unknown"
-sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && cargo install cargo-leptos"
-
 echo "==> Creating data directories..."
 mkdir -p "$APP_DIR/data/images"
 
@@ -49,6 +39,19 @@ fi
 
 echo "==> Setting ownership..."
 chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
+
+echo "==> Installing Rust toolchain for '$SERVICE_USER'..."
+RUSTUP_HOME="$APP_DIR/.rustup"
+CARGO_HOME="$APP_DIR/.cargo"
+if [ ! -f "$CARGO_ENV" ]; then
+    sudo -u "$SERVICE_USER" \
+        RUSTUP_HOME="$RUSTUP_HOME" \
+        CARGO_HOME="$CARGO_HOME" \
+        RUSTUP_INIT_SKIP_PATH_CHECK=yes \
+        bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+fi
+sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && rustup target add wasm32-unknown-unknown"
+sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && cargo install cargo-leptos"
 
 echo "==> Installing systemd service..."
 cp "$APP_DIR/deploy/orchid-tracker.service" /etc/systemd/system/
