@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+export RUSTC_WRAPPER=sccache
+
 APP_DIR="/opt/orchids"
 SERVICE_USER="orchid"
 SERVICE="orchid-tracker"
@@ -20,12 +22,14 @@ echo "==> Restarting service..."
 sudo systemctl restart "$SERVICE"
 
 echo "==> Waiting for startup..."
-sleep 3
+for i in {1..30}; do
+    if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+        echo "==> Deploy successful! Service is running."
+        exit 0
+    fi
+    sleep 1
+done
 
-if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-    echo "==> Deploy successful! Service is running."
-else
-    echo "==> WARNING: Health check failed. Check logs with:"
-    echo "    journalctl -u $SERVICE -n 50 --no-pager"
-    exit 1
-fi
+echo "==> WARNING: Health check failed. Check logs with:"
+echo "    journalctl -u $SERVICE -n 50 --no-pager"
+exit 1

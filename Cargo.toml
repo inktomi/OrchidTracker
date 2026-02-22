@@ -108,6 +108,6 @@ end2end-cmd = "npx playwright test"
 end2end-dir = "end2end"
 
 [profile.release]
-codegen-units = 1
-lto = true
+codegen-units = 16
+lto = "thin"
 opt-level = "z"
