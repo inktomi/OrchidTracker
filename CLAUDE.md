@@ -73,7 +73,7 @@ Data operations use Leptos `#[server]` functions that run on the server:
 - **SurrealDB 2** — database (remote WebSocket connection)
 - **tower-sessions** — session-based authentication
 - **argon2** — password hashing
-- **Tailwind CSS v4** — via cargo-leptos built-in support
+- **Tailwind CSS v4.2** — via cargo-leptos built-in support (pinned via `LEPTOS_TAILWIND_VERSION` env var)
 - **reqwest** — server-side HTTP client (Gemini API)
 
 ## Styling Rules
