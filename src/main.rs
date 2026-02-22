@@ -22,9 +22,25 @@ async fn main() {
     let _ = dotenvy::dotenv();
 
     // Init tracing — write to stdout so journald always captures it
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_writer(std::io::stdout)
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+    let filter = tracing_subscriber::filter::LevelFilter::INFO;
+    let fmt_layer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
+
+    let axiom_layer = if let (Ok(token), Ok(dataset)) = (std::env::var("AXIOM_TOKEN"), std::env::var("AXIOM_DATASET")) {
+        Some(tracing_axiom::builder("orchid-tracker")
+            .with_token(token).expect("Failed to set Axiom token")
+            .with_dataset(dataset).expect("Failed to set Axiom dataset")
+            .build()
+            .expect("Failed to build Axiom tracing layer"))
+    } else {
+        None
+    };
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(axiom_layer)
         .init();
 
     // Parse CLI args
