@@ -109,6 +109,7 @@ async fn main() {
         if path.exists() {
             tracing::info!("Found hash.txt at: {:?}", path);
             leptos_options.hash_file = path.to_string_lossy().to_string().into();
+            leptos_options.hash_files = true;
             break;
         }
     }
