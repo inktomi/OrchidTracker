@@ -4,16 +4,18 @@
 
 set -euo pipefail
 
-APP_DIR="/opt/orchid-tracker"
+APP_DIR="/opt/orchids"
 SERVICE_USER="orchid"
-REPO_URL="https://github.com/YOUR_USERNAME/OrchidTracker.git"  # <-- UPDATE THIS
+REPO_URL="https://github.com/inktomi/OrchidTracker.git"
+CARGO_ENV="$APP_DIR/.cargo/env"
 
 echo "==> Creating service user '$SERVICE_USER'..."
 if ! id "$SERVICE_USER" &>/dev/null; then
     useradd --system --shell /usr/sbin/nologin --home-dir "$APP_DIR" "$SERVICE_USER"
     echo "    Created user '$SERVICE_USER'"
 else
-    echo "    User '$SERVICE_USER' already exists"
+    echo "    User '$SERVICE_USER' already exists, updating home directory..."
+    usermod -d "$APP_DIR" "$SERVICE_USER"
 fi
 
 echo "==> Cloning repository to $APP_DIR..."
@@ -25,11 +27,14 @@ else
 fi
 
 echo "==> Installing Rust toolchain for '$SERVICE_USER'..."
-if ! sudo -u "$SERVICE_USER" bash -c 'command -v rustup' &>/dev/null; then
-    sudo -u "$SERVICE_USER" bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+RUSTUP_HOME="$APP_DIR/.rustup"
+CARGO_HOME="$APP_DIR/.cargo"
+if [ ! -f "$CARGO_ENV" ]; then
+    sudo -u "$SERVICE_USER" RUSTUP_HOME="$RUSTUP_HOME" CARGO_HOME="$CARGO_HOME" \
+        bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
 fi
-sudo -u "$SERVICE_USER" bash -c 'source "$HOME/.cargo/env" && rustup target add wasm32-unknown-unknown'
-sudo -u "$SERVICE_USER" bash -c 'source "$HOME/.cargo/env" && cargo install cargo-leptos'
+sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && rustup target add wasm32-unknown-unknown"
+sudo -u "$SERVICE_USER" bash -c "source '$CARGO_ENV' && cargo install cargo-leptos"
 
 echo "==> Creating data directories..."
 mkdir -p "$APP_DIR/data/images"
@@ -51,7 +56,7 @@ systemctl daemon-reload
 systemctl enable orchid-tracker
 
 echo "==> Running initial build..."
-sudo -u "$SERVICE_USER" bash -c "cd $APP_DIR && source \$HOME/.cargo/env && LEPTOS_TAILWIND_VERSION=v4.2.0 cargo leptos build --release"
+sudo -u "$SERVICE_USER" bash -c "cd '$APP_DIR' && source '$CARGO_ENV' && LEPTOS_TAILWIND_VERSION=v4.2.0 cargo leptos build --release"
 
 echo "==> Starting service..."
 systemctl start orchid-tracker

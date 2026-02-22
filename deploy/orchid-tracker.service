@@ -7,9 +7,9 @@ Wants=network.target
 Type=simple
 User=orchid
 Group=orchid
-WorkingDirectory=/opt/orchid-tracker
-ExecStart=/opt/orchid-tracker/target/release/orchid-tracker
-EnvironmentFile=/opt/orchid-tracker/.env
+WorkingDirectory=/opt/orchids
+ExecStart=/opt/orchids/target/release/orchid-tracker
+EnvironmentFile=/opt/orchids/.env
 Environment=LEPTOS_TAILWIND_VERSION=v4.2.0
 Environment=RUST_LOG=info
 Restart=on-failure
@@ -22,7 +22,7 @@ SyslogIdentifier=orchid-tracker
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/orchid-tracker/data
+ReadWritePaths=/opt/orchids/data
 PrivateTmp=true
 
 [Install]

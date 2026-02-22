@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # deploy.sh — Pull latest code, rebuild, and restart the service.
-# Run on the server: cd /opt/orchid-tracker && ./deploy/deploy.sh
+# Run on the server: cd /opt/orchids && ./deploy/deploy.sh
 
 set -euo pipefail
 
-APP_DIR="/opt/orchid-tracker"
+APP_DIR="/opt/orchids"
 SERVICE="orchid-tracker"
 HEALTH_URL="http://localhost:3000"
 
