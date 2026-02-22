@@ -279,6 +279,144 @@ async fn call_ai_text(prompt: &str) -> Result<String, String> {
     unreachable!()
 }
 
+// ── Andy's Orchids Care Data ────────────────────────────────────────
+
+/// Strip HTML tags from a string fragment, preserving inner text.
+#[cfg(feature = "ssr")]
+fn strip_html_tags(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
+}
+
+/// Extract the first `pictureframe.asp?picid=XXXXX` ID from Andy's search results HTML.
+#[cfg(feature = "ssr")]
+fn extract_picid_from_html(html: &str) -> Option<String> {
+    let marker = "pictureframe.asp?picid=";
+    let pos = html.find(marker)?;
+    let start = pos + marker.len();
+    let rest = &html[start..];
+    let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    let id = &rest[..end];
+    if id.is_empty() {
+        None
+    } else {
+        Some(id.to_string())
+    }
+}
+
+/// Extract care fields from an Andy's Orchids product page HTML.
+#[cfg(feature = "ssr")]
+fn extract_care_from_html(html: &str) -> Option<String> {
+    let labels = [
+        "Temperature:",
+        "Light Requirements:",
+        "Water Care:",
+        "Blooming Season:",
+        "Indigenous to:",
+    ];
+
+    let mut fields = Vec::new();
+
+    for label in &labels {
+        let search = format!("tags-title\">{}</span>", label);
+        if let Some(pos) = html.find(&search) {
+            let after = &html[pos + search.len()..];
+            // The value is in the next span or anchor tag after the label
+            // Look for text content after the closing </span> up to the next tag boundary
+            let text = if let Some(tag_start) = after.find('<') {
+                let rest = &after[tag_start..];
+                // Find the closing tag for this value section (next </div> or </p> or next tags-title)
+                let end = rest.find("tags-title")
+                    .or_else(|| rest.find("</div>"))
+                    .unwrap_or(rest.len().min(500));
+                let fragment = &rest[..end];
+                strip_html_tags(fragment).trim().to_string()
+            } else {
+                String::new()
+            };
+
+            if !text.is_empty() {
+                fields.push(format!("{} {}", label, text));
+            }
+        }
+    }
+
+    // Extract product description from sp_text div
+    if let Some(pos) = html.find("<div class=\"sp_text\">") {
+        let after = &html[pos..];
+        if let Some(li_start) = after.find("<li>") {
+            let li_content = &after[li_start + 4..];
+            let li_end = li_content.find("</li>").unwrap_or(li_content.len().min(1000));
+            let desc = strip_html_tags(&li_content[..li_end]).trim().to_string();
+            if !desc.is_empty() {
+                fields.push(format!("Growing notes: {}", desc));
+            }
+        }
+    }
+
+    if fields.is_empty() {
+        None
+    } else {
+        Some(fields.join("\n"))
+    }
+}
+
+/// Fetch care data from Andy's Orchids for a given species name.
+/// Returns formatted care text, or None if not found / on any error.
+#[cfg(feature = "ssr")]
+async fn fetch_andys_orchids_care(species_name: &str) -> Option<String> {
+    let parts: Vec<&str> = species_name.split_whitespace().collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let genus = parts[0];
+    let epithet = parts[1];
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .ok()?;
+
+    // Search for the species
+    let search_url = format!(
+        "https://andysorchids.com/searchresults.asp?genus={}&species={}",
+        genus, epithet
+    );
+    let search_html = client.get(&search_url)
+        .send()
+        .await
+        .ok()?
+        .text()
+        .await
+        .ok()?;
+
+    let picid = extract_picid_from_html(&search_html)?;
+
+    // Fetch the product page
+    let product_url = format!(
+        "https://andysorchids.com/pictureframe.asp?picid={}",
+        picid
+    );
+    let product_html = client.get(&product_url)
+        .send()
+        .await
+        .ok()?
+        .text()
+        .await
+        .ok()?;
+
+    extract_care_from_html(&product_html)
+}
+
 // ── Server Functions ────────────────────────────────────────────────
 
 #[server]
@@ -325,7 +463,7 @@ pub async fn analyze_orchid_image(
         For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common. \
         For native_region, provide a brief description of where this species naturally grows. \
         For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown. \
-        For temp_min/temp_max, provide the ideal temperature range in Celsius as numeric values (e.g. 18.0 and 28.0). \
+        For temp_min/temp_max, provide the FULL TOLERANCE temperature range in Celsius \u{2014} the absolute minimum and maximum the species can handle without damage. These values drive alerts, so use tolerance limits, not just the ideal range. \
         For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown. \
         Also include seasonal care data in Northern Hemisphere terms: \
         \"rest_start_month\": 11, \"rest_end_month\": 2, \"bloom_start_month\": 3, \"bloom_end_month\": 5, \
@@ -341,8 +479,49 @@ pub async fn analyze_orchid_image(
 
     let text = call_ai_vision(&prompt, &image_base64).await?;
 
-    let result: AnalysisResult = serde_json::from_str(&text)
+    let mut result: AnalysisResult = serde_json::from_str(&text)
         .map_err(|e| ServerFnError::new(format!("Failed to parse AI response: {}", e)))?;
+
+    // Refine with Andy's Orchids data if available
+    if let Some(care_data) = fetch_andys_orchids_care(&result.species_name).await {
+        tracing::info!("Found Andy's Orchids data for {}, refining analysis", result.species_name);
+        let refinement_prompt = format!(
+            "The species {} was identified. Here is real-world nursery care data from Andy's Orchids:\n{}\n\n\
+            The current analysis has: temp_min={}, temp_max={}, humidity_min={}, humidity_max={}, temp_range=\"{}\"\n\n\
+            Based on the nursery data, return ONLY valid JSON adjusting these fields:\n\
+            {{\"temp_min\": X, \"temp_max\": X, \"humidity_min\": X, \"humidity_max\": X, \"temp_range\": \"X-YC\"}}\n\
+            For temp_min/temp_max, use the FULL TOLERANCE range (absolute min/max the plant can handle in °C).",
+            result.species_name,
+            care_data,
+            result.temp_min.map_or("null".to_string(), |v| v.to_string()),
+            result.temp_max.map_or("null".to_string(), |v| v.to_string()),
+            result.humidity_min.map_or("null".to_string(), |v| v.to_string()),
+            result.humidity_max.map_or("null".to_string(), |v| v.to_string()),
+            result.temp_range,
+        );
+
+        if let Ok(refinement_text) = call_ai_text(&refinement_prompt).await {
+            if let Ok(adjustments) = serde_json::from_str::<serde_json::Value>(&refinement_text) {
+                if let Some(v) = adjustments.get("temp_min").and_then(|v| v.as_f64()) {
+                    result.temp_min = Some(v);
+                }
+                if let Some(v) = adjustments.get("temp_max").and_then(|v| v.as_f64()) {
+                    result.temp_max = Some(v);
+                }
+                if let Some(v) = adjustments.get("humidity_min").and_then(|v| v.as_f64()) {
+                    result.humidity_min = Some(v);
+                }
+                if let Some(v) = adjustments.get("humidity_max").and_then(|v| v.as_f64()) {
+                    result.humidity_max = Some(v);
+                }
+                if let Some(v) = adjustments.get("temp_range").and_then(|v| v.as_str()) {
+                    result.temp_range = v.to_string();
+                }
+            } else {
+                tracing::warn!("Failed to parse Andy's refinement response, using original values");
+            }
+        }
+    }
 
     Ok(result)
 }
@@ -373,6 +552,23 @@ pub async fn analyze_orchid_by_name(
         zone_names.join(", ")
     };
 
+    // Fetch Andy's Orchids care data before building the prompt
+    let andys_care = fetch_andys_orchids_care(&species_name).await;
+
+    let andys_section = if let Some(ref care_data) = andys_care {
+        tracing::info!("Found Andy's Orchids data for {}", species_name);
+        format!(
+            "\n\nIMPORTANT — Real-world nursery care data from Andy's Orchids for this species:\n{}\n\
+            Use this nursery data to inform your temperature, humidity, and watering recommendations. \
+            For temp_min/temp_max, use the FULL TOLERANCE range from the nursery data (the absolute \
+            min and max the plant can handle), not just the ideal range. These values are used for \
+            alerts, so they should represent the boundaries beyond which the plant is at risk.",
+            care_data
+        )
+    } else {
+        String::new()
+    };
+
     let prompt = format!(
         "I'm considering getting a plant: '{}'. \
         Think step-by-step: \
@@ -391,19 +587,20 @@ pub async fn analyze_orchid_by_name(
         For conservation_status, use 'CITES I', 'CITES II', 'Endangered', 'Vulnerable', or null if unknown/common. \
         For native_region, provide a brief description of where this species naturally grows. \
         For native_latitude and native_longitude, provide approximate decimal coordinates for the center of its native range. Set to null if unknown. \
-        For temp_min/temp_max, provide the ideal temperature range in Celsius as numeric values (e.g. 18.0 and 28.0). \
+        For temp_min/temp_max, provide the FULL TOLERANCE temperature range in Celsius \u{2014} the absolute minimum and maximum the species can handle without damage. These values drive alerts, so use tolerance limits, not just the ideal range. \
         For humidity_min/humidity_max, provide the ideal humidity range as percentages (e.g. 50.0 and 80.0). Set to null if unknown. \
         Also include seasonal care data in Northern Hemisphere terms: \
         \"rest_start_month\": 11, \"rest_end_month\": 2, \"bloom_start_month\": 3, \"bloom_end_month\": 5, \
         \"rest_water_multiplier\": 0.3, \"rest_fertilizer_multiplier\": 0.0, \
         \"active_water_multiplier\": 1.0, \"active_fertilizer_multiplier\": 1.0 \
         Months are 1-12. Multipliers are 0.0-1.0 (0.3 = 30% of normal frequency, 0.0 = stop entirely). \
-        Set seasonal fields to null if the species has no distinct rest period or seasonal cycle.",
+        Set seasonal fields to null if the species has no distinct rest period or seasonal cycle.{}",
         species_name,
         climate_summary,
         zone_list,
         existing_species,
         zone_list,
+        andys_section,
     );
 
     let text = call_ai_text_server(&prompt).await?;
@@ -614,5 +811,99 @@ mod tests {
             "content": [{ "type": "text" }]
         });
         assert!(extract_claude_text(&json).is_err());
+    }
+
+    // ── strip_html_tags ────────────────────────────────────────────
+
+    #[test]
+    fn test_strip_html_tags() {
+        assert_eq!(strip_html_tags("<b>bold</b> text"), "bold text");
+        assert_eq!(strip_html_tags("no tags here"), "no tags here");
+        assert_eq!(strip_html_tags("<a href=\"url\">link</a>"), "link");
+        assert_eq!(strip_html_tags(""), "");
+        assert_eq!(strip_html_tags("<br/>"), "");
+        assert_eq!(strip_html_tags("<p>one</p><p>two</p>"), "onetwo");
+    }
+
+    // ── extract_picid_from_html ────────────────────────────────────
+
+    #[test]
+    fn test_extract_picid_from_html() {
+        let html = r#"
+            <div class="results">
+                <a href="pictureframe.asp?picid=12345">
+                    <img src="thumb.jpg" />
+                </a>
+            </div>
+        "#;
+        assert_eq!(extract_picid_from_html(html), Some("12345".to_string()));
+    }
+
+    #[test]
+    fn test_extract_picid_from_html_multiple_takes_first() {
+        let html = r#"
+            <a href="pictureframe.asp?picid=111">First</a>
+            <a href="pictureframe.asp?picid=222">Second</a>
+        "#;
+        assert_eq!(extract_picid_from_html(html), Some("111".to_string()));
+    }
+
+    #[test]
+    fn test_extract_picid_no_match() {
+        let html = "<div>No orchid links here</div>";
+        assert_eq!(extract_picid_from_html(html), None);
+    }
+
+    #[test]
+    fn test_extract_picid_empty_id() {
+        let html = r#"<a href="pictureframe.asp?picid=">bad</a>"#;
+        assert_eq!(extract_picid_from_html(html), None);
+    }
+
+    // ── extract_care_from_html ─────────────────────────────────────
+
+    #[test]
+    fn test_extract_care_from_html() {
+        let html = r#"
+            <div class="product-info">
+                <span class="font-weight-bolder tags-title">Temperature:</span>
+                <span>Cool,Intermediate to Warm; 40°F min. to 95°F max.</span>
+                <span class="font-weight-bolder tags-title">Light Requirements:</span>
+                <a>Full Sun to Bright; 3000-4000 Footcandles</a>
+                <span class="font-weight-bolder tags-title">Water Care:</span>
+                <span>Dry/Moist; 2-3 waterings per week</span>
+            </div>
+            <div class="sp_text">
+                <ul><li>Does very well outdoors down to 32 F</li></ul>
+            </div>
+        "#;
+        let result = extract_care_from_html(html);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.contains("Temperature:"), "Should contain Temperature field");
+        assert!(text.contains("40°F"), "Should contain temperature value");
+        assert!(text.contains("Light Requirements:"), "Should contain Light field");
+        assert!(text.contains("Water Care:"), "Should contain Water field");
+        assert!(text.contains("Growing notes:"), "Should contain description");
+        assert!(text.contains("32 F"), "Should contain description text");
+    }
+
+    #[test]
+    fn test_extract_care_empty_html() {
+        assert_eq!(extract_care_from_html(""), None);
+        assert_eq!(extract_care_from_html("<div>unrelated content</div>"), None);
+    }
+
+    #[test]
+    fn test_extract_care_partial_fields() {
+        let html = r#"
+            <span class="font-weight-bolder tags-title">Temperature:</span>
+            <span>Warm; 55°F min. to 90°F max.</span>
+        "#;
+        let result = extract_care_from_html(html);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.contains("Temperature:"));
+        assert!(!text.contains("Light Requirements:"));
     }
 }
