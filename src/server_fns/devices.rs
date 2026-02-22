@@ -42,6 +42,7 @@ use ssr_types::*;
 
 /// List all hardware devices for the current user.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_devices() -> Result<Vec<HardwareDevice>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -70,6 +71,7 @@ pub async fn get_devices() -> Result<Vec<HardwareDevice>, ServerFnError> {
 
 /// Create a new hardware device.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn create_device(
     name: String,
     device_type: String,
@@ -126,6 +128,7 @@ pub async fn create_device(
 /// Update an existing hardware device's name and/or config.
 /// Device type is immutable after creation.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn update_device(
     device_id: String,
     name: String,
@@ -179,6 +182,7 @@ pub async fn update_device(
 
 /// Delete a hardware device and unlink all referencing zones.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_device(device_id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -211,6 +215,7 @@ pub async fn delete_device(device_id: String) -> Result<(), ServerFnError> {
 
 /// Test a device connection by attempting to fetch a reading.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn test_device(
     device_type: String,
     config_json: String,
@@ -269,6 +274,7 @@ pub async fn test_device(
 /// Link a zone to a shared hardware device.
 /// Clears the zone's legacy data_source_type/data_source_config.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn link_zone_to_device(
     zone_id: String,
     device_id: String,
@@ -311,6 +317,7 @@ pub async fn link_zone_to_device(
 
 /// Unlink a zone from its hardware device.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn unlink_zone_from_device(zone_id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;

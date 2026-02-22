@@ -3,6 +3,7 @@ use crate::orchid::{ClimateReading, HabitatWeather, HabitatWeatherSummary};
 
 /// Get the latest climate reading per zone for the current user.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -51,6 +52,7 @@ pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError
 
 /// Get historical readings for a specific zone within the last N hours.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_zone_history(zone_id: String, hours: u32) -> Result<Vec<ClimateReading>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -85,6 +87,7 @@ pub async fn get_zone_history(zone_id: String, hours: u32) -> Result<Vec<Climate
 
 /// Build a formatted climate summary string for the AI scanner.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_climate_summary_for_scanner() -> Result<String, ServerFnError> {
     let readings = get_current_readings().await?;
 
@@ -109,6 +112,7 @@ pub async fn get_climate_summary_for_scanner() -> Result<String, ServerFnError> 
 /// Test a data source connection by attempting to fetch a reading.
 /// Returns a formatted result string on success or an error message.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn test_data_source(provider: String, config_json: String) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
 
@@ -178,6 +182,7 @@ pub async fn test_data_source(provider: String, config_json: String) -> Result<S
 
 /// Save a wizard estimation as a climate reading and update zone fields.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn save_wizard_estimation(
     zone_id: String,
     zone_name: String,
@@ -241,6 +246,7 @@ pub async fn save_wizard_estimation(
 
 /// Log a manual climate reading for a zone.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn log_manual_reading(
     zone_id: String,
     zone_name: String,
@@ -285,6 +291,7 @@ pub async fn log_manual_reading(
 
 /// Test weather API for a lat/lon pair, returning a preview string.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn test_weather_api(latitude: f64, longitude: f64) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
 
@@ -303,6 +310,7 @@ pub async fn test_weather_api(latitude: f64, longitude: f64) -> Result<String, S
 
 /// Configure a zone's data source type and config.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn configure_zone_data_source(
     zone_id: String,
     provider: Option<String>,
@@ -354,6 +362,7 @@ pub(crate) fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, S
 
 /// Get the latest habitat weather reading for a coordinate pair.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_current(
     latitude: f64,
     longitude: f64,
@@ -388,6 +397,7 @@ pub async fn get_habitat_current(
 
 /// Get habitat weather history (summaries + recent raw) for a coordinate pair.
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_history(
     latitude: f64,
     longitude: f64,

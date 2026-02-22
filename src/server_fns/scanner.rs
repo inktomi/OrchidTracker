@@ -282,6 +282,7 @@ async fn call_ai_text(prompt: &str) -> Result<String, String> {
 // ── Server Functions ────────────────────────────────────────────────
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_image(
     image_base64: String,
     existing_species: Option<Vec<String>>,
@@ -347,6 +348,7 @@ pub async fn analyze_orchid_image(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_by_name(
     species_name: String,
     existing_species: Option<Vec<String>>,
@@ -419,6 +421,7 @@ async fn call_ai_text_server(prompt: &str) -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn generate_care_recap(
     orchid_id: String,
     event_type: String,

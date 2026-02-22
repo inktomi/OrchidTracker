@@ -135,6 +135,17 @@ OrchidTracker/
 - **Server Functions** (`#[server]`): RPC calls from the frontend execute database queries on the backend.
 - **Local State**: Limited to UI-specific preferences (e.g., dark mode).
 
+## Observability & Tracing
+
+All logging and distributed tracing are handled via the `tracing` ecosystem and exported to **Axiom**.
+
+### Tracing Standards
+- **Use `tracing::*` macros**: Use `info!`, `warn!`, `error!`, etc. across the entire stack (both frontend and backend). Do not use the `log` crate or `eprintln!`/`println!`.
+- **Instrument Server Functions**: Every Leptos server function (`#[server]`) MUST be instrumented with `#[tracing::instrument(level = "info", skip_all)]` to ensure a named child span is created for the RPC.
+- **Instrument Background Tasks**: Any `tokio::spawn` loops or async tasks outside the HTTP request lifecycle MUST be instrumented with `.instrument(tracing::info_span!("task_name"))` (requires `use tracing::Instrument;`).
+- **Axum Router**: The main HTTP router utilizes `tower_http::trace::TraceLayer` to generate root spans for all incoming HTTP requests.
+- **Axiom Integration**: The backend server uses `tracing-axiom` to asynchronously batch and ship all spans to Axiom. This requires `AXIOM_TOKEN` and `AXIOM_DATASET` environment variables to be set in production. If not present, tracing safely falls back to standard output.
+
 ## Testing
 
 ### Philosophy: Deep Testing

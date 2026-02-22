@@ -81,6 +81,7 @@ pub(crate) mod ssr_types {
 use ssr_types::*;
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -108,6 +109,7 @@ pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn create_zone(
     name: String,
     light_level: String,
@@ -176,6 +178,7 @@ pub async fn create_zone(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -235,6 +238,7 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -256,6 +260,7 @@ pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;

@@ -237,6 +237,7 @@ fn validate_filename(filename: &str) -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -264,6 +265,7 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn create_orchid(
     name: String,
     species: String,
@@ -370,6 +372,7 @@ pub async fn create_orchid(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -452,6 +455,7 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -472,6 +476,7 @@ pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn add_log_entry(
     orchid_id: String,
     note: String,
@@ -600,6 +605,7 @@ pub async fn add_log_entry(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -629,6 +635,7 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -673,6 +680,7 @@ pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn mark_fertilized(orchid_id: String) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -715,6 +723,7 @@ pub async fn mark_fertilized(orchid_id: String) -> Result<Orchid, ServerFnError>
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn mark_repotted(orchid_id: String, pot_medium: Option<String>, pot_size: Option<String>) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;

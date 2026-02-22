@@ -45,6 +45,7 @@ impl UserDbRow {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn register(
     username: String,
     email: String,
@@ -98,6 +99,7 @@ pub async fn register(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn login(username: String, password: String) -> Result<UserInfo, ServerFnError> {
     use crate::auth::verify_password;
     use crate::db::db;
@@ -153,11 +155,13 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn logout() -> Result<(), ServerFnError> {
     crate::auth::destroy_session().await
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_current_user() -> Result<Option<UserInfo>, ServerFnError> {
     crate::auth::get_session_user().await
 }

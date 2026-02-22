@@ -11,6 +11,7 @@ async fn main() {
     use tower_http::services::ServeDir;
     use tower_http::limit::RequestBodyLimitLayer;
     use tower_http::set_header::SetResponseHeaderLayer;
+    use tower_http::trace::TraceLayer;
     use tower_sessions::{SessionManagerLayer, Expiry};
     use orchid_tracker::session_store::SurrealSessionStore;
     use tower_governor::GovernorLayer;
@@ -51,7 +52,10 @@ async fn main() {
     let cfg = orchid_tracker::config::config();
 
     // Init SurrealDB (also runs migrations)
-    orchid_tracker::db::init_db(cfg).await.expect("Failed to connect to SurrealDB");
+    orchid_tracker::db::init_db(cfg)
+        .instrument(tracing::info_span!("database_startup"))
+        .await
+        .expect("Failed to connect to SurrealDB");
 
     tracing::info!("SurrealDB connected and migrations applied");
 
@@ -93,6 +97,22 @@ async fn main() {
     leptos_options.site_addr = site_addr;
     leptos_options.reload_port = cfg.reload_port;
 
+    // Fix for missing hash.txt in production: find it and provide absolute path
+    let possible_hash_paths = vec![
+        std::env::current_exe().unwrap_or_default().parent().unwrap_or(std::path::Path::new("")).join("hash.txt"),
+        std::env::current_dir().unwrap_or_default().join("target/release/hash.txt"),
+        std::env::current_dir().unwrap_or_default().join("target/debug/hash.txt"),
+        std::env::current_dir().unwrap_or_default().join("target/site/hash.txt"),
+    ];
+
+    for path in possible_hash_paths {
+        if path.exists() {
+            tracing::info!("Found hash.txt at: {:?}", path);
+            leptos_options.hash_file = path.to_string_lossy().to_string().into();
+            break;
+        }
+    }
+
     let routes = generate_route_list(App);
 
     // Image serving
@@ -110,6 +130,7 @@ async fn main() {
             }
         })
         .fallback(leptos_axum::file_and_error_handler(shell_fn))
+        .layer(TraceLayer::new_for_http())
         .layer(session_layer)
         // Security headers
         .layer(SetResponseHeaderLayer::overriding(
@@ -138,6 +159,7 @@ async fn main() {
         .layer(governor_layer)
         .with_state(leptos_options);
 
+    use tracing::Instrument;
     // Spawn background task to periodically clean up rate limiter + expired sessions
     tokio::spawn(async move {
         loop {
@@ -145,7 +167,7 @@ async fn main() {
             governor_limiter.retain_recent();
             session_store.cleanup_expired().await;
         }
-    });
+    }.instrument(tracing::info_span!("cleanup_task")));
 
     // Spawn climate data polling task (every 30 minutes)
     tokio::spawn(async move {
@@ -155,7 +177,7 @@ async fn main() {
             orchid_tracker::climate::poller::poll_all_zones().await;
             tokio::time::sleep(std::time::Duration::from_secs(30 * 60)).await;
         }
-    });
+    }.instrument(tracing::info_span!("climate_poller_task")));
 
     // Spawn seasonal alert check task (daily)
     tokio::spawn(async move {
@@ -165,7 +187,7 @@ async fn main() {
             orchid_tracker::climate::seasonal_alerts::check_seasonal_alerts().await;
             tokio::time::sleep(std::time::Duration::from_secs(24 * 60 * 60)).await;
         }
-    });
+    }.instrument(tracing::info_span!("seasonal_alerts_task")));
 
     // Spawn habitat weather polling task (every 2 hours)
     tokio::spawn(async move {
@@ -175,7 +197,7 @@ async fn main() {
             orchid_tracker::climate::habitat_poller::poll_habitat_weather().await;
             tokio::time::sleep(std::time::Duration::from_secs(2 * 60 * 60)).await;
         }
-    });
+    }.instrument(tracing::info_span!("habitat_weather_task")));
 
     let listener = tokio::net::TcpListener::bind(&cfg.site_addr).await.unwrap();
     tracing::info!("Listening on http://{}", cfg.site_addr);

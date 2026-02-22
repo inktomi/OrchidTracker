@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_temp_unit() -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -29,6 +30,7 @@ pub async fn get_temp_unit() -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -65,6 +67,7 @@ pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_hemisphere() -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -93,6 +96,7 @@ pub async fn get_hemisphere() -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn save_hemisphere(hemisphere: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -128,6 +132,7 @@ pub async fn save_hemisphere(hemisphere: String) -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_collection_public() -> Result<bool, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -157,6 +162,7 @@ pub async fn get_collection_public() -> Result<bool, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn save_collection_public(public: bool) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;

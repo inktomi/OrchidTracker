@@ -59,6 +59,7 @@ async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_orchids(username: String) -> Result<Vec<Orchid>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
@@ -87,6 +88,7 @@ pub async fn get_public_orchids(username: String) -> Result<Vec<Orchid>, ServerF
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_zones(username: String) -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
@@ -115,6 +117,7 @@ pub async fn get_public_zones(username: String) -> Result<Vec<GrowingZone>, Serv
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_climate_readings(username: String) -> Result<Vec<ClimateReading>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
@@ -162,6 +165,7 @@ pub async fn get_public_climate_readings(username: String) -> Result<Vec<Climate
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_log_entries(username: String, orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
@@ -193,6 +197,7 @@ pub async fn get_public_log_entries(username: String, orchid_id: String) -> Resu
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_hemisphere(username: String) -> Result<String, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
@@ -220,6 +225,7 @@ pub async fn get_public_hemisphere(username: String) -> Result<String, ServerFnE
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_temp_unit(username: String) -> Result<String, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;

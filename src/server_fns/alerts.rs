@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use crate::orchid::Alert;
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
     use crate::config::config;
@@ -11,6 +12,7 @@ pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn subscribe_push(
     endpoint: String,
     p256dh: String,
@@ -61,6 +63,7 @@ pub async fn subscribe_push(
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -80,6 +83,7 @@ pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -131,6 +135,7 @@ pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -159,6 +164,7 @@ pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn send_test_push() -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -226,6 +232,7 @@ pub async fn send_test_push() -> Result<String, ServerFnError> {
 }
 
 #[server]
+#[tracing::instrument(level = "info", skip_all)]
 pub async fn acknowledge_alert(alert_id: String) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
