@@ -1,0 +1,29 @@
+[Unit]
+Description=OrchidTracker - Orchid Collection Manager
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=orchid
+Group=orchid
+WorkingDirectory=/opt/orchid-tracker
+ExecStart=/opt/orchid-tracker/target/release/orchid-tracker
+EnvironmentFile=/opt/orchid-tracker/.env
+Environment=LEPTOS_TAILWIND_VERSION=v4.2.0
+Environment=RUST_LOG=info
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=orchid-tracker
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/orchid-tracker/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
