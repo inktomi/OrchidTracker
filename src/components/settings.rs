@@ -298,6 +298,27 @@ pub fn SettingsModal(
                         <NotificationSettings />
                     </div>
 
+                    <hr class="my-6 border-stone-200 dark:border-stone-700" />
+
+                    // Account section
+                    <div class="mb-2">
+                        <h3 class="mb-4 text-sm font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Account"</h3>
+                        <button
+                            class=BTN_DANGER
+                            on:click=move |_| {
+                                leptos::task::spawn_local(async move {
+                                    let _ = crate::server_fns::auth::logout().await;
+                                    #[cfg(feature = "hydrate")]
+                                    {
+                                        if let Some(window) = web_sys::window() {
+                                            let _ = window.location().set_href("/login");
+                                        }
+                                    }
+                                });
+                            }
+                        >"Log Out"</button>
+                    </div>
+
                 </div>
             </div>
         </div>
