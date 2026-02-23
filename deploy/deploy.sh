@@ -13,6 +13,7 @@ SERVICE="orchid-tracker"
 HEALTH_URL="http://localhost:3000"
 
 echo "==> Pulling latest changes..."
+sudo -u "$SERVICE_USER" git -C "$APP_DIR" checkout -- Cargo.lock
 sudo -u "$SERVICE_USER" git -C "$APP_DIR" pull --ff-only
 
 echo "==> Building release..."
