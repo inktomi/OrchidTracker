@@ -1,49 +1,52 @@
-# Orchid Tracker (Rust/Leptos)
+# Orchid Tracker
 
-A simple web application to track your orchids and their care requirements, built with Rust and Leptos.
+A full-stack Rust web application for managing an orchid collection with multi-user authentication, AI-powered plant identification, climate monitoring, and seasonal care tracking.
+
+**Live at:** [orchids.reef.fish](https://orchids.reef.fish)
 
 ## Features
 
--   **Dashboard:** View all your orchids in a grid.
--   **Add Orchid:** Form to add new orchids with details (Name, Species, Watering Frequency, Light Requirement, Notes).
--   **Delete Orchid:** Remove orchids from the list.
--   **Persistence:** Data is saved locally in your browser (LocalStorage).
+- **Collection Management:** Dashboard with card and table views for your plants, including watering schedules, fertilizer tracking, and repotting history.
+- **AI Plant Identification:** Scan a photo or search by name to identify species using Gemini/Claude with automatic fallback. Integrates Andy's Orchids nursery data for refined care recommendations.
+- **Climate Monitoring:** Growing zones with live temperature/humidity readings from hardware sensors (WeatherFlow Tempest, AC Infinity) and manual entries. Alerts when conditions drift outside plant tolerances.
+- **Seasonal Care:** Automatic rest/bloom period tracking with adjusted watering and fertilizer schedules per hemisphere.
+- **Habitat Weather:** Tracks weather in each plant's native habitat for comparison with your growing conditions.
+- **Multi-User Auth:** Session-based authentication with per-user data isolation.
+- **Public Collections:** Optionally share your collection via a public URL.
+- **Push Notifications:** Web push alerts for overdue watering and climate warnings.
 
 ## Prerequisites
 
--   [Rust](https://www.rust-lang.org/tools/install)
--   `trunk` (WASM build tool): `cargo install trunk`
--   `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
+- [Rust](https://www.rust-lang.org/tools/install) (stable)
+- `cargo-leptos`: `cargo install cargo-leptos`
+- `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
+- [SurrealDB](https://surrealdb.com/) v3
 
 ## Local Development
 
-1.  Clone the repository.
-2.  Run the development server:
-    ```bash
-    trunk serve
-    ```
-3.  Open `http://127.0.0.1:8080` in your browser.
+1. Clone the repository.
+2. Copy `.env.example` to `.env` and configure your SurrealDB connection and API keys.
+3. Run the development server:
+   ```bash
+   cargo leptos watch
+   ```
+4. Open `http://0.0.0.0:3000` in your browser.
 
 ## Testing
 
-This project includes both unit tests and integration tests.
-
-### Running Tests
-
-To run all tests (unit and integration), execute:
-
 ```bash
-cargo test
+# Run all tests
+cargo test --features ssr
+
+# Check SSR target
+cargo check --features ssr
+
+# Check WASM target
+cargo check --features hydrate --target wasm32-unknown-unknown
 ```
 
-### Test Coverage
-
--   **Unit Tests:** Located in `src/` files (e.g., `src/orchid.rs`). These test individual functions and logic, such as data models and placement compatibility validation.
--   **Integration Tests:** Located in `tests/`. These test broader interactions, such as JSON serialization/deserialization of the core data models to ensure persistence compatibility.
-
-### Note on WASM Testing
-
-Some components rely on browser APIs (`web-sys`, `js-sys`). The core logic has been decoupled where possible to allow native `cargo test` execution. For full component testing in a browser environment, `wasm-pack test` would be required (not currently configured).
+- **Unit Tests:** Located alongside source in `src/` files — domain models, helper functions, serde roundtrips.
+- **Integration Tests:** Located in `tests/` — DB-backed tests using SurrealDB's in-memory backend.
 
 ## CLI Commands
 
@@ -72,17 +75,22 @@ cargo run --features ssr -- reprocess-plants --user inktomi --batch-size 3 --del
 
 Only AI-derived fields are updated (temp ranges, humidity, seasonal care, conservation status, native region, light requirement, water frequency). User-set fields like name, notes, placement, pot info, and fertilizer settings are preserved.
 
-## Deployment (GitHub Pages)
+## Deployment
 
-This project includes a GitHub Action workflow to automatically deploy to GitHub Pages.
+Self-hosted on a Linux server. A deploy script handles pull, build, and service restart:
 
-1.  Push your code to the `main` branch.
-2.  Go to your repository settings on GitHub.
-3.  Under **Pages**, ensure the source is set to `gh-pages` branch (created by the action).
-4.  Your site will be live at `http://orchids.reef.fish/`.
+```bash
+/opt/orchids/deploy/deploy.sh
+```
+
+See `deploy/` for the systemd service file and setup script.
 
 ## Technologies
 
--   [Leptos](https://github.com/leptos-rs/leptos) - A full-stack, isomorphic Rust web framework.
--   [Trunk](https://trunkrs.dev/) - Build, bundle & ship your Rust WASM application to the web.
--   [Tailwind CSS](https://tailwindcss.com/) (Optional, currently using custom CSS).
+- [Leptos 0.8](https://github.com/leptos-rs/leptos) — SSR + hydration, `#[server]` functions
+- [Axum 0.8](https://github.com/tokio-rs/axum) — HTTP server and routing
+- [SurrealDB 3](https://surrealdb.com/) — database (remote WebSocket connection)
+- [Tailwind CSS v4](https://tailwindcss.com/) — utility-first styling via cargo-leptos integration
+- [Gemini / Claude APIs](https://ai.google.dev/) — AI plant identification with automatic fallback
+- [tower-sessions](https://crates.io/crates/tower-sessions) — session-based authentication
+- [argon2](https://crates.io/crates/argon2) — password hashing
