@@ -75,8 +75,13 @@ pub mod handlers {
             let ext = if is_jpeg { "jpg" } else if is_png { "png" } else { "webp" };
             let filename = format!("{}.{}", uuid::Uuid::new_v4(), ext);
 
+            // Sanitize user_id for filesystem use — SurrealDB record IDs contain
+            // colons (e.g. "user:abc123") which are invalid on many mounted
+            // filesystems (CIFS/SMB, NTFS-FUSE).
+            let safe_user_dir = user_id.replace(':', "_");
+
             // Store in per-user subdirectory
-            let storage_path = PathBuf::from(&config().image_storage_path).join(&user_id);
+            let storage_path = PathBuf::from(&config().image_storage_path).join(&safe_user_dir);
             tokio::fs::create_dir_all(&storage_path).await.map_err(|e| {
                 tracing::error!("Failed to create image directory {:?}: {}", storage_path, e);
                 StatusCode::INTERNAL_SERVER_ERROR
@@ -88,8 +93,8 @@ pub mod handlers {
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
 
-            // Return path relative to storage root (user_id/filename)
-            let relative_path = format!("{}/{}", user_id, filename);
+            // Return path relative to storage root (safe_user_dir/filename)
+            let relative_path = format!("{}/{}", safe_user_dir, filename);
             return Ok(Json(json!({ "filename": relative_path })));
         }
 
