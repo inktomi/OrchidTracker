@@ -34,6 +34,7 @@ rm -f "$TARBALL"
 
 echo "==> Installing to $APP_DIR ..."
 sudo -u "$SERVICE_USER" cp "$STAGING/orchid-tracker" "$APP_DIR/target/release/orchid-tracker"
+sudo -u "$SERVICE_USER" cp "$STAGING/hash.txt" "$APP_DIR/target/release/hash.txt"
 sudo -u "$SERVICE_USER" rsync -a --delete "$STAGING/site/" "$APP_DIR/target/site/"
 sudo -u "$SERVICE_USER" rsync -a "$STAGING/migrations/" "$APP_DIR/migrations/"
 rm -rf "$STAGING"
