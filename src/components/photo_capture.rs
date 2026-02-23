@@ -71,6 +71,8 @@ pub fn PhotoCapture(
     /// Called with a JPEG data URL when a photo is staged locally (not yet uploaded).
     on_photo_ready: impl Fn(String) + 'static + Copy + Send + Sync,
     #[prop(optional)] on_clear: Option<std::sync::Arc<dyn Fn() + Send + Sync>>,
+    /// Bump this signal to reset the component (clear preview after successful save).
+    #[prop(optional)] reset: Option<ReadSignal<u32>>,
 ) -> impl IntoView {
     let (preview_data_url, set_preview_data_url) = signal(Option::<String>::None);
     let (is_processing, set_is_processing) = signal(false);
@@ -82,6 +84,20 @@ pub fn PhotoCapture(
     let _ = &on_photo_ready;
     let _ = &set_is_processing;
     let _ = &set_error_msg;
+
+    // Watch reset signal from parent to clear preview after save
+    if let Some(reset_signal) = reset {
+        Effect::new(move |prev: Option<u32>| {
+            let current = reset_signal.get();
+            if let Some(prev_val) = prev {
+                if current != prev_val {
+                    set_preview_data_url.set(None);
+                    set_error_msg.set(None);
+                }
+            }
+            current
+        });
+    }
 
     // Resize the image client-side using canvas to produce a data URL for local preview.
     // Upload is deferred until the parent form is submitted.

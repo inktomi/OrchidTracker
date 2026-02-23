@@ -156,6 +156,8 @@ fn JournalTab(
     // Staged photo data URL — NOT uploaded until the form is submitted
     let (staged_photo, set_staged_photo) = signal(Option::<String>::None);
     let (is_syncing, set_is_syncing) = signal(false);
+    // Bumped after successful save to reset PhotoCapture preview
+    let (photo_reset, set_photo_reset) = signal(0u32);
 
     let on_submit_note = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
@@ -208,6 +210,7 @@ fn JournalTab(
             set_is_syncing.set(false);
             set_note.set(String::new());
             set_staged_photo.set(None);
+            set_photo_reset.update(|v| *v += 1);
         });
     };
 
@@ -233,6 +236,7 @@ fn JournalTab(
                         <PhotoCapture
                             on_photo_ready=move |data_url| set_staged_photo.set(Some(data_url))
                             on_clear=clear_staged.clone()
+                            reset=photo_reset
                         />
                     </div>
 
