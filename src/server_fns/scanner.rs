@@ -526,26 +526,15 @@ pub async fn analyze_orchid_image(
     Ok(result)
 }
 
-#[server]
-#[tracing::instrument(level = "info", skip_all)]
-pub async fn analyze_orchid_by_name(
-    species_name: String,
-    existing_species: Option<Vec<String>>,
-    climate_summary: String,
-    zone_names: Option<Vec<String>>,
-) -> Result<AnalysisResult, ServerFnError> {
-    use crate::auth::require_auth;
-
-    require_auth().await?;
-
-    let species_name = species_name.trim().to_string();
-    if species_name.is_empty() {
-        return Err(ServerFnError::new("Please enter a species name"));
-    }
-
-    let existing_species = existing_species.unwrap_or_default();
-    let zone_names = zone_names.unwrap_or_default();
-
+/// Core analysis logic — callable from server fn and CLI.
+/// Takes species name, climate context, and zone names; returns AnalysisResult.
+#[cfg(feature = "ssr")]
+pub(crate) async fn analyze_species_core(
+    species_name: &str,
+    climate_summary: &str,
+    zone_names: &[String],
+    existing_species: &[String],
+) -> Result<AnalysisResult, String> {
     let zone_list = if zone_names.is_empty() {
         "No zones configured".to_string()
     } else {
@@ -553,7 +542,7 @@ pub async fn analyze_orchid_by_name(
     };
 
     // Fetch Andy's Orchids care data before building the prompt
-    let andys_care = fetch_andys_orchids_care(&species_name).await;
+    let andys_care = fetch_andys_orchids_care(species_name).await;
 
     let andys_section = if let Some(ref care_data) = andys_care {
         tracing::info!("Found Andy's Orchids data for {}", species_name);
@@ -603,18 +592,37 @@ pub async fn analyze_orchid_by_name(
         andys_section,
     );
 
-    let text = call_ai_text_server(&prompt).await?;
+    let text = call_ai_text(&prompt).await?;
 
     let result: AnalysisResult = serde_json::from_str(&text)
-        .map_err(|e| ServerFnError::new(format!("Failed to parse AI response: {}", e)))?;
+        .map_err(|e| format!("Failed to parse AI response: {}", e))?;
 
     Ok(result)
 }
 
-/// Internal wrapper: call_ai_text returning ServerFnError.
-#[cfg(feature = "ssr")]
-async fn call_ai_text_server(prompt: &str) -> Result<String, ServerFnError> {
-    call_ai_text(prompt).await.map_err(|e| ServerFnError::new(e))
+#[server]
+#[tracing::instrument(level = "info", skip_all)]
+pub async fn analyze_orchid_by_name(
+    species_name: String,
+    existing_species: Option<Vec<String>>,
+    climate_summary: String,
+    zone_names: Option<Vec<String>>,
+) -> Result<AnalysisResult, ServerFnError> {
+    use crate::auth::require_auth;
+
+    require_auth().await?;
+
+    let species_name = species_name.trim().to_string();
+    if species_name.is_empty() {
+        return Err(ServerFnError::new("Please enter a species name"));
+    }
+
+    let existing_species = existing_species.unwrap_or_default();
+    let zone_names = zone_names.unwrap_or_default();
+
+    analyze_species_core(&species_name, &climate_summary, &zone_names, &existing_species)
+        .await
+        .map_err(|e| ServerFnError::new(e))
 }
 
 #[server]

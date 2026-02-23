@@ -60,12 +60,25 @@ async fn main() {
     tracing::info!("SurrealDB connected and migrations applied");
 
     // Handle CLI subcommands
-    if let Some(Command::ResetPassword { username, password }) = cli.command {
-        match orchid_tracker::cli::run_reset_password(&username, &password).await {
-            Ok(()) => std::process::exit(0),
-            Err(e) => {
-                tracing::error!("Error: {}", e);
-                std::process::exit(1);
+    if let Some(command) = cli.command {
+        match command {
+            Command::ResetPassword { username, password } => {
+                match orchid_tracker::cli::run_reset_password(&username, &password).await {
+                    Ok(()) => std::process::exit(0),
+                    Err(e) => {
+                        tracing::error!("Error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Command::ReprocessPlants { user, batch_size, delay_secs, dry_run } => {
+                match orchid_tracker::cli::run_reprocess_plants(&user, batch_size, delay_secs, dry_run).await {
+                    Ok(()) => std::process::exit(0),
+                    Err(e) => {
+                        tracing::error!("Error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
             }
         }
     }
