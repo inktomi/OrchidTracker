@@ -31,8 +31,8 @@ rustywind . --write
 ```
 
 **Pre-commit checklist** (run all before committing):
-1. `cargo check --features ssr` — SSR compiles
-2. `cargo check --features hydrate --target wasm32-unknown-unknown` — WASM compiles
+1. `RUSTFLAGS="-D warnings" cargo check --features ssr` — SSR compiles (warnings are errors, matching CI)
+2. `RUSTFLAGS="-D warnings" cargo check --features hydrate --target wasm32-unknown-unknown` — WASM compiles
 3. `cargo test` — all pass
 4. `rustywind . --write` — sort Tailwind classes
 5. `cargo leptos build` — verify full build
