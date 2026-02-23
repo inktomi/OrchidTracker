@@ -55,7 +55,7 @@ The server binary includes administrative CLI commands.
 ### Reset Password
 
 ```bash
-cargo run --features ssr -- reset-password --username <user> --password <new-password>
+./target/release/orchid-tracker reset-password --username <user> --password <new-password>
 ```
 
 ### Reprocess Plants with AI
@@ -64,26 +64,86 @@ Re-run AI species analysis on all plants for a given user. Useful after integrat
 
 ```bash
 # Preview what would be processed
-cargo run --features ssr -- reprocess-plants --user inktomi --dry-run
+./target/release/orchid-tracker reprocess-plants --user inktomi --dry-run
 
 # Process with defaults (5 per batch, 30s delay between batches)
-cargo run --features ssr -- reprocess-plants --user inktomi
+./target/release/orchid-tracker reprocess-plants --user inktomi
 
 # Custom batch settings
-cargo run --features ssr -- reprocess-plants --user inktomi --batch-size 3 --delay-secs 60
+./target/release/orchid-tracker reprocess-plants --user inktomi --batch-size 3 --delay-secs 60
 ```
 
 Only AI-derived fields are updated (temp ranges, humidity, seasonal care, conservation status, native region, light requirement, water frequency). User-set fields like name, notes, placement, pot info, and fertilizer settings are preserved.
 
-## Deployment
+## Running the Server
 
-Self-hosted on a Linux server. A deploy script handles pull, build, and service restart:
+Pre-built release binaries are published via GitHub Actions — no Rust toolchain needed on the server.
+
+### Requirements
+
+- Linux (x86_64)
+- [SurrealDB](https://surrealdb.com/) v3 running and accessible
+- (Optional) [Gemini](https://ai.google.dev/) and/or Claude API keys for AI plant identification
+
+### Install
+
+1. Download the latest release tarball from [GitHub Releases](https://github.com/inktomi/OrchidTracker/releases/latest).
+
+2. Create an install directory and unpack:
+   ```bash
+   sudo mkdir -p /opt/orchids/target/release /opt/orchids/data/images
+   tar xzf orchid-tracker-*.tar.gz -C /opt/orchids/target/release --include='orchid-tracker'
+   tar xzf orchid-tracker-*.tar.gz -C /opt/orchids/target --include='site/*'
+   tar xzf orchid-tracker-*.tar.gz -C /opt/orchids --include='migrations/*'
+   ```
+
+3. Create an `.env` file (see `.env.example` for all options):
+   ```bash
+   cat > /opt/orchids/.env <<'EOF'
+   SURREAL_URL=ws://127.0.0.1:8000
+   SURREAL_NS=orchidtracker
+   SURREAL_DB=orchidtracker
+   SURREAL_USER=root
+   SURREAL_PASS=changeme
+   IMAGE_STORAGE_PATH=/opt/orchids/data/images
+   SESSION_SECRET=generate-a-long-random-string-at-least-64-chars
+   LEPTOS_SITE_ADDR=0.0.0.0:3000
+   EOF
+   ```
+
+4. Run directly:
+   ```bash
+   cd /opt/orchids && target/release/orchid-tracker
+   ```
+
+### Systemd Service (recommended)
+
+1. Create a service user:
+   ```bash
+   sudo useradd -r -s /usr/sbin/nologin orchid
+   sudo chown -R orchid:orchid /opt/orchids
+   ```
+
+2. Install the service file:
+   ```bash
+   sudo cp deploy/orchid-tracker.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now orchid-tracker
+   ```
+
+3. Check status:
+   ```bash
+   sudo systemctl status orchid-tracker
+   journalctl -u orchid-tracker -f
+   ```
+
+### Updating
+
+Run the deploy script to download the latest release and restart the service:
 
 ```bash
 /opt/orchids/deploy/deploy.sh
 ```
-
-See `deploy/` for the systemd service file and setup script.
 
 ## Technologies
 
