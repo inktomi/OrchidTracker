@@ -1,5 +1,10 @@
 use leptos::prelude::*;
 
+/// Max dimension (width or height) for resized images.
+/// 2048px preserves good detail while keeping JPEG size well under 2MB.
+#[cfg(feature = "hydrate")]
+const MAX_IMAGE_DIMENSION: u32 = 2048;
+
 #[component]
 pub fn PhotoCapture(
     on_photo_ready: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -16,6 +21,9 @@ pub fn PhotoCapture(
     let _ = &set_is_uploading;
     let _ = &set_error_msg;
 
+    // Resize the image client-side using canvas, then upload the result.
+    // This keeps uploads small regardless of camera resolution (Pixel 10 Pro
+    // 50MP photos are 12-15MB raw; after resize they're ~200-500KB).
     #[cfg(feature = "hydrate")]
     let do_upload = move |file: web_sys::File| {
         set_is_uploading.set(true);
@@ -25,6 +33,30 @@ pub fn PhotoCapture(
             use wasm_bindgen::JsCast;
             use wasm_bindgen_futures::JsFuture;
 
+            // Load the file into an image element for resizing
+            let blob_url = match web_sys::Url::create_object_url_with_blob(&file) {
+                Ok(u) => u,
+                Err(_) => {
+                    set_error_msg.set(Some("Failed to read image file".into()));
+                    set_is_uploading.set(false);
+                    return;
+                }
+            };
+
+            let image_blob = match resize_image(&blob_url).await {
+                Ok(blob) => {
+                    let _ = web_sys::Url::revoke_object_url(&blob_url);
+                    blob
+                }
+                Err(e) => {
+                    let _ = web_sys::Url::revoke_object_url(&blob_url);
+                    // Fallback: upload the original file without resizing
+                    tracing::warn!("Image resize failed ({}), uploading original", e);
+                    file.into()
+                }
+            };
+
+            // Build multipart form and upload
             let form_data = match web_sys::FormData::new() {
                 Ok(fd) => fd,
                 Err(_) => {
@@ -33,7 +65,7 @@ pub fn PhotoCapture(
                     return;
                 }
             };
-            let _ = form_data.append_with_blob("image", &file);
+            let _ = form_data.append_with_blob_and_filename("image", &image_blob, "photo.jpg");
 
             let opts = web_sys::RequestInit::new();
             opts.set_method("POST");
@@ -202,7 +234,7 @@ pub fn PhotoCapture(
                             <input
                                 node_ref=file_input_ref
                                 type="file"
-                                accept="image/jpeg,image/png"
+                                accept="image/jpeg,image/png,image/webp"
                                 capture="environment"
                                 class="hidden"
                                 on:change=on_file_change
@@ -216,4 +248,97 @@ pub fn PhotoCapture(
             }}
         </div>
     }.into_any()
+}
+
+/// Resize an image from a blob URL using canvas, returning a JPEG Blob.
+/// Uses toDataURL + fetch to convert canvas content to a Blob without
+/// complex callback wiring.
+#[cfg(feature = "hydrate")]
+async fn resize_image(blob_url: &str) -> Result<web_sys::Blob, String> {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+
+    let window = web_sys::window().ok_or("no window")?;
+    let document = window.document().ok_or("no document")?;
+
+    // Create an <img> and wait for it to load
+    let img: web_sys::HtmlImageElement = document
+        .create_element("img")
+        .map_err(|_| "create img failed")?
+        .dyn_into()
+        .map_err(|_| "cast to img failed")?;
+
+    // Use a Promise to await the image load event
+    let img_for_promise = img.clone();
+    let promise = js_sys::Promise::new(&mut |resolve, reject| {
+        img_for_promise.set_onload(Some(resolve.unchecked_ref()));
+        img_for_promise.set_onerror(Some(reject.unchecked_ref()));
+    });
+    img.set_src(blob_url);
+    JsFuture::from(promise).await.map_err(|_| "image load failed")?;
+
+    let orig_w = img.natural_width();
+    let orig_h = img.natural_height();
+    if orig_w == 0 || orig_h == 0 {
+        return Err("Image has zero dimensions".to_string());
+    }
+
+    // Calculate target dimensions, preserving aspect ratio
+    let max_dim = MAX_IMAGE_DIMENSION;
+    let (target_w, target_h) = if orig_w <= max_dim && orig_h <= max_dim {
+        (orig_w, orig_h)
+    } else if orig_w >= orig_h {
+        let ratio = max_dim as f64 / orig_w as f64;
+        (max_dim, (orig_h as f64 * ratio).round() as u32)
+    } else {
+        let ratio = max_dim as f64 / orig_h as f64;
+        ((orig_w as f64 * ratio).round() as u32, max_dim)
+    };
+
+    // Draw onto a canvas at the target size
+    let canvas: web_sys::HtmlCanvasElement = document
+        .create_element("canvas")
+        .map_err(|_| "create canvas failed")?
+        .dyn_into()
+        .map_err(|_| "cast to canvas failed")?;
+    canvas.set_width(target_w);
+    canvas.set_height(target_h);
+
+    let ctx: web_sys::CanvasRenderingContext2d = canvas
+        .get_context("2d")
+        .map_err(|_| "get context failed")?
+        .ok_or("no 2d context")?
+        .dyn_into()
+        .map_err(|_| "cast context failed")?;
+
+    ctx.draw_image_with_html_image_element_and_dw_and_dh(
+        &img,
+        0.0,
+        0.0,
+        target_w as f64,
+        target_h as f64,
+    )
+    .map_err(|_| "draw_image failed")?;
+
+    // Export as JPEG data URL, then convert to Blob via fetch
+    let data_url = canvas
+        .to_data_url_with_type("image/jpeg")
+        .map_err(|_| "toDataURL failed")?;
+
+    let resp_val = JsFuture::from(window.fetch_with_str(&data_url))
+        .await
+        .map_err(|_| "fetch data URL failed")?;
+    let resp: web_sys::Response = resp_val
+        .dyn_into()
+        .map_err(|_| "cast response failed")?;
+    let blob_val = JsFuture::from(
+        resp.blob().map_err(|_| "blob() failed")?
+    )
+        .await
+        .map_err(|_| "blob await failed")?;
+    let blob: web_sys::Blob = blob_val
+        .dyn_into()
+        .map_err(|_| "cast blob failed")?;
+
+    Ok(blob)
 }

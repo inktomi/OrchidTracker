@@ -1,6 +1,6 @@
 [package]
 name = "orchid-tracker"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 
 [lib]
@@ -47,7 +47,7 @@ console_error_panic_hook = { version = "0.1", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 web-sys = { version = "0.3", features = [
-    "HtmlInputElement", "HtmlSelectElement", "Event",
+    "HtmlInputElement", "HtmlImageElement", "HtmlSelectElement", "Event",
     "HtmlVideoElement", "HtmlCanvasElement",
     "MediaStream", "MediaStreamConstraints", "MediaDevices",
     "Navigator", "Window", "CanvasRenderingContext2d",

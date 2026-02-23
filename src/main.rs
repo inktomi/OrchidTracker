@@ -121,7 +121,7 @@ async fn main() {
 
     // Build router
     let app = Router::new()
-        .route("/api/images/upload", axum::routing::post(orchid_tracker::server_fns::images::handlers::upload_image))
+        .merge(orchid_tracker::server_fns::images::handlers::upload_router())
         .nest_service("/images", image_service)
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
