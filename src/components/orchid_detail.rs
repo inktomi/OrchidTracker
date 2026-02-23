@@ -153,17 +153,18 @@ fn JournalTab(
     #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (note, set_note) = signal(String::new());
-    let (uploaded_filename, set_uploaded_filename) = signal(Option::<String>::None);
+    // Staged photo data URL — NOT uploaded until the form is submitted
+    let (staged_photo, set_staged_photo) = signal(Option::<String>::None);
     let (is_syncing, set_is_syncing) = signal(false);
 
     let on_submit_note = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
 
         let current_note = note.get();
-        let image = uploaded_filename.get();
+        let photo_data_url = staged_photo.get();
 
         // Require at least a note or photo
-        if current_note.is_empty() && image.is_none() {
+        if current_note.is_empty() && photo_data_url.is_none() {
             return;
         }
 
@@ -171,10 +172,29 @@ fn JournalTab(
         let orchid_id = orchid_signal.get().id.clone();
 
         leptos::task::spawn_local(async move {
+            // Upload staged photo first (if any), then create the log entry
+            let server_filename = if let Some(_data_url) = photo_data_url {
+                #[cfg(feature = "hydrate")]
+                {
+                    match crate::components::photo_capture::upload_data_url(&_data_url).await {
+                        Ok(fname) => Some(fname),
+                        Err(e) => {
+                            tracing::error!("Photo upload failed: {}", e);
+                            set_is_syncing.set(false);
+                            return;
+                        }
+                    }
+                }
+                #[cfg(not(feature = "hydrate"))]
+                { None }
+            } else {
+                None
+            };
+
             match crate::server_fns::orchids::add_log_entry(
                 orchid_id,
                 current_note,
-                image,
+                server_filename,
                 None,
             ).await {
                 Ok(response) => {
@@ -187,9 +207,13 @@ fn JournalTab(
             }
             set_is_syncing.set(false);
             set_note.set(String::new());
-            set_uploaded_filename.set(None);
+            set_staged_photo.set(None);
         });
     };
+
+    let clear_staged = std::sync::Arc::new(move || {
+        set_staged_photo.set(None);
+    }) as std::sync::Arc<dyn Fn() + Send + Sync>;
 
     view! {
         // Quick Actions + Detailed Note form (hidden in read-only mode)
@@ -204,10 +228,11 @@ fn JournalTab(
             <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
                 <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Add a detailed note"</h4>
                 <form on:submit=on_submit_note>
-                    // Photo upload
+                    // Photo capture — stages locally, upload deferred to submit
                     <div class="mb-3">
                         <PhotoCapture
-                            on_photo_ready=move |fname| set_uploaded_filename.set(Some(fname))
+                            on_photo_ready=move |data_url| set_staged_photo.set(Some(data_url))
+                            on_clear=clear_staged.clone()
                         />
                     </div>
 
@@ -223,7 +248,7 @@ fn JournalTab(
                     </div>
 
                     <button type="submit" class=BTN_PRIMARY disabled=move || is_syncing.get()>
-                        {move || if is_syncing.get() { "Saving..." } else { "Add Note" }}
+                        {move || if is_syncing.get() { "Uploading..." } else { "Add Note" }}
                     </button>
                 </form>
             </div>

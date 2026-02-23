@@ -5,136 +5,115 @@ use leptos::prelude::*;
 #[cfg(feature = "hydrate")]
 const MAX_IMAGE_DIMENSION: u32 = 2048;
 
+/// Upload a JPEG data URL to the server. Returns the server filename on success.
+/// Called by the parent form on submit (not by PhotoCapture itself).
+#[cfg(feature = "hydrate")]
+pub async fn upload_data_url(data_url: &str) -> Result<String, String> {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+
+    let window = web_sys::window().ok_or("no window")?;
+
+    // Convert data URL to Blob
+    let resp_val = JsFuture::from(window.fetch_with_str(data_url))
+        .await
+        .map_err(|_| "fetch data URL failed")?;
+    let resp: web_sys::Response = resp_val
+        .dyn_into()
+        .map_err(|_| "cast response failed")?;
+    let blob_val = JsFuture::from(
+        resp.blob().map_err(|_| "blob() failed")?
+    )
+        .await
+        .map_err(|_| "blob await failed")?;
+    let image_blob: web_sys::Blob = blob_val
+        .dyn_into()
+        .map_err(|_| "cast blob failed")?;
+
+    // Build multipart form and upload
+    let form_data = web_sys::FormData::new()
+        .map_err(|_| "Failed to create form data")?;
+    let _ = form_data.append_with_blob_and_filename("image", &image_blob, "photo.jpg");
+
+    let opts = web_sys::RequestInit::new();
+    opts.set_method("POST");
+    opts.set_body(&form_data.into());
+
+    let request = web_sys::Request::new_with_str_and_init("/api/images/upload", &opts)
+        .map_err(|_| "Failed to create request")?;
+
+    let resp_value = JsFuture::from(window.fetch_with_request(&request))
+        .await
+        .map_err(|_| "Upload failed")?;
+
+    let upload_resp: web_sys::Response = resp_value
+        .dyn_into()
+        .map_err(|_| "Invalid response")?;
+
+    if !upload_resp.ok() {
+        return Err(format!("Upload error: {}", upload_resp.status()));
+    }
+
+    let json = JsFuture::from(
+        upload_resp.json().map_err(|_| "Failed to read response")?
+    )
+        .await
+        .map_err(|_| "Failed to parse response")?;
+
+    js_sys::Reflect::get(&json, &"filename".into())
+        .ok()
+        .and_then(|v| v.as_string())
+        .ok_or_else(|| "No filename in response".to_string())
+}
+
 #[component]
 pub fn PhotoCapture(
+    /// Called with a JPEG data URL when a photo is staged locally (not yet uploaded).
     on_photo_ready: impl Fn(String) + 'static + Copy + Send + Sync,
     #[prop(optional)] on_clear: Option<std::sync::Arc<dyn Fn() + Send + Sync>>,
 ) -> impl IntoView {
-    let (uploaded_filename, set_uploaded_filename) = signal(Option::<String>::None);
-    let (is_uploading, set_is_uploading) = signal(false);
+    let (preview_data_url, set_preview_data_url) = signal(Option::<String>::None);
+    let (is_processing, set_is_processing) = signal(false);
     let (error_msg, set_error_msg) = signal(Option::<String>::None);
     let (is_dragging, set_is_dragging) = signal(false);
     let file_input_ref = NodeRef::<leptos::html::Input>::new();
     let on_clear_stored = StoredValue::new(on_clear);
     // These are only used in #[cfg(feature = "hydrate")] blocks
     let _ = &on_photo_ready;
-    let _ = &set_is_uploading;
+    let _ = &set_is_processing;
     let _ = &set_error_msg;
 
-    // Resize the image client-side using canvas, then upload the result.
-    // This keeps uploads small regardless of camera resolution (Pixel 10 Pro
-    // 50MP photos are 12-15MB raw; after resize they're ~200-500KB).
+    // Resize the image client-side using canvas to produce a data URL for local preview.
+    // Upload is deferred until the parent form is submitted.
     #[cfg(feature = "hydrate")]
-    let do_upload = move |file: web_sys::File| {
-        set_is_uploading.set(true);
+    let stage_photo = move |file: web_sys::File| {
+        set_is_processing.set(true);
         set_error_msg.set(None);
 
         leptos::task::spawn_local(async move {
-            use wasm_bindgen::JsCast;
-            use wasm_bindgen_futures::JsFuture;
-
             // Load the file into an image element for resizing
             let blob_url = match web_sys::Url::create_object_url_with_blob(&file) {
                 Ok(u) => u,
                 Err(_) => {
                     set_error_msg.set(Some("Failed to read image file".into()));
-                    set_is_uploading.set(false);
+                    set_is_processing.set(false);
                     return;
                 }
             };
 
-            let image_blob = match resize_image(&blob_url).await {
-                Ok(blob) => {
+            match resize_to_data_url(&blob_url).await {
+                Ok(data_url) => {
                     let _ = web_sys::Url::revoke_object_url(&blob_url);
-                    blob
+                    set_preview_data_url.set(Some(data_url.clone()));
+                    on_photo_ready(data_url);
                 }
                 Err(e) => {
                     let _ = web_sys::Url::revoke_object_url(&blob_url);
-                    // Fallback: upload the original file without resizing
-                    tracing::warn!("Image resize failed ({}), uploading original", e);
-                    file.into()
-                }
-            };
-
-            // Build multipart form and upload
-            let form_data = match web_sys::FormData::new() {
-                Ok(fd) => fd,
-                Err(_) => {
-                    set_error_msg.set(Some("Failed to create form data".into()));
-                    set_is_uploading.set(false);
-                    return;
-                }
-            };
-            let _ = form_data.append_with_blob_and_filename("image", &image_blob, "photo.jpg");
-
-            let opts = web_sys::RequestInit::new();
-            opts.set_method("POST");
-            opts.set_body(&form_data.into());
-
-            let request = match web_sys::Request::new_with_str_and_init("/api/images/upload", &opts) {
-                Ok(r) => r,
-                Err(_) => {
-                    set_error_msg.set(Some("Failed to create request".into()));
-                    set_is_uploading.set(false);
-                    return;
-                }
-            };
-
-            let window = web_sys::window().unwrap();
-            let resp_value = match JsFuture::from(window.fetch_with_request(&request)).await {
-                Ok(r) => r,
-                Err(_) => {
-                    set_error_msg.set(Some("Upload failed".into()));
-                    set_is_uploading.set(false);
-                    return;
-                }
-            };
-
-            let resp: web_sys::Response = match resp_value.dyn_into() {
-                Ok(r) => r,
-                Err(_) => {
-                    set_error_msg.set(Some("Invalid response".into()));
-                    set_is_uploading.set(false);
-                    return;
-                }
-            };
-
-            if !resp.ok() {
-                set_error_msg.set(Some(format!("Upload error: {}", resp.status())));
-                set_is_uploading.set(false);
-                return;
-            }
-
-            let json = match resp.json() {
-                Ok(p) => match JsFuture::from(p).await {
-                    Ok(j) => j,
-                    Err(_) => {
-                        set_error_msg.set(Some("Failed to parse response".into()));
-                        set_is_uploading.set(false);
-                        return;
-                    }
-                },
-                Err(_) => {
-                    set_error_msg.set(Some("Failed to read response".into()));
-                    set_is_uploading.set(false);
-                    return;
-                }
-            };
-
-            let filename = js_sys::Reflect::get(&json, &"filename".into())
-                .ok()
-                .and_then(|v| v.as_string());
-
-            match filename {
-                Some(fname) => {
-                    set_uploaded_filename.set(Some(fname.clone()));
-                    on_photo_ready(fname);
-                }
-                None => {
-                    set_error_msg.set(Some("No filename in response".into()));
+                    tracing::warn!("Image resize failed: {}", e);
+                    set_error_msg.set(Some("Failed to process image".into()));
                 }
             }
-            set_is_uploading.set(false);
+            set_is_processing.set(false);
         });
     };
 
@@ -145,7 +124,7 @@ pub fn PhotoCapture(
                 let input_el: &web_sys::HtmlInputElement = input.as_ref();
                 if let Some(files) = input_el.files() {
                     if let Some(file) = files.get(0) {
-                        do_upload(file);
+                        stage_photo(file);
                     }
                 }
             }
@@ -160,7 +139,7 @@ pub fn PhotoCapture(
             if let Some(dt) = ev.data_transfer() {
                 if let Some(files) = dt.files() {
                     if let Some(file) = files.get(0) {
-                        do_upload(file);
+                        stage_photo(file);
                     }
                 }
             }
@@ -178,7 +157,7 @@ pub fn PhotoCapture(
     };
 
     let clear_photo = move |_| {
-        set_uploaded_filename.set(None);
+        set_preview_data_url.set(None);
         on_clear_stored.with_value(|oc| {
             if let Some(cb) = oc {
                 cb();
@@ -189,13 +168,13 @@ pub fn PhotoCapture(
     view! {
         <div>
             {move || {
-                if let Some(filename) = uploaded_filename.get() {
+                if let Some(data_url) = preview_data_url.get() {
                     view! {
                         <div class="inline-block relative">
                             <img
-                                src=format!("/images/{}", filename)
+                                src=data_url
                                 class="block max-w-full rounded-lg border max-h-[200px] border-stone-200 dark:border-stone-700"
-                                alt="Uploaded photo"
+                                alt="Photo preview"
                             />
                             <button
                                 type="button"
@@ -229,7 +208,7 @@ pub fn PhotoCapture(
                         >
                             <div class="text-2xl text-stone-400">"\u{1F4F7}"</div>
                             <div class="text-sm text-stone-500 dark:text-stone-400">
-                                {move || if is_uploading.get() { "Uploading..." } else { "Tap to add photo, or drag & drop" }}
+                                {move || if is_processing.get() { "Processing..." } else { "Tap to add photo, or drag & drop" }}
                             </div>
                             <input
                                 node_ref=file_input_ref
@@ -250,11 +229,9 @@ pub fn PhotoCapture(
     }.into_any()
 }
 
-/// Resize an image from a blob URL using canvas, returning a JPEG Blob.
-/// Uses toDataURL + fetch to convert canvas content to a Blob without
-/// complex callback wiring.
+/// Resize an image from a blob URL using canvas, returning a JPEG data URL.
 #[cfg(feature = "hydrate")]
-async fn resize_image(blob_url: &str) -> Result<web_sys::Blob, String> {
+async fn resize_to_data_url(blob_url: &str) -> Result<String, String> {
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
 
@@ -320,25 +297,8 @@ async fn resize_image(blob_url: &str) -> Result<web_sys::Blob, String> {
     )
     .map_err(|_| "draw_image failed")?;
 
-    // Export as JPEG data URL, then convert to Blob via fetch
-    let data_url = canvas
+    // Export as JPEG data URL
+    canvas
         .to_data_url_with_type("image/jpeg")
-        .map_err(|_| "toDataURL failed")?;
-
-    let resp_val = JsFuture::from(window.fetch_with_str(&data_url))
-        .await
-        .map_err(|_| "fetch data URL failed")?;
-    let resp: web_sys::Response = resp_val
-        .dyn_into()
-        .map_err(|_| "cast response failed")?;
-    let blob_val = JsFuture::from(
-        resp.blob().map_err(|_| "blob() failed")?
-    )
-        .await
-        .map_err(|_| "blob await failed")?;
-    let blob: web_sys::Blob = blob_val
-        .dyn_into()
-        .map_err(|_| "cast blob failed")?;
-
-    Ok(blob)
+        .map_err(|_| "toDataURL failed".to_string())
 }

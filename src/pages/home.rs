@@ -199,9 +199,18 @@ pub fn HomePage() -> impl IntoView {
         });
     };
 
+    // Track IDs currently being watered to prevent duplicate requests (mobile double-tap)
+    let watering_in_flight = RwSignal::new(std::collections::HashSet::<String>::new());
+
     let on_water = move |id: String| {
+        // Debounce: skip if this orchid is already being watered
+        if watering_in_flight.get_untracked().contains(&id) {
+            return;
+        }
+        watering_in_flight.update(|set| { set.insert(id.clone()); });
+
         leptos::task::spawn_local(async move {
-            match mark_watered(id).await {
+            match mark_watered(id.clone()).await {
                 Ok(updated) => {
                     // Patch the local orchid list in-place — no refetch, no scroll reset.
                     orchids_local.update(|list| {
@@ -212,6 +221,7 @@ pub fn HomePage() -> impl IntoView {
                 }
                 Err(e) => set_toast_msg.set(Some(format!("Failed to mark watered: {}", e))),
             }
+            watering_in_flight.update(|set| { set.remove(&id); });
         });
     };
 

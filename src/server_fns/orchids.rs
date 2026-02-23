@@ -635,17 +635,18 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
 }
 
 #[server]
-#[tracing::instrument(level = "info", skip_all)]
+#[tracing::instrument(level = "info", skip_all, fields(orchid_id = %orchid_id))]
 pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
 
     let user_id = require_auth().await?;
+    tracing::info!(orchid_id = %orchid_id, user_id = %user_id, "mark_watered called");
     let oid = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
 
-    // Update last_watered_at
+    // Update last_watered_at — targets exactly ONE record by $id
     let mut response = db()
         .query(
             "UPDATE $id SET last_watered_at = time::now() WHERE owner = $owner RETURN *"
