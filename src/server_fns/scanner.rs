@@ -477,10 +477,16 @@ pub async fn analyze_orchid_image(
         zone_list,
     );
 
-    let text = call_ai_vision(&prompt, &image_base64).await?;
+    let text = call_ai_vision(&prompt, &image_base64).await
+        .inspect_err(|e| tracing::error!("AI vision call failed: {}", e))?;
+
+    tracing::debug!("AI vision raw response ({} chars): {}", text.len(), &text[..text.len().min(500)]);
 
     let mut result: AnalysisResult = serde_json::from_str(&text)
-        .map_err(|e| ServerFnError::new(format!("Failed to parse AI response: {}", e)))?;
+        .map_err(|e| {
+            tracing::error!("Failed to parse AI response: {}. Raw text: {}", e, &text[..text.len().min(1000)]);
+            ServerFnError::new(format!("Failed to parse AI response: {}", e))
+        })?;
 
     // Refine with Andy's Orchids data if available
     if let Some(care_data) = fetch_andys_orchids_care(&result.species_name).await {
@@ -592,10 +598,16 @@ pub(crate) async fn analyze_species_core(
         andys_section,
     );
 
-    let text = call_ai_text(&prompt).await?;
+    let text = call_ai_text(&prompt).await
+        .inspect_err(|e| tracing::error!("AI text call failed for '{}': {}", species_name, e))?;
+
+    tracing::debug!("AI text raw response for '{}' ({} chars): {}", species_name, text.len(), &text[..text.len().min(500)]);
 
     let result: AnalysisResult = serde_json::from_str(&text)
-        .map_err(|e| format!("Failed to parse AI response: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to parse AI response for '{}': {}. Raw text: {}", species_name, e, &text[..text.len().min(1000)]);
+            format!("Failed to parse AI response: {}", e)
+        })?;
 
     Ok(result)
 }
@@ -622,7 +634,10 @@ pub async fn analyze_orchid_by_name(
 
     analyze_species_core(&species_name, &climate_summary, &zone_names, &existing_species)
         .await
-        .map_err(|e| ServerFnError::new(e))
+        .map_err(|e| {
+            tracing::error!("analyze_orchid_by_name failed for '{}': {}", species_name, e);
+            ServerFnError::new(e)
+        })
 }
 
 #[server]
