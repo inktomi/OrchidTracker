@@ -4,7 +4,6 @@ async fn main() {
     use axum::Router;
     use axum::http::HeaderValue;
     use clap::Parser;
-    use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use orchid_tracker::app::App;
     use orchid_tracker::cli::{Cli, Command};
