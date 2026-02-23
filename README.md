@@ -92,11 +92,11 @@ Pre-built release binaries are published via GitHub Actions — no Rust toolchai
 2. Create an install directory and unpack:
    ```bash
    sudo mkdir -p /opt/orchids/target/release /opt/orchids/target/site /opt/orchids/data/images
-   tar xzf orchid-tracker-*.tar.gz
-   cp orchid-tracker /opt/orchids/target/release/
-   cp -r site/* /opt/orchids/target/site/
-   cp -r migrations /opt/orchids/
-   rm -rf orchid-tracker site migrations
+   cd /opt/orchids
+   tar xzf /path/to/orchid-tracker-*.tar.gz
+   mv orchid-tracker target/release/
+   mv site target/
+   # migrations/ extracts in place
    ```
 
 3. Create an `.env` file (see `.env.example` for all options):
