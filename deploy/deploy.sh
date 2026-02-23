@@ -1,23 +1,42 @@
 #!/usr/bin/env bash
-# deploy.sh — Pull latest code, rebuild, and restart the service.
+# deploy.sh — Download latest release from GitHub and restart the service.
 # Run on the server: /opt/orchids/deploy/deploy.sh
-# No sudo needed — script elevates only for systemctl.
+# No build toolchain needed — binary is pre-built in CI.
 
 set -euo pipefail
 
-export RUSTC_WRAPPER=sccache
-
+REPO="inktomi/OrchidTracker"
 APP_DIR="/opt/orchids"
 SERVICE_USER="orchid"
 SERVICE="orchid-tracker"
 HEALTH_URL="http://localhost:3000"
 
-echo "==> Pulling latest changes..."
-sudo -u "$SERVICE_USER" git -C "$APP_DIR" checkout -- Cargo.lock
-sudo -u "$SERVICE_USER" git -C "$APP_DIR" pull --ff-only
+echo "==> Fetching latest release info..."
+DOWNLOAD_URL=$(curl -sf "https://api.github.com/repos/$REPO/releases/latest" \
+    | grep '"browser_download_url"' \
+    | head -1 \
+    | sed 's/.*"\(https[^"]*\)".*/\1/')
 
-echo "==> Building release..."
-sudo -u "$SERVICE_USER" bash -c "source '$APP_DIR/.cargo/env' && cd '$APP_DIR' && LEPTOS_TAILWIND_VERSION=v4.2.0 cargo leptos build --release"
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "ERROR: Could not find release asset URL."
+    exit 1
+fi
+
+TARBALL="/tmp/orchid-tracker-release.tar.gz"
+
+echo "==> Downloading $DOWNLOAD_URL ..."
+curl -fL -o "$TARBALL" "$DOWNLOAD_URL"
+
+STAGING=$(mktemp -d)
+echo "==> Unpacking release..."
+tar xzf "$TARBALL" -C "$STAGING"
+rm -f "$TARBALL"
+
+echo "==> Installing to $APP_DIR ..."
+sudo -u "$SERVICE_USER" cp "$STAGING/orchid-tracker" "$APP_DIR/target/release/orchid-tracker"
+sudo -u "$SERVICE_USER" rsync -a --delete "$STAGING/site/" "$APP_DIR/target/site/"
+sudo -u "$SERVICE_USER" rsync -a "$STAGING/migrations/" "$APP_DIR/migrations/"
+rm -rf "$STAGING"
 
 echo "==> Restarting service..."
 sudo systemctl restart "$SERVICE"

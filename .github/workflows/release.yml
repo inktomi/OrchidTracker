@@ -1,0 +1,99 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Rust
+        if: steps.check_release.outputs.exists == 'false'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry & git
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-deps-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-deps-
+
+      - name: Cache target directory
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-target-release-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-target-release-
+
+      - name: Install cargo-leptos
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          cargo install cargo-leptos --locked || true
+
+      - name: Run tests
+        if: steps.check_release.outputs.exists == 'false'
+        run: cargo test
+
+      - name: Check SSR target
+        if: steps.check_release.outputs.exists == 'false'
+        run: cargo check --features ssr
+
+      - name: Check WASM target
+        if: steps.check_release.outputs.exists == 'false'
+        run: cargo check --features hydrate --target wasm32-unknown-unknown
+
+      - name: Build release
+        if: steps.check_release.outputs.exists == 'false'
+        run: LEPTOS_TAILWIND_VERSION=v4.2.0 cargo leptos build --release
+
+      - name: Package tarball
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          STAGING=$(mktemp -d)
+          cp target/release/orchid-tracker "$STAGING/"
+          cp -r target/site "$STAGING/"
+          cp -r migrations "$STAGING/"
+          TARBALL="orchid-tracker-${{ steps.version.outputs.version }}.tar.gz"
+          tar czf "$TARBALL" -C "$STAGING" orchid-tracker site migrations
+          echo "tarball=$TARBALL" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "${{ env.tarball }}" \
+            --title "OrchidTracker ${{ steps.version.outputs.tag }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
