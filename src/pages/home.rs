@@ -28,6 +28,10 @@ pub fn HomePage() -> impl IntoView {
     // Load orchids from server
     let orchids_resource = Resource::new(|| (), |_| get_orchids());
 
+    // Local orchid state — synced from resource, patched in-place by water handler
+    // to avoid refetch (which would recreate the DOM and reset scroll position).
+    let orchids_local = RwSignal::new(Vec::<Orchid>::new());
+
     // Run legacy migration once on load, then load zones
     let migration_resource = Resource::new(|| (), |_| migrate_legacy_placements());
     let (zones_version, set_zones_version) = signal(0u32);
@@ -116,6 +120,16 @@ pub fn HomePage() -> impl IntoView {
 
     let hemisphere = Memo::new(move |_| model.get().hemisphere.clone());
 
+    // Sync orchid data from server resource into local writable state.
+    // Water handler patches this directly; add/delete/update refetch the resource
+    // which re-triggers this Effect to sync.
+    Effect::new(move |_| {
+        if let Some(Ok(orchids)) = orchids_resource.get() {
+            orchids_local.set(orchids);
+        }
+    });
+    let orchids_memo = Memo::new(move |_| orchids_local.get());
+
     // Error toast signal
     let (toast_msg, set_toast_msg) = signal::<Option<String>>(None);
 
@@ -187,10 +201,17 @@ pub fn HomePage() -> impl IntoView {
 
     let on_water = move |id: String| {
         leptos::task::spawn_local(async move {
-            if let Err(e) = mark_watered(id).await {
-                set_toast_msg.set(Some(format!("Failed to mark watered: {}", e)));
+            match mark_watered(id).await {
+                Ok(updated) => {
+                    // Patch the local orchid list in-place — no refetch, no scroll reset.
+                    orchids_local.update(|list| {
+                        if let Some(o) = list.iter_mut().find(|o| o.id == updated.id) {
+                            *o = updated;
+                        }
+                    });
+                }
+                Err(e) => set_toast_msg.set(Some(format!("Failed to mark watered: {}", e))),
             }
-            orchids_resource.refetch();
         });
     };
 
@@ -325,7 +346,7 @@ pub fn HomePage() -> impl IntoView {
                                                 </Suspense>
 
                                                 <OrchidCollection
-                                                    orchids_resource=orchids_resource
+                                                    orchids=orchids_memo
                                                     zones=zones_memo
                                                     view_mode=view_mode
                                                     on_set_view=move |mode| send(Msg::SetViewMode(mode))
@@ -342,9 +363,7 @@ pub fn HomePage() -> impl IntoView {
                                             <div>
                                                 <Suspense fallback=|| ()>
                                                     {move || {
-                                                        let orchids = orchids_resource.get()
-                                                            .and_then(|r| r.ok())
-                                                            .unwrap_or_default();
+                                                        let orchids = orchids_local.get();
                                                         let hemi = hemisphere.get();
                                                         view! { <SeasonalCalendar orchids=orchids hemisphere=hemi /> }
                                                     }}
@@ -411,7 +430,7 @@ pub fn HomePage() -> impl IntoView {
                             })}
 
                             {move || show_scanner.get().then(|| {
-                                let orchids = orchids_resource.get().and_then(|r| r.ok()).unwrap_or_default();
+                                let orchids = orchids_local.get();
                                 let current_zones = zones_memo.get();
                                 let current_readings = climate_readings.get();
                                 view! {

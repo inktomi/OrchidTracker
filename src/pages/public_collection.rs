@@ -182,6 +182,12 @@ pub fn PublicCollectionPage() -> impl IntoView {
             .unwrap_or_else(|| "N".to_string())
     });
 
+    let orchids_memo = Memo::new(move |_| {
+        orchids_resource.get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+    });
+
     let view_mode = Memo::new(move |_| ViewMode::Grid);
 
     // Tab state (local signal, not URL-based)
@@ -307,7 +313,7 @@ pub fn PublicCollectionPage() -> impl IntoView {
                                             </Suspense>
 
                                             <OrchidCollection
-                                                orchids_resource=orchids_resource
+                                                orchids=orchids_memo
                                                 zones=zones_memo
                                                 view_mode=view_mode
                                                 on_set_view=|_| {}
