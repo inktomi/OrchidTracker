@@ -45,6 +45,33 @@ cargo test
 
 Some components rely on browser APIs (`web-sys`, `js-sys`). The core logic has been decoupled where possible to allow native `cargo test` execution. For full component testing in a browser environment, `wasm-pack test` would be required (not currently configured).
 
+## CLI Commands
+
+The server binary includes administrative CLI commands.
+
+### Reset Password
+
+```bash
+cargo run --features ssr -- reset-password --username <user> --password <new-password>
+```
+
+### Reprocess Plants with AI
+
+Re-run AI species analysis on all plants for a given user. Useful after integrating new data sources (e.g., Andy's Orchids nursery data) to update temperature/humidity tolerances and seasonal care data.
+
+```bash
+# Preview what would be processed
+cargo run --features ssr -- reprocess-plants --user inktomi --dry-run
+
+# Process with defaults (5 per batch, 30s delay between batches)
+cargo run --features ssr -- reprocess-plants --user inktomi
+
+# Custom batch settings
+cargo run --features ssr -- reprocess-plants --user inktomi --batch-size 3 --delay-secs 60
+```
+
+Only AI-derived fields are updated (temp ranges, humidity, seasonal care, conservation status, native region, light requirement, water frequency). User-set fields like name, notes, placement, pot info, and fertilizer settings are preserved.
+
 ## Deployment (GitHub Pages)
 
 This project includes a GitHub Action workflow to automatically deploy to GitHub Pages.
