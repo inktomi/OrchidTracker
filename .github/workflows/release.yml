@@ -1,8 +1,8 @@
 name: Build & Release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+
 
 permissions:
   contents: write
@@ -34,27 +34,11 @@ jobs:
 
       - name: Install Rust
         if: steps.check_release.outputs.exists == 'false'
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo registry & git
-        if: steps.check_release.outputs.exists == 'false'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-deps-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-deps-
-
-      - name: Cache target directory
-        if: steps.check_release.outputs.exists == 'false'
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: cargo-target-release-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-target-release-
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          cache: true
 
       - name: Install cargo-leptos
         if: steps.check_release.outputs.exists == 'false'
