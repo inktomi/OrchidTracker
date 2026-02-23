@@ -91,11 +91,13 @@ Pre-built release binaries are published via GitHub Actions — no Rust toolchai
 
 2. Create an install directory and unpack:
    ```bash
-   sudo mkdir -p /opt/orchids/target/release /opt/orchids/target/site /opt/orchids/data/images
+   sudo mkdir -p /opt/orchids/data/images
    cd /opt/orchids
-   tar xzf /path/to/orchid-tracker-*.tar.gz
-   mv orchid-tracker target/release/
-   mv site target/
+   sudo -u orchid tar xzf /path/to/orchid-tracker-*.tar.gz
+   sudo -u orchid mkdir -p target/release target/site
+   sudo -u orchid mv orchid-tracker target/release/
+   sudo -u orchid mv site/* target/site/
+   rmdir site
    # migrations/ extracts in place
    ```
 
