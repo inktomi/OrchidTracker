@@ -384,6 +384,12 @@ pub fn HomePage() -> impl IntoView {
                                 }}
                             </main>
 
+                            <footer class="relative z-10 py-4 text-center">
+                                <p class="text-xs text-stone-400 dark:text-stone-600">
+                                    {format!("v{} \u{00B7} built {}", env!("CARGO_PKG_VERSION"), env!("BUILD_TIMESTAMP"))}
+                                </p>
+                            </footer>
+
                             // Modals rendered outside <main> to avoid stacking context constraints
                             {move || show_add_modal.get().then(|| {
                                 let current_zones = zones_memo.get();
