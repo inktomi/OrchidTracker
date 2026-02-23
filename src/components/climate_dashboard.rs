@@ -53,26 +53,26 @@ pub fn ClimateDashboard(
                                         <h3 class="m-0 text-base font-display text-stone-700 dark:text-stone-300">{name}</h3>
                                         {source_badge(&source)}
                                     </div>
-                                    <div class="text-[11px] text-stone-400 dark:text-stone-500">
+                                    <div class="text-[11px] text-stone-500 dark:text-stone-400">
                                         {ago}
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-5 items-center">
                                     <div class="flex flex-col items-center climate-value-in">
-                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Temp"</span>
+                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"Temp"</span>
                                         <span class="text-2xl font-display text-primary dark:text-primary-light">{temp_val}</span>
                                         <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">{temp_unit_label}</span>
                                     </div>
                                     <div class="w-px h-8 bg-stone-200 dark:bg-stone-700"></div>
                                     <div class="flex flex-col items-center climate-value-in" style="animation-delay: 0.05s">
-                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Humidity"</span>
+                                        <span class="font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"Humidity"</span>
                                         <span class="text-2xl font-display text-primary dark:text-primary-light">{format!("{:.0}", humidity)}</span>
                                         <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">"%"</span>
                                     </div>
                                     {vpd.map(|v| view! {
                                         <div class="w-px h-8 bg-stone-200 dark:bg-stone-700"></div>
                                         <div class="flex flex-col items-center climate-value-in" style="animation-delay: 0.1s">
-                                            <span class="font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"VPD"</span>
+                                            <span class="font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"VPD"</span>
                                             <span class="text-2xl font-display text-primary dark:text-primary-light">{format!("{:.2}", v)}</span>
                                             <span class="font-medium text-[10px] text-primary/50 dark:text-primary-light/50">"kPa"</span>
                                         </div>
@@ -101,8 +101,8 @@ pub fn ClimateDashboard(
                         <div class="p-5 mx-auto mb-4 rounded-2xl border border-dashed bg-surface/40 border-stone-300/70 max-w-[700px] dark:border-stone-600/60 empty-zone-shimmer">
                             <div class="flex flex-wrap gap-3 justify-between items-center">
                                 <div>
-                                    <h3 class="m-0 text-base font-display text-stone-400 dark:text-stone-500">{zone_name}</h3>
-                                    <p class="mt-1.5 text-xs text-stone-400/80 dark:text-stone-500/80">"No conditions recorded yet"</p>
+                                    <h3 class="m-0 text-base font-display text-stone-500 dark:text-stone-400">{zone_name}</h3>
+                                    <p class="mt-1.5 text-xs text-stone-500/80 dark:text-stone-400/80">"No conditions recorded yet"</p>
                                 </div>
                                 {(!read_only).then(|| view! {
                                     <div class="flex gap-2">

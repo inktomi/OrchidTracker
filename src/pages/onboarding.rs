@@ -2,8 +2,8 @@ use leptos::prelude::*;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::zones::create_zone;
 
-const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-400 dark:text-stone-500";
+const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-500 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-400 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-600 dark:text-stone-400";
 
 #[derive(Clone, Debug, PartialEq)]
 struct PendingZone {
@@ -108,7 +108,7 @@ pub fn OnboardingPage() -> impl IntoView {
             }}
         </Suspense>
 
-        <div class="flex min-h-screen bg-cream">
+        <main class="flex min-h-screen bg-cream">
             // Left panel — botanical (hidden on mobile)
             <LeftPanel step=step />
 
@@ -163,7 +163,7 @@ pub fn OnboardingPage() -> impl IntoView {
                     })}
                 </div>
             </div>
-        </div>
+        </main>
     }
 }
 
@@ -189,19 +189,19 @@ fn LeftPanel(step: ReadSignal<u32>) -> impl IntoView {
                     {move || match step.get() {
                         0 => view! {
                             <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Welcome to your growing space"</h1>
-                            <p class="text-lg leading-relaxed text-white/60">
+                            <p class="text-lg leading-relaxed text-white/80">
                                 "Before adding plants, let's define where they'll live. Each zone represents a physical location with its own light, temperature, and humidity conditions."
                             </p>
                         }.into_any(),
                         1 => view! {
                             <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Build your zones"</h1>
-                            <p class="text-lg leading-relaxed text-white/60">
+                            <p class="text-lg leading-relaxed text-white/80">
                                 "Start with a template or create custom zones. Each zone captures the environmental conditions of a growing location."
                             </p>
                         }.into_any(),
                         _ => view! {
                             <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Looking good!"</h1>
-                            <p class="text-lg leading-relaxed text-white/60">
+                            <p class="text-lg leading-relaxed text-white/80">
                                 "Review your growing zones below. You can always add, edit, or remove zones later from Settings."
                             </p>
                         }.into_any(),
@@ -237,7 +237,7 @@ fn StepWelcome(
     view! {
         <div>
             <h2 class="mb-2 text-3xl text-stone-800 dark:text-stone-100">"Set up your growing space"</h2>
-            <p class="mb-8 text-sm leading-relaxed text-stone-400 dark:text-stone-500">
+            <p class="mb-8 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
                 "Zones represent the different places where your plants grow \u{2014} a shelf, a windowsill, a patio. Each zone tracks light, temperature, and humidity so the app can suggest the best placement for each plant."
             </p>
 
@@ -246,7 +246,7 @@ fn StepWelcome(
                     <div class="flex flex-shrink-0 justify-center items-center w-10 h-10 text-lg rounded-xl bg-primary/10">"💡"</div>
                     <div>
                         <p class="text-sm font-medium text-stone-700 dark:text-stone-300">"Quick start available"</p>
-                        <p class="mt-1 text-xs text-stone-400">"Choose a template in the next step, or create zones from scratch."</p>
+                        <p class="mt-1 text-xs text-stone-500">"Choose a template in the next step, or create zones from scratch."</p>
                     </div>
                 </div>
             </div>
@@ -336,7 +336,7 @@ fn StepZoneBuilder(
     view! {
         <div>
             <h2 class="mb-2 text-3xl text-stone-800 dark:text-stone-100">"Add growing zones"</h2>
-            <p class="mb-6 text-sm text-stone-400 dark:text-stone-500">"Start with a template or add custom zones."</p>
+            <p class="mb-6 text-sm text-stone-500 dark:text-stone-400">"Start with a template or add custom zones."</p>
 
             // Template cards
             <TemplateCards apply_template=apply_template />
@@ -349,7 +349,7 @@ fn StepZoneBuilder(
                 } else {
                     Some(view! {
                         <div class="mb-6">
-                            <h3 class="mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Your Zones"</h3>
+                            <h3 class="mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Your Zones"</h3>
                             <div class="flex flex-col gap-2">
                                 {current_zones.iter().map(|zone| {
                                     let zone_id = zone.temp_id.clone();
@@ -419,22 +419,22 @@ fn TemplateCards(
             <button class=tpl_btn on:click=move |_| apply_template("indoor_shelves")>
                 <div class="mb-2 text-2xl">"🏠"</div>
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Indoor Shelves"</div>
-                <div class="mt-1 text-xs text-stone-400">"3 shelves: High, Med, Low"</div>
+                <div class="mt-1 text-xs text-stone-500">"3 shelves: High, Med, Low"</div>
             </button>
             <button class=tpl_btn on:click=move |_| apply_template("windowsill")>
                 <div class="mb-2 text-2xl">"🪟"</div>
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Windowsill"</div>
-                <div class="mt-1 text-xs text-stone-400">"Bright + Shaded sills"</div>
+                <div class="mt-1 text-xs text-stone-500">"Bright + Shaded sills"</div>
             </button>
             <button class=tpl_btn on:click=move |_| apply_template("greenhouse")>
                 <div class="mb-2 text-2xl">"🌡️"</div>
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Greenhouse"</div>
-                <div class="mt-1 text-xs text-stone-400">"Controlled environment"</div>
+                <div class="mt-1 text-xs text-stone-500">"Controlled environment"</div>
             </button>
             <button class=tpl_btn on:click=move |_| apply_template("outdoor")>
                 <div class="mb-2 text-2xl">"☀️"</div>
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Outdoor Garden"</div>
-                <div class="mt-1 text-xs text-stone-400">"Full sun + Partial shade"</div>
+                <div class="mt-1 text-xs text-stone-500">"Full sun + Partial shade"</div>
             </button>
         </div>
     }.into_any()
@@ -595,7 +595,7 @@ fn StepReview(
     view! {
         <div>
             <h2 class="mb-2 text-3xl text-stone-800 dark:text-stone-100">"Review your setup"</h2>
-            <p class="mb-6 text-sm text-stone-400 dark:text-stone-500">"You can edit zones later in Settings."</p>
+            <p class="mb-6 text-sm text-stone-500 dark:text-stone-400">"You can edit zones later in Settings."</p>
 
             {if !indoor.is_empty() {
                 Some(view! {
@@ -635,7 +635,7 @@ fn StepReview(
 fn ZoneGroupReview(label: &'static str, zones: Vec<PendingZone>) -> impl IntoView {
     view! {
         <div class="mb-6">
-            <h3 class="mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">{label}</h3>
+            <h3 class="mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">{label}</h3>
             <div class="flex flex-col gap-2">
                 {zones.iter().map(|zone| {
                     let border = border_accent(&zone.light_level);
@@ -647,7 +647,7 @@ fn ZoneGroupReview(label: &'static str, zones: Vec<PendingZone>) -> impl IntoVie
                                 <span class=light_class>{format!("{} Light", zone.light_level)}</span>
                             </div>
                             {(!zone.temperature_range.is_empty()).then(|| {
-                                view! { <span class="text-xs text-stone-400">{format!("Temp: {}", zone.temperature_range)}</span> }
+                                view! { <span class="text-xs text-stone-500">{format!("Temp: {}", zone.temperature_range)}</span> }
                             })}
                         </div>
                     }

@@ -71,7 +71,7 @@ pub fn OrchidDetail(
                 <div class=MODAL_HEADER>
                     <div>
                         <h2 class="m-0">{move || orchid_signal.get().name}</h2>
-                        <p class="mt-0.5 mb-0 text-sm italic text-stone-400">{move || orchid_signal.get().species}</p>
+                        <p class="mt-0.5 mb-0 text-sm italic text-stone-500 dark:text-stone-400">{move || orchid_signal.get().species}</p>
                     </div>
                     <div class="flex gap-2">
                         <button class=BTN_CLOSE on:click=move |_| on_close()>"\u{00D7}"</button>
@@ -202,7 +202,7 @@ fn JournalTab(
             />
 
             <div class="p-4 mb-6 rounded-xl border border-stone-200 dark:border-stone-700">
-                <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Add a detailed note"</h4>
+                <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Add a detailed note"</h4>
                 <form on:submit=on_submit_note>
                     // Photo upload
                     <div class="mb-3">
@@ -860,7 +860,7 @@ fn EditForm(
 
                 // ── Fertilizer & Pot Section ──
                 <div class="pt-4 mt-4 border-t border-stone-200 dark:border-stone-700">
-                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Fertilizer & Pot"</h4>
+                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Fertilizer & Pot"</h4>
                     <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                         <div class="flex-1">
                             <label>"Fertilizer Type:"</label>
@@ -894,7 +894,7 @@ fn EditForm(
 
                 // ── Seasonal Care Section ──
                 <div class="pt-4 mt-4 border-t border-stone-200 dark:border-stone-700">
-                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-400">"Seasonal Care"</h4>
+                    <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Seasonal Care"</h4>
                     <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                         <div class="flex-1">
                             <label>"Rest Start Month (1-12):"</label>

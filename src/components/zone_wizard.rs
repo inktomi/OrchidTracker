@@ -3,8 +3,8 @@ use crate::orchid::GrowingZone;
 use crate::estimation::*;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, BTN_PRIMARY, BTN_SECONDARY};
 
-const INPUT_WIZ: &str = "w-full px-3.5 py-2.5 text-sm bg-white/60 border border-stone-200/80 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/60 dark:border-stone-600/60 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_WIZ: &str = "block mb-1.5 text-[11px] font-semibold tracking-wider uppercase text-stone-400 dark:text-stone-500";
+const INPUT_WIZ: &str = "w-full px-3.5 py-2.5 text-sm bg-white/60 border border-stone-200/80 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-500 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/60 dark:border-stone-600/60 dark:placeholder:text-stone-400 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_WIZ: &str = "block mb-1.5 text-[11px] font-semibold tracking-wider uppercase text-stone-600 dark:text-stone-400";
 const RADIO_OPTION: &str = "flex gap-2.5 items-center p-3 rounded-xl border transition-all cursor-pointer border-stone-200/80 dark:border-stone-700 hover:border-primary/30 dark:hover:border-primary-light/30 wizard-option bg-white/40 dark:bg-stone-800/30";
 const RADIO_OPTION_SELECTED: &str = "flex gap-2.5 items-center p-3 rounded-xl border-2 transition-all cursor-pointer border-primary bg-primary/5 dark:border-primary-light dark:bg-primary-light/10 shadow-sm";
 const CHECK_OPTION: &str = "flex gap-2.5 items-center p-2.5 rounded-xl border transition-all cursor-pointer border-stone-200/80 dark:border-stone-700 hover:border-primary/30 wizard-option bg-white/40 dark:bg-stone-800/30";
@@ -62,7 +62,7 @@ fn WizardProgress(current: ReadSignal<usize>, labels: Vec<String>) -> impl IntoV
                         <span class=move || {
                             let cur = current.get();
                             if i <= cur { "text-[10px] font-bold tracking-wide text-primary dark:text-primary-light" }
-                            else { "text-[10px] font-medium tracking-wide text-stone-400 dark:text-stone-500" }
+                            else { "text-[10px] font-medium tracking-wide text-stone-500 dark:text-stone-400" }
                         }>{label}</span>
                     </div>
                 }
@@ -194,7 +194,7 @@ fn IndoorWizard(
             <div class="flex justify-between items-start mb-6">
                 <div>
                     <h2 class="m-0 text-lg font-display">"Estimate Conditions"</h2>
-                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">{zone_name}</p>
+                    <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">{zone_name}</p>
                 </div>
                 <button
                     class="flex justify-center items-center w-8 h-8 rounded-full border-none transition-colors cursor-pointer text-stone-400 bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 hover:text-stone-600"
@@ -288,7 +288,7 @@ fn Step1Room(
     view! {
         <div class="wizard-step-in">
             <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Your Space"</h3>
-            <p class="mb-4 text-xs text-stone-400">"Tell us about the room where this zone is located."</p>
+            <p class="mb-4 text-xs text-stone-500">"Tell us about the room where this zone is located."</p>
 
             <div class="mb-4">
                 <label class=LABEL_WIZ>"Room Type"</label>
@@ -327,7 +327,7 @@ fn Step2Light(
     view! {
         <div class="wizard-step-in">
             <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Light & Proximity"</h3>
-            <p class="mb-4 text-xs text-stone-400">"Windows and grow lights affect temperature."</p>
+            <p class="mb-4 text-xs text-stone-500">"Windows and grow lights affect temperature."</p>
 
             <div class="mb-4">
                 <label class=LABEL_WIZ>"Near a Window?"</label>
@@ -409,7 +409,7 @@ fn Step3Humidity(
     view! {
         <div class="wizard-step-in">
             <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Humidity"</h3>
-            <p class="mb-4 text-xs text-stone-400">"How would you describe the air, and what humidity aids do you use?"</p>
+            <p class="mb-4 text-xs text-stone-500">"How would you describe the air, and what humidity aids do you use?"</p>
 
             <div class="mb-4">
                 <label class=LABEL_WIZ>"Air Description"</label>
@@ -463,12 +463,12 @@ fn Step4Review(
     view! {
         <div class="wizard-step-in">
             <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Review & Save"</h3>
-            <p class="mb-5 text-xs text-stone-400">"Here's our estimate based on your answers."</p>
+            <p class="mb-5 text-xs text-stone-500">"Here's our estimate based on your answers."</p>
 
             // Estimation result cards — spring animation reveals
             <div class="flex gap-3 mb-5">
                 <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-primary/5 to-primary/10 border-primary/15 wizard-result-reveal dark:from-primary-light/5 dark:to-primary-light/10 dark:border-primary-light/15">
-                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Temperature"</div>
+                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"Temperature"</div>
                     <div class="text-3xl font-display text-primary dark:text-primary-light">
                         {move || {
                             let est = estimation.get();
@@ -482,7 +482,7 @@ fn Step4Review(
                     <div class="text-xs font-medium text-primary/60 dark:text-primary-light/60">{if is_f { "\u{00B0}F" } else { "\u{00B0}C" }}</div>
                 </div>
                 <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-accent/5 to-accent/10 border-accent/15 wizard-result-reveal wizard-result-delay-1 dark:from-accent-light/5 dark:to-accent-light/10 dark:border-accent-light/15">
-                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Humidity"</div>
+                    <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"Humidity"</div>
                     <div class="text-3xl font-display text-accent dark:text-accent-light">
                         {move || format!("{:.0}", estimation.get().humidity_pct)}
                     </div>
@@ -496,11 +496,11 @@ fn Step4Review(
                     );
                     view! {
                         <div class="flex-1 p-4 text-center bg-gradient-to-br rounded-2xl border from-stone-100/80 to-stone-50 border-stone-200/60 wizard-result-reveal wizard-result-delay-2 dark:from-stone-800/50 dark:to-stone-800/30 dark:border-stone-700/40">
-                            <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"VPD"</div>
+                            <div class="mb-1 font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"VPD"</div>
                             <div class="text-3xl font-display text-stone-600 dark:text-stone-300">
                                 {format!("{:.2}", vpd)}
                             </div>
-                            <div class="text-xs font-medium text-stone-400 dark:text-stone-500">"kPa"</div>
+                            <div class="text-xs font-medium text-stone-500 dark:text-stone-400">"kPa"</div>
                         </div>
                     }
                 }}
@@ -508,7 +508,7 @@ fn Step4Review(
 
             // Override section — visually secondary
             <div class="p-3.5 rounded-xl border border-dashed border-stone-200/80 dark:border-stone-700/60">
-                <p class="mb-3 font-bold tracking-widest uppercase text-[10px] text-stone-400 dark:text-stone-500">"Fine-tune (optional)"</p>
+                <p class="mb-3 font-bold tracking-widest uppercase text-[10px] text-stone-500 dark:text-stone-400">"Fine-tune (optional)"</p>
                 <div class="flex gap-3">
                     <div class="flex-1">
                         <label class=LABEL_WIZ>{if is_f { "Temperature (\u{00B0}F)" } else { "Temperature (\u{00B0}C)" }}</label>
@@ -672,7 +672,7 @@ fn OutdoorWizard(
             <div class="flex justify-between items-start mb-6">
                 <div>
                     <h2 class="m-0 text-lg font-display">"Outdoor Weather Setup"</h2>
-                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">{zone_name}</p>
+                    <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">{zone_name}</p>
                 </div>
                 <button
                     class="flex justify-center items-center w-8 h-8 rounded-full border-none transition-colors cursor-pointer text-stone-400 bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 hover:text-stone-600"
@@ -691,7 +691,7 @@ fn OutdoorWizard(
                 0 => view! {
                     <div class="wizard-step-in">
                         <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Location"</h3>
-                        <p class="mb-4 text-xs text-stone-400">"We'll fetch live weather data for this location."</p>
+                        <p class="mb-4 text-xs text-stone-500">"We'll fetch live weather data for this location."</p>
 
                         <button
                             class="flex gap-2 justify-center items-center py-3 mb-4 w-full text-sm font-semibold text-white rounded-xl border-none shadow-sm transition-all cursor-pointer hover:shadow-md bg-primary hover:bg-primary-dark"
@@ -704,7 +704,7 @@ fn OutdoorWizard(
                             {move || if is_locating.get() { "Getting location..." } else { "Use My Location" }}
                         </button>
 
-                        <p class="mb-3 text-xs text-center text-stone-400">"or enter coordinates manually:"</p>
+                        <p class="mb-3 text-xs text-center text-stone-500">"or enter coordinates manually:"</p>
 
                         <div class="flex gap-3">
                             <div class="flex-1">
@@ -729,7 +729,7 @@ fn OutdoorWizard(
                 _ => view! {
                     <div class="wizard-step-in">
                         <h3 class="mb-1 text-base font-medium text-stone-700 dark:text-stone-300">"Preview & Save"</h3>
-                        <p class="mb-4 text-xs text-stone-400">"Test the weather feed, then save to enable automatic polling."</p>
+                        <p class="mb-4 text-xs text-stone-500">"Test the weather feed, then save to enable automatic polling."</p>
 
                         <div class="p-3 mb-4 text-sm text-center rounded-lg bg-stone-50 text-stone-600 dark:bg-stone-800 dark:text-stone-400">
                             {move || format!("Coordinates: {}, {}", latitude.get(), longitude.get())}

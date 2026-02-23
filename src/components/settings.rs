@@ -2,8 +2,8 @@ use leptos::prelude::*;
 use crate::orchid::{GrowingZone, HardwareDevice};
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE, BTN_SECONDARY, BTN_DANGER};
 
-const INPUT_SM: &str = "w-full px-3 py-2 text-sm bg-white/80 border border-stone-300/50 rounded-lg outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_SM: &str = "block mb-1 text-xs font-semibold tracking-wider uppercase text-stone-400 dark:text-stone-500";
+const INPUT_SM: &str = "w-full px-3 py-2 text-sm bg-white/80 border border-stone-300/50 rounded-lg outline-none transition-all duration-200 placeholder:text-stone-500 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-400 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_SM: &str = "block mb-1 text-xs font-semibold tracking-wider uppercase text-stone-600 dark:text-stone-400";
 const BTN_SM: &str = "py-1.5 px-3 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors";
 
 #[component]
@@ -143,7 +143,7 @@ pub fn SettingsModal(
                             <div class="flex justify-between items-center">
                                 <div>
                                     <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Share your collection publicly"</div>
-                                    <div class="text-xs text-stone-400">"Allow anyone with the link to view your plants (read-only)"</div>
+                                    <div class="text-xs text-stone-500">"Allow anyone with the link to view your plants (read-only)"</div>
                                 </div>
                                 <button
                                     class=move || if collection_public.get() {
@@ -857,12 +857,12 @@ fn DataSourceConfig(
                                     "Linked to: " <strong>{device_name}</strong>
                                     {current_hardware_port.map(|p| format!(" (Port {})", p)).unwrap_or_default()}
                                 </p>
-                                <p class="mt-1 text-xs text-stone-400">"Change the data source type above to reconfigure."</p>
+                                <p class="mt-1 text-xs text-stone-500">"Change the data source type above to reconfigure."</p>
                             </div>
                         }.into_any()
                     }
                     _ => view! {
-                        <p class="mb-3 text-xs text-stone-400 dark:text-stone-500">"No data source configured for this zone."</p>
+                        <p class="mb-3 text-xs text-stone-500 dark:text-stone-400">"No data source configured for this zone."</p>
                     }.into_any(),
                 }
             }}
@@ -1019,7 +1019,7 @@ fn NotificationSettings() -> impl IntoView {
             <div class="flex justify-between items-center">
                 <div>
                     <div class="text-sm font-medium text-stone-700 dark:text-stone-300">"Push notifications for care alerts"</div>
-                    <div class="text-xs text-stone-400">{move || permission_status.get()}</div>
+                    <div class="text-xs text-stone-500">{move || permission_status.get()}</div>
                 </div>
                 <button
                     class=move || if is_enabled.get() {

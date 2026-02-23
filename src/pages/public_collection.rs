@@ -28,7 +28,7 @@ enum PublicTab {
 }
 
 const TAB_ACTIVE: &str = "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary";
-const TAB_INACTIVE: &str = "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600";
+const TAB_INACTIVE: &str = "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-500 hover:text-stone-600";
 
 /// Fixed fullscreen botanical background layer
 #[component]
@@ -64,7 +64,7 @@ fn PublicHero(
             // Brand badge
             <div class="flex gap-2 justify-center items-center mb-5">
                 <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                <span class="text-xs font-semibold tracking-widest uppercase text-primary/60">"Orchid Tracker"</span>
+                <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Orchid Tracker"</span>
             </div>
 
             // Main heading
@@ -72,7 +72,7 @@ fn PublicHero(
                 {format!("{}\u{2019}s ", display_name)}
                 <span class="text-accent">"Collection"</span>
             </h1>
-            <p class="mb-4 text-sm text-stone-400">"A shared collection of growing things"</p>
+            <p class="mb-4 text-sm text-stone-500">"A shared collection of growing things"</p>
 
             // Plant count pill
             {(plant_count > 0).then(move || view! {
@@ -94,7 +94,7 @@ fn PublicCTA() -> impl IntoView {
         <section class="relative z-10 py-8 px-4 mx-auto max-w-[1200px] public-cta-in">
             <div class="p-6 mx-auto max-w-2xl rounded-2xl border sm:p-8 bg-surface border-stone-200">
                 <h2 class="mb-2 text-xl text-center sm:text-2xl text-stone-800">"Start Your Own Collection"</h2>
-                <p class="mx-auto mb-5 max-w-md text-sm text-center text-stone-400">
+                <p class="mx-auto mb-5 max-w-md text-sm text-center text-stone-500">
                     "Track your orchids, monitor growing conditions, and get AI-powered species identification — all in one place."
                 </p>
 
@@ -235,11 +235,11 @@ pub fn PublicCollectionPage() -> impl IntoView {
                             <div class="flex relative z-10 flex-col items-center py-20 px-6 text-center">
                                 <div class="flex gap-2 justify-center items-center mb-8">
                                     <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                                    <span class="text-xs font-semibold tracking-widest uppercase text-primary/60">"Orchid Tracker"</span>
+                                    <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Orchid Tracker"</span>
                                 </div>
-                                <div class="mb-4 text-4xl text-stone-300">"\u{1F512}"</div>
+                                <div class="mb-4 text-4xl text-stone-300" aria-hidden="true">"\u{1F512}"</div>
                                 <h1 class="mb-2 text-xl font-semibold text-stone-700">{display_msg}</h1>
-                                <p class="mb-6 text-sm text-stone-400">"The collection you\u{2019}re looking for isn\u{2019}t available."</p>
+                                <p class="mb-6 text-sm text-stone-500">"The collection you\u{2019}re looking for isn\u{2019}t available."</p>
                                 <a href="/login" class="py-2 px-5 text-sm font-medium text-white rounded-xl transition-colors bg-primary hover:bg-primary-dark">"Sign In"</a>
                             </div>
                         </div>
@@ -269,7 +269,7 @@ pub fn PublicCollectionPage() -> impl IntoView {
 
                         <main class="relative z-10 py-2 px-4 mx-auto sm:px-6 max-w-[1200px]">
                             // Tab bar
-                            <div class="flex mb-5 border-b border-stone-200">
+                            <nav aria-label="Collection navigation" class="flex mb-5 border-b border-stone-200">
                                 <button
                                     class=move || if active_tab.get() == PublicTab::Plants { TAB_ACTIVE } else { TAB_INACTIVE }
                                     on:click=move |_| set_active_tab.set(PublicTab::Plants)
@@ -288,7 +288,7 @@ pub fn PublicCollectionPage() -> impl IntoView {
                                     </svg>
                                     "Seasons"
                                 </button>
-                            </div>
+                            </nav>
 
                             // Tab content
                             {move || {

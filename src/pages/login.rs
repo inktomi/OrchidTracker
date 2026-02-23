@@ -3,8 +3,8 @@ use leptos_router::hooks::use_navigate;
 use crate::components::botanical_art::OrchidSpray;
 use crate::server_fns::auth::login;
 
-const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-400 dark:text-stone-500";
+const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-500 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-400 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-600 dark:text-stone-400";
 
 #[component]
 pub fn LoginPage() -> impl IntoView {
@@ -34,7 +34,7 @@ pub fn LoginPage() -> impl IntoView {
     };
 
     view! {
-        <div class="flex min-h-screen bg-cream">
+        <main class="flex min-h-screen bg-cream">
             // Left panel — botanical atmosphere (hidden on mobile)
             <div class="hidden overflow-hidden relative lg:flex lg:w-1/2 xl:w-3/5 bg-primary">
                 <div class="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-primary-dark"></div>
@@ -56,7 +56,7 @@ pub fn LoginPage() -> impl IntoView {
                     // Center — hero text
                     <div class="max-w-lg">
                         <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Cultivate with confidence"</h1>
-                        <p class="text-lg leading-relaxed text-white/60">
+                        <p class="text-lg leading-relaxed text-white/80">
                             "Track your plant collection, monitor growing conditions, and get AI-powered care recommendations\u{2014}all in one place."
                         </p>
                     </div>
@@ -65,17 +65,17 @@ pub fn LoginPage() -> impl IntoView {
                     <div class="flex gap-8 items-center pt-8 border-t border-white/10">
                         <div>
                             <div class="text-2xl font-light text-accent-light">"AI"</div>
-                            <div class="text-xs text-white/40">"Species ID"</div>
+                            <div class="text-xs text-white/70">"Species ID"</div>
                         </div>
                         <div class="w-px h-8 bg-white/10"></div>
                         <div>
                             <div class="text-2xl font-light text-accent-light">"24/7"</div>
-                            <div class="text-xs text-white/40">"Climate Data"</div>
+                            <div class="text-xs text-white/70">"Climate Data"</div>
                         </div>
                         <div class="w-px h-8 bg-white/10"></div>
                         <div>
                             <div class="text-2xl font-light text-accent-light">"CITES"</div>
-                            <div class="text-xs text-white/40">"Tracking"</div>
+                            <div class="text-xs text-white/70">"Tracking"</div>
                         </div>
                     </div>
                 </div>
@@ -93,7 +93,7 @@ pub fn LoginPage() -> impl IntoView {
                     <div class="mb-2">
                         <h2 class="text-3xl text-stone-800 dark:text-stone-100">"Welcome back"</h2>
                     </div>
-                    <p class="mb-8 text-sm text-stone-400 dark:text-stone-500">"Sign in to your collection"</p>
+                    <p class="mb-8 text-sm text-stone-500 dark:text-stone-400">"Sign in to your collection"</p>
 
                     {move || error.get().map(|err| view! {
                         <div class="flex gap-2 items-center p-3 mb-6 text-sm rounded-xl border animate-fade-in text-danger bg-danger/5 border-danger/10">
@@ -149,11 +149,11 @@ pub fn LoginPage() -> impl IntoView {
                     </form>
 
                     <div class="flex gap-1 justify-center items-center mt-8 text-sm">
-                        <span class="text-stone-400 dark:text-stone-500">"New to Orchid Tracker?"</span>
+                        <span class="text-stone-500 dark:text-stone-400">"New to Orchid Tracker?"</span>
                         <a href="/register" class="font-medium transition-colors text-primary dark:text-primary-light dark:hover:text-accent-light hover:text-primary-light">"Create account"</a>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     }
 }

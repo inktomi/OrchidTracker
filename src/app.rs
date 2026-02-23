@@ -13,7 +13,7 @@ use crate::pages::register::RegisterPage;
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
             <head>
                 <meta charset="utf-8" />
                 <title>"Orchid Tracker"</title>

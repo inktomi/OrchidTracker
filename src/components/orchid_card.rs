@@ -61,7 +61,7 @@ pub fn OrchidCard(
                         <div class="flex-shrink-0 w-5 h-5 [&>svg]:w-full [&>svg]:h-full" inner_html=include_str!("../../public/svg/alert_warning_24.svg")></div>
                     })}
                 </div>
-                <p class="mt-0 mb-3 text-sm italic text-stone-400">{orchid.species}</p>
+                <p class="mt-0 mb-3 text-sm italic text-stone-500 dark:text-stone-400">{orchid.species}</p>
 
                 <div class="flex flex-wrap gap-1 justify-between items-center mb-3">
                     <div class="flex flex-wrap gap-1">

@@ -29,7 +29,7 @@ pub fn OrchidCollection(
             when=move || !is_empty.get()
             fallback=move || {
                 if read_only {
-                    view! { <p class="py-12 text-center text-stone-400">"This collection is empty."</p> }.into_any()
+                    view! { <p class="py-12 text-center text-stone-500 dark:text-stone-400">"This collection is empty."</p> }.into_any()
                 } else {
                     view! { <EmptyCollection on_add=on_add on_scan=on_scan /> }.into_any()
                 }

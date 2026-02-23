@@ -3,8 +3,8 @@ use leptos_router::hooks::use_navigate;
 use crate::components::botanical_art::OrchidSpray;
 use crate::server_fns::auth::register;
 
-const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-400 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-500 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
-const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-400 dark:text-stone-500";
+const INPUT_CLASS: &str = "w-full px-4 py-3 text-sm bg-white/80 border border-stone-300/50 rounded-xl outline-none transition-all duration-200 placeholder:text-stone-500 focus:bg-white focus:border-primary/40 focus:ring-2 focus:ring-primary/10 dark:bg-stone-800/80 dark:border-stone-600/50 dark:placeholder:text-stone-400 dark:focus:bg-stone-800 dark:focus:border-primary-light/40 dark:focus:ring-primary-light/10";
+const LABEL_CLASS: &str = "block mb-2 text-xs font-semibold tracking-widest uppercase text-stone-600 dark:text-stone-400";
 
 #[component]
 pub fn RegisterPage() -> impl IntoView {
@@ -42,7 +42,7 @@ pub fn RegisterPage() -> impl IntoView {
     };
 
     view! {
-        <div class="flex min-h-screen bg-cream">
+        <main class="flex min-h-screen bg-cream">
             // Left panel — botanical atmosphere (hidden on mobile)
             <div class="hidden overflow-hidden relative lg:flex lg:w-1/2 xl:w-3/5 bg-primary">
                 <div class="absolute inset-0 bg-gradient-to-br from-primary-dark via-primary to-primary-light/80"></div>
@@ -64,7 +64,7 @@ pub fn RegisterPage() -> impl IntoView {
                     // Center — hero text
                     <div class="max-w-lg">
                         <h1 class="mb-6 text-5xl leading-tight text-white xl:text-6xl">"Start your collection"</h1>
-                        <p class="text-lg leading-relaxed text-white/60">
+                        <p class="text-lg leading-relaxed text-white/80">
                             "Join a growing community of plant enthusiasts. Catalog your plants, track their care, and discover new species with AI assistance."
                         </p>
                     </div>
@@ -78,7 +78,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 </svg>
                                 <span class="text-sm font-medium text-white/80">"Free forever"</span>
                             </div>
-                            <div class="text-xs text-white/40">"No credit card needed"</div>
+                            <div class="text-xs text-white/70">"No credit card needed"</div>
                         </div>
                         <div class="w-px h-8 bg-white/10"></div>
                         <div>
@@ -88,7 +88,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 </svg>
                                 <span class="text-sm font-medium text-white/80">"Self-hosted"</span>
                             </div>
-                            <div class="text-xs text-white/40">"Your data stays yours"</div>
+                            <div class="text-xs text-white/70">"Your data stays yours"</div>
                         </div>
                     </div>
                 </div>
@@ -106,7 +106,7 @@ pub fn RegisterPage() -> impl IntoView {
                     <div class="mb-2">
                         <h2 class="text-3xl text-stone-800 dark:text-stone-100">"Create account"</h2>
                     </div>
-                    <p class="mb-8 text-sm text-stone-400 dark:text-stone-500">"Set up your plant collection"</p>
+                    <p class="mb-8 text-sm text-stone-500 dark:text-stone-400">"Set up your plant collection"</p>
 
                     {move || error.get().map(|err| view! {
                         <div class="flex gap-2 items-center p-3 mb-6 text-sm rounded-xl border animate-fade-in text-danger bg-danger/5 border-danger/10">
@@ -129,7 +129,7 @@ pub fn RegisterPage() -> impl IntoView {
                                 required
                                 autocomplete="username"
                             />
-                            <p class="mt-1.5 text-xs text-stone-400/80">"Letters, numbers, hyphens, and underscores"</p>
+                            <p class="mt-1.5 text-xs text-stone-500">"Letters, numbers, hyphens, and underscores"</p>
                         </div>
                         <div class="mb-5">
                             <label class=LABEL_CLASS>"Email"</label>
@@ -188,11 +188,11 @@ pub fn RegisterPage() -> impl IntoView {
                     </form>
 
                     <div class="flex gap-1 justify-center items-center mt-8 text-sm">
-                        <span class="text-stone-400 dark:text-stone-500">"Already have an account?"</span>
+                        <span class="text-stone-500 dark:text-stone-400">"Already have an account?"</span>
                         <a href="/login" class="font-medium transition-colors text-primary dark:text-primary-light dark:hover:text-accent-light hover:text-primary-light">"Sign in"</a>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     }
 }

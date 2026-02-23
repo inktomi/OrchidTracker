@@ -81,8 +81,8 @@ pub fn SeasonalCalendar(
     view! {
         <div class="p-4 mb-4 rounded-xl border border-stone-200 dark:border-stone-700">
             <div class="flex gap-2 justify-between items-center mb-3">
-                <h3 class="m-0 text-sm font-semibold tracking-wide text-stone-500 dark:text-stone-400">"Seasonal Calendar"</h3>
-                <div class="flex gap-3 text-xs text-stone-400">
+                <h2 class="m-0 text-sm font-semibold tracking-wide text-stone-500 dark:text-stone-400">"Seasonal Calendar"</h2>
+                <div class="flex gap-3 text-xs text-stone-500 dark:text-stone-400">
                     <span class="flex gap-1 items-center"><span class="inline-block w-2.5 h-2.5 bg-blue-200 rounded-sm dark:bg-blue-800/40"></span>"Rest"</span>
                     <span class="flex gap-1 items-center"><span class="inline-block w-2.5 h-2.5 bg-pink-200 rounded-sm dark:bg-pink-800/40"></span>"Bloom"</span>
                     <span class="flex gap-1 items-center"><span class="inline-block w-2.5 h-2.5 bg-emerald-50 rounded-sm dark:bg-emerald-900/20"></span>"Active"</span>

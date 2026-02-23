@@ -9,7 +9,7 @@
   --color-primary-dark: #14342a;
   --color-primary-light: #2d6a4f;
   --color-accent: #b68d40;
-  --color-accent-dark: #9a7634;
+  --color-accent-dark: #7a5f2a;
   --color-accent-light: #d4a843;
   --color-surface: #fffefb;
   --color-cream: #faf7f2;
@@ -41,7 +41,7 @@ html.dark {
     @apply font-display font-normal;
   }
   label {
-    @apply block mb-1.5 text-sm font-medium text-stone-500;
+    @apply block mb-1.5 text-sm font-medium text-stone-600;
   }
   input, textarea, select {
     @apply w-full px-3 py-2.5 text-sm bg-white border border-stone-300 rounded-lg;

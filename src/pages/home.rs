@@ -275,12 +275,12 @@ pub fn HomePage() -> impl IntoView {
 
                             <main class="relative z-10 py-6 px-4 mx-auto sm:px-6 max-w-[1200px]">
                                 // Tab bar
-                                <div class="flex mb-5 border-b border-stone-200 dark:border-stone-700">
+                                <nav aria-label="Main navigation" class="flex mb-5 border-b border-stone-200 dark:border-stone-700">
                                     <button
                                         class=move || if home_tab.get() == HomeTab::MyPlants {
                                             "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
                                         } else {
-                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-500 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300"
                                         }
                                         on:click=move |_| send(Msg::SetHomeTab(HomeTab::MyPlants))
                                     >
@@ -293,7 +293,7 @@ pub fn HomePage() -> impl IntoView {
                                         class=move || if home_tab.get() == HomeTab::Seasons {
                                             "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
                                         } else {
-                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-500 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300"
                                         }
                                         on:click=move |_| send(Msg::SetHomeTab(HomeTab::Seasons))
                                     >
@@ -302,7 +302,7 @@ pub fn HomePage() -> impl IntoView {
                                         </svg>
                                         "Seasons"
                                     </button>
-                                </div>
+                                </nav>
 
                                 // Tab content
                                 {move || {

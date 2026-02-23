@@ -30,14 +30,14 @@ pub fn PhotoGallery(
                     return view! {
                         <div class="py-12 text-center">
                             <div class="mb-2 text-3xl text-stone-300 dark:text-stone-600">"\u{1F4F7}"</div>
-                            <p class="text-sm italic text-stone-400">"No photos yet. Add your first growth photo!"</p>
+                            <p class="text-sm italic text-stone-500 dark:text-stone-400">"No photos yet. Add your first growth photo!"</p>
                         </div>
                     }.into_any();
                 }
 
                 let photo_count = photos.len();
                 view! {
-                    <div class="mb-2 text-xs text-stone-400">
+                    <div class="mb-2 text-xs text-stone-500 dark:text-stone-400">
                         {format!("{} photo{}", photo_count, if photo_count == 1 { "" } else { "s" })}
                     </div>
                     <div class=GALLERY_GRID>
@@ -244,7 +244,7 @@ fn GalleryLightbox(
                                     class="object-contain mx-auto rounded-lg max-h-[65vh]"
                                     alt="Earlier photo"
                                 />
-                                <div class="mt-2 text-xs text-stone-400">{compare_ts}" (earlier)"</div>
+                                <div class="mt-2 text-xs text-stone-500 dark:text-stone-400">{compare_ts}" (earlier)"</div>
                             </div>
                             <div class="self-stretch w-px bg-white/20"></div>
                             <div class="flex-1 text-center">
@@ -253,7 +253,7 @@ fn GalleryLightbox(
                                     class="object-contain mx-auto rounded-lg max-h-[65vh]"
                                     alt="Current photo"
                                 />
-                                <div class="mt-2 text-xs text-stone-400">{current_ts}" (current)"</div>
+                                <div class="mt-2 text-xs text-stone-500 dark:text-stone-400">{current_ts}" (current)"</div>
                             </div>
                         </div>
                     }.into_any()
@@ -274,7 +274,7 @@ fn GalleryLightbox(
                 class="absolute inset-x-0 bottom-0 py-3 px-4 text-center"
                 on:click=move |ev: leptos::ev::MouseEvent| ev.stop_propagation()
             >
-                <div class="mb-1 text-xs text-stone-400">{timestamp.clone()}</div>
+                <div class="mb-1 text-xs text-stone-500 dark:text-stone-400">{timestamp.clone()}</div>
                 {event_label.map(|label| {
                     view! { <span class="py-0.5 px-2 text-xs font-medium rounded-full text-white/70 bg-white/10">{label}</span> }
                 })}

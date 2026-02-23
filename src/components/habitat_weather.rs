@@ -127,7 +127,7 @@ fn HabitatTrendView(summaries: Vec<HabitatWeatherSummary>) -> impl IntoView {
 
     view! {
         <div class="pt-3 mt-3 border-t border-emerald-200/40 dark:border-emerald-800/30">
-            <h5 class="mt-0 mb-2 text-xs font-semibold tracking-wider uppercase text-stone-400">"Recent Trends"</h5>
+            <h5 class="mt-0 mb-2 text-xs font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400">"Recent Trends"</h5>
             <div class="flex gap-1 items-end h-12">
                 {recent.iter().map(|s| {
                     // Normalize temp to bar height (0-48px range, centered around 20C)

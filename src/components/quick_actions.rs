@@ -108,7 +108,7 @@ pub fn QuickActions(
 
     view! {
         <div class="mb-4">
-            <h4 class="mt-0 mb-2 text-xs font-semibold tracking-widest uppercase text-stone-400">"Quick Log"</h4>
+            <h4 class="mt-0 mb-2 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Quick Log"</h4>
             <div class="flex flex-wrap gap-2">
                 {buttons}
             </div>
