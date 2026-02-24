@@ -28,6 +28,7 @@ echo "==> Downloading $DOWNLOAD_URL ..."
 curl -fL -o "$TARBALL" "$DOWNLOAD_URL"
 
 STAGING=$(mktemp -d)
+chmod 755 "$STAGING"
 echo "==> Unpacking release..."
 tar xzf "$TARBALL" -C "$STAGING"
 rm -f "$TARBALL"
