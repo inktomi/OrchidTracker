@@ -108,6 +108,39 @@ Data operations use Leptos `#[server]` functions that run on the server:
 | `src/components/*.rs` | UI components (cards, detail, scanner, settings, cabinet) |
 | `migrations/*.surql` | SurrealDB schema migrations |
 
+## Component Testing
+
+Leptos 0.8's `.to_html()` method renders components to HTML strings in native Rust tests — no WASM or browser needed.
+
+### Pattern
+```rust
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+    use leptos::prelude::*;
+    use leptos::reactive::owner::Owner;
+    use crate::test_helpers::test_orchid_with_care;
+
+    #[test]
+    fn test_component_hides_button_when_read_only() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (sig, set_sig) = signal(test_orchid_with_care());
+            let html = view! { <MyComponent orchid=sig set_orchid=set_sig read_only=true /> }.to_html();
+            assert!(!html.contains("Delete"), "Should be hidden in read-only mode");
+        });
+    }
+}
+```
+
+### Key points
+- Tests go **inside** the component file in a `#[cfg(all(test, feature = "ssr"))]` module (access to private sub-components)
+- Run with `cargo test --features ssr`
+- Shared test builders in `src/test_helpers.rs`: `test_orchid()`, `test_orchid_with_care()`, `test_orchid_seasonal()`
+- **Must wrap test body in `Owner::new().with(|| { ... })`** — `sandboxed-arenas` feature requires an active arena for signals
+- For callbacks: provide no-op functions (`fn noop(_: String) {}`)
+- Tests verify **rendered HTML structure**, not interactions (use Playwright for click/form testing)
+
 ## Data Persistence
 
 Server-side SurrealDB with per-user data isolation. Images stored on server filesystem.

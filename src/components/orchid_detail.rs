@@ -988,3 +988,153 @@ fn EditForm(
         </div>
     }.into_any()
 }
+
+// ── SSR Component Rendering Tests ───────────────────────────────────
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+    use leptos::reactive::owner::Owner;
+    use crate::test_helpers::{test_orchid, test_orchid_with_care};
+
+    // ── CareScheduleCard ────────────────────────────────────────────
+
+    #[test]
+    fn test_care_schedule_card_shows_fertilize_button() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid_with_care());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                    read_only=false
+                />
+            }.to_html();
+            assert!(html.contains("\u{2728} Fertilize"),
+                "Fertilize button should be visible when read_only=false");
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_hides_fertilize_when_read_only() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid_with_care());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                    read_only=true
+                />
+            }.to_html();
+            // CareScheduleCard has no buttons in read-only mode
+            assert!(!html.contains("<button"),
+                "Fertilize button should be hidden in read-only mode, got: {html}");
+            // The stat labels should still be present
+            assert!(html.contains("Fertilize Every"),
+                "Stat labels should still be visible in read-only mode");
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_always_shows_stats() {
+        let owner = Owner::new();
+        owner.with(|| {
+            for read_only in [true, false] {
+                let (orchid_signal, set_orchid_signal) = signal(test_orchid_with_care());
+                let html = view! {
+                    <CareScheduleCard
+                        orchid_signal=orchid_signal
+                        set_orchid_signal=set_orchid_signal
+                        read_only=read_only
+                    />
+                }.to_html();
+                assert!(html.contains("Last Fertilized"),
+                    "Stats should be visible when read_only={read_only}");
+                assert!(html.contains("Pot Medium"),
+                    "Pot info should be visible when read_only={read_only}");
+            }
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_shows_care_data() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid_with_care());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                />
+            }.to_html();
+            assert!(html.contains("MSU"), "Should show fertilizer type");
+            assert!(html.contains("14 days"), "Should show fertilize frequency");
+            assert!(html.contains("Bark"), "Should show pot medium");
+            assert!(html.contains("4 inch"), "Should show pot size");
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_shows_defaults_when_no_care_data() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                />
+            }.to_html();
+            assert!(html.contains("Not set"), "Should show 'Not set' for missing care data");
+            assert!(html.contains("No schedule"), "Should show 'No schedule' for missing frequency");
+        });
+    }
+
+    // ── JournalTab ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_journal_tab_hides_note_form_when_read_only() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid());
+            let (log_entries, set_log_entries) = signal(Vec::new());
+            let (_, set_show_first_bloom) = signal(false);
+            let html = view! {
+                <JournalTab
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                    log_entries=log_entries
+                    set_log_entries=set_log_entries
+                    set_show_first_bloom=set_show_first_bloom
+                    read_only=true
+                />
+            }.to_html();
+            assert!(!html.contains("Add a detailed note"),
+                "Note form should be hidden in read-only mode, got: {html}");
+        });
+    }
+
+    #[test]
+    fn test_journal_tab_shows_note_form() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid());
+            let (log_entries, set_log_entries) = signal(Vec::new());
+            let (_, set_show_first_bloom) = signal(false);
+            let html = view! {
+                <JournalTab
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                    log_entries=log_entries
+                    set_log_entries=set_log_entries
+                    set_show_first_bloom=set_show_first_bloom
+                    read_only=false
+                />
+            }.to_html();
+            assert!(html.contains("Add a detailed note"),
+                "Note form should be visible when read_only=false");
+        });
+    }
+}

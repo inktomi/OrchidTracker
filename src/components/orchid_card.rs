@@ -127,3 +127,117 @@ pub fn OrchidCard(
         </div>
     }
 }
+
+// ── SSR Component Rendering Tests ───────────────────────────────────
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+    use leptos::reactive::owner::Owner;
+    use crate::test_helpers::{test_orchid, test_orchid_with_care};
+
+    fn noop_string(_: String) {}
+    fn noop_orchid(_: Orchid) {}
+
+    #[test]
+    fn test_orchid_card_renders_name_and_species() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                />
+            }.to_html();
+            assert!(html.contains("Test Orchid"), "Should render orchid name");
+            assert!(html.contains("Phalaenopsis"), "Should render orchid species");
+        });
+    }
+
+    #[test]
+    fn test_orchid_card_hides_actions_when_read_only() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                    read_only=true
+                />
+            }.to_html();
+            assert!(!html.contains("Delete"),
+                "Delete button should be hidden in read-only mode, got: {html}");
+            // "Water" appears as a stat label; check that the action bar is absent
+            assert!(!html.contains("border-t border-stone-100"),
+                "Action bar should be hidden in read-only mode");
+        });
+    }
+
+    #[test]
+    fn test_orchid_card_shows_actions_when_not_read_only() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                    read_only=false
+                />
+            }.to_html();
+            assert!(html.contains("Delete"),
+                "Delete button should be visible when read_only=false");
+            assert!(html.contains("Water"),
+                "Water button should be visible when read_only=false");
+        });
+    }
+
+    #[test]
+    fn test_orchid_card_shows_watering_status() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                />
+            }.to_html();
+            // Never-watered orchid shows "Every N days"
+            assert!(html.contains("Every 7 days"),
+                "Should show watering frequency for never-watered orchid");
+        });
+    }
+
+    #[test]
+    fn test_orchid_card_shows_pot_medium() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid_with_care();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                />
+            }.to_html();
+            assert!(html.contains("Bark"), "Should show pot medium from care data");
+        });
+    }
+}
