@@ -361,6 +361,7 @@ pub fn PublicCollectionPage() -> impl IntoView {
                                     on_close=move || set_selected_orchid.set(None)
                                     on_update=noop_orchid
                                     read_only=true
+                                    public_username=username.get()
                                 />
                             }.into_any()
                         })}

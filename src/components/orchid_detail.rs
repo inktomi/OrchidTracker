@@ -33,6 +33,7 @@ pub fn OrchidDetail(
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     #[prop(optional)] read_only: bool,
+    #[prop(optional)] public_username: Option<String>,
 ) -> impl IntoView {
     let (orchid_signal, set_orchid_signal) = signal(orchid.clone());
     let (log_entries, set_log_entries) = signal(Vec::<LogEntry>::new());
@@ -42,8 +43,14 @@ pub fn OrchidDetail(
     // Load log entries on mount
     {
         let orchid_id = orchid.id.clone();
+        let pub_user = public_username;
         leptos::task::spawn_local(async move {
-            match crate::server_fns::orchids::get_log_entries(orchid_id).await {
+            let result = if let Some(uname) = pub_user {
+                crate::server_fns::public::get_public_log_entries(uname, orchid_id).await
+            } else {
+                crate::server_fns::orchids::get_log_entries(orchid_id).await
+            };
+            match result {
                 Ok(entries) => set_log_entries.set(entries),
                 Err(e) => tracing::error!("Failed to load log entries: {}", e),
             }
@@ -499,7 +506,7 @@ fn DetailsTab(
         })}
 
         // Watering status + Water Now button
-        <div class="flex gap-3 justify-between items-center p-4 mb-4 rounded-xl bg-secondary">
+        <div class="flex gap-3 justify-between items-center p-4 mt-4 mb-4 rounded-xl bg-secondary">
             <div>
                 <div class="text-xs tracking-wide text-stone-400">"Watering Status"</div>
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">
