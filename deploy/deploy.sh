@@ -33,6 +33,9 @@ echo "==> Unpacking release..."
 tar xzf "$TARBALL" -C "$STAGING"
 rm -f "$TARBALL"
 
+echo "==> Stopping service..."
+sudo systemctl stop "$SERVICE"
+
 echo "==> Installing to $APP_DIR ..."
 sudo mkdir -p "$APP_DIR/target/release" "$APP_DIR/target/site" "$APP_DIR/deploy" "$APP_DIR/migrations"
 sudo cp "$STAGING/orchid-tracker" "$APP_DIR/target/release/orchid-tracker"
@@ -43,8 +46,8 @@ sudo rsync -a "$STAGING/deploy/" "$APP_DIR/deploy/"
 sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR/target" "$APP_DIR/migrations" "$APP_DIR/deploy"
 rm -rf "$STAGING"
 
-echo "==> Restarting service..."
-sudo systemctl restart "$SERVICE"
+echo "==> Starting service..."
+sudo systemctl start "$SERVICE"
 
 echo "==> Waiting for startup..."
 for i in {1..30}; do
