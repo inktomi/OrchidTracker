@@ -69,8 +69,9 @@ jobs:
           cp target/release/hash.txt "$STAGING/"
           cp -r target/site "$STAGING/"
           cp -r migrations "$STAGING/"
+          cp -r deploy "$STAGING/"
           TARBALL="orchid-tracker-${{ steps.version.outputs.version }}.tar.gz"
-          tar czf "$TARBALL" -C "$STAGING" orchid-tracker hash.txt site migrations
+          tar czf "$TARBALL" -C "$STAGING" orchid-tracker hash.txt site migrations deploy
           echo "tarball=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release

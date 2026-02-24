@@ -98,7 +98,7 @@ Pre-built release binaries are published via GitHub Actions — no Rust toolchai
    sudo -u orchid mv orchid-tracker hash.txt target/release/
    sudo -u orchid mv site/* target/site/
    rmdir site
-   # migrations/ extracts in place
+   # migrations/ and deploy/ extract in place
    ```
 
 3. Create an `.env` file (see `.env.example` for all options):
