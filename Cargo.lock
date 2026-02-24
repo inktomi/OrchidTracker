@@ -3907,7 +3907,7 @@ checksum = "8c04f5d74368e4d0dfe06c45c8627c81bd7c317d52762d118fb9b3076f6420fd"
 
 [[package]]
 name = "orchid-tracker"
-version = "0.6.2"
+version = "0.6.4"
 dependencies = [
  "aes-gcm",
  "argon2",

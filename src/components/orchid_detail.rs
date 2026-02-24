@@ -486,7 +486,7 @@ fn DetailsTab(
         }}
 
         // Care Schedule: Fertilizer + Pot Info
-        <CareScheduleCard orchid_signal=orchid_signal set_orchid_signal=set_orchid_signal />
+        <CareScheduleCard orchid_signal=orchid_signal set_orchid_signal=set_orchid_signal read_only=read_only />
 
         // Seasonal care
         <SeasonalCareCard orchid_signal=orchid_signal hemisphere=hemisphere />
@@ -564,6 +564,7 @@ const CARE_STAT_VALUE: &str = "text-sm font-medium text-stone-700 dark:text-ston
 fn CareScheduleCard(
     orchid_signal: ReadSignal<Orchid>,
     set_orchid_signal: WriteSignal<Orchid>,
+    #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
     let (is_fertilizing, set_is_fertilizing) = signal(false);
 
@@ -613,25 +614,27 @@ fn CareScheduleCard(
                         }}
                     </div>
                 </div>
-                <div class="flex items-end">
-                    <button
-                        class="py-1.5 px-3 text-xs font-semibold text-yellow-700 bg-yellow-100 rounded-lg border-none transition-colors cursor-pointer dark:text-yellow-300 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
-                        disabled=move || is_fertilizing.get()
-                        on:click=move |_| {
-                            set_is_fertilizing.set(true);
-                            let orchid_id = orchid_signal.get().id.clone();
-                            leptos::task::spawn_local(async move {
-                                match crate::server_fns::orchids::mark_fertilized(orchid_id).await {
-                                    Ok(updated) => set_orchid_signal.set(updated),
-                                    Err(e) => tracing::error!("Failed to mark fertilized: {}", e),
-                                }
-                                set_is_fertilizing.set(false);
-                            });
-                        }
-                    >
-                        {move || if is_fertilizing.get() { "..." } else { "\u{2728} Fertilize" }}
-                    </button>
-                </div>
+                {(!read_only).then(|| view! {
+                    <div class="flex items-end">
+                        <button
+                            class="py-1.5 px-3 text-xs font-semibold text-yellow-700 bg-yellow-100 rounded-lg border-none transition-colors cursor-pointer dark:text-yellow-300 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50"
+                            disabled=move || is_fertilizing.get()
+                            on:click=move |_| {
+                                set_is_fertilizing.set(true);
+                                let orchid_id = orchid_signal.get().id.clone();
+                                leptos::task::spawn_local(async move {
+                                    match crate::server_fns::orchids::mark_fertilized(orchid_id).await {
+                                        Ok(updated) => set_orchid_signal.set(updated),
+                                        Err(e) => tracing::error!("Failed to mark fertilized: {}", e),
+                                    }
+                                    set_is_fertilizing.set(false);
+                                });
+                            }
+                        >
+                            {move || if is_fertilizing.get() { "..." } else { "\u{2728} Fertilize" }}
+                        </button>
+                    </div>
+                })}
             </div>
 
             // Pot info
