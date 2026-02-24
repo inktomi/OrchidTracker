@@ -44,13 +44,12 @@ jobs:
           target: wasm32-unknown-unknown
           cache: true
 
-      - name: Install cargo-leptos
-        if: steps.check_release.outputs.exists == 'false'
-        run: |
-          cargo install cargo-leptos --locked || true
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install cargo-leptos
+        if: steps.check_release.outputs.exists == 'false'
+        run: cargo install cargo-leptos --locked
 
       - name: Run tests
         if: steps.check_release.outputs.exists == 'false'
