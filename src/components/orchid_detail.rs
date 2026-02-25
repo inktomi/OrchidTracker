@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use chrono::Datelike;
 use crate::orchid::{Orchid, LightRequirement, GrowingZone, ClimateReading, LogEntry, Hemisphere, SeasonalPhase, month_in_range};
+use crate::watering::ClimateSnapshot;
 use crate::components::habitat_weather::HabitatWeatherCard;
 use crate::components::quick_actions::QuickActions;
 use crate::components::photo_capture::PhotoCapture;
@@ -29,6 +30,7 @@ pub fn OrchidDetail(
     orchid: Orchid,
     zones: Vec<GrowingZone>,
     climate_readings: Vec<ClimateReading>,
+    #[prop(default = Vec::new())] climate_snapshots: Vec<ClimateSnapshot>,
     hemisphere: String,
     on_close: impl Fn() + 'static + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
@@ -61,6 +63,12 @@ pub fn OrchidDetail(
     let (is_editing, set_is_editing) = signal(false);
     let zones_stored = StoredValue::new(zones);
     let hemisphere_stored = StoredValue::new(hemisphere);
+
+    // Climate snapshot for this orchid's zone
+    let climate_snapshot_stored = StoredValue::new({
+        let placement = orchid.placement.clone();
+        climate_snapshots.into_iter().find(|s| s.zone_name == placement)
+    });
 
     // Habitat weather data
     let habitat_zone_reading = StoredValue::new({
@@ -125,6 +133,7 @@ pub fn OrchidDetail(
                                 set_is_editing=set_is_editing
                                 zones=zones_stored
                                 hemisphere=hemisphere_stored
+                                climate_snapshot=climate_snapshot_stored
                                 on_update=on_update
                                 set_log_entries=set_log_entries
                                 habitat_zone_reading=habitat_zone_reading
@@ -280,6 +289,7 @@ fn DetailsTab(
     set_is_editing: WriteSignal<bool>,
     zones: StoredValue<Vec<GrowingZone>>,
     hemisphere: StoredValue<String>,
+    climate_snapshot: StoredValue<Option<ClimateSnapshot>>,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     set_log_entries: WriteSignal<Vec<LogEntry>>,
     habitat_zone_reading: StoredValue<Option<ClimateReading>>,
@@ -467,7 +477,17 @@ fn DetailsTab(
                             </div>
                             <div>
                                 <div class="text-xs text-stone-400">"Water Every"</div>
-                                <div class="font-medium text-stone-700 dark:text-stone-300">{move || format!("{} days", orchid_signal.get().water_frequency_days)}</div>
+                                <div class="font-medium text-stone-700 dark:text-stone-300">{move || {
+                                    let o = orchid_signal.get();
+                                    let hemi = Hemisphere::from_code(&hemisphere.get_value());
+                                    let snap = climate_snapshot.get_value();
+                                    let estimate = o.climate_adjusted_water_frequency(&hemi, snap.as_ref());
+                                    if estimate.climate_active {
+                                        format!("~{} days (base: {})", estimate.adjusted_days, o.water_frequency_days)
+                                    } else {
+                                        format!("{} days", o.water_frequency_days)
+                                    }
+                                }}</div>
                             </div>
                             <div>
                                 <div class="text-xs text-stone-400">"Temp Range"</div>
@@ -512,11 +532,16 @@ fn DetailsTab(
                 <div class="text-sm font-medium text-stone-700 dark:text-stone-300">
                     {move || {
                         let o = orchid_signal.get();
-                        match o.days_until_due() {
-                            Some(days) if days < 0 => format!("Overdue by {} days", -days),
+                        let hemi = Hemisphere::from_code(&hemisphere.get_value());
+                        let snap = climate_snapshot.get_value();
+                        let estimate = o.climate_adjusted_water_frequency(&hemi, snap.as_ref());
+                        let climate_active = estimate.climate_active;
+                        let approx = if climate_active { "~" } else { "" };
+                        match o.climate_days_until_due(&hemi, snap.as_ref()) {
+                            Some(days) if days < 0 => format!("Overdue by {}{} days", approx, -days),
                             Some(0) => "Due today".to_string(),
                             Some(1) => "Due tomorrow".to_string(),
-                            Some(days) => format!("Due in {} days", days),
+                            Some(days) => format!("Due in {}{} days", approx, days),
                             None => "Never watered".to_string(),
                         }
                     }}

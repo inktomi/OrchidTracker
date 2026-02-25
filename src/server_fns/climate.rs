@@ -440,6 +440,75 @@ pub async fn get_habitat_history(
     Ok(rows.into_iter().map(|r| r.into_summary()).collect())
 }
 
+/// Get climate snapshots for all zones the current user owns.
+/// Returns a vec of (zone_name, ClimateSnapshot) pairs for zones
+/// that have recent readings (last 48 hours).
+#[server]
+#[tracing::instrument(level = "info", skip_all)]
+pub async fn get_all_zone_snapshots() -> Result<Vec<crate::watering::ClimateSnapshot>, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use crate::orchid::LocationType;
+    use std::collections::HashMap;
+
+    let user_id = require_auth().await?;
+    let owner = parse_owner(&user_id)?;
+
+    // Get all zones for this user with their location type
+    let mut zone_resp = db()
+        .query("SELECT id, name, location_type FROM growing_zone WHERE owner = $owner")
+        .bind(("owner", owner))
+        .await
+        .map_err(|e| internal_error("Get zones for snapshots failed", e))?;
+
+    let _ = zone_resp.take_errors();
+    let zones: Vec<ZoneWithType> = zone_resp.take(0)
+        .map_err(|e| internal_error("Parse zones for snapshots failed", e))?;
+
+    if zones.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Batch query: get all readings from the last 48 hours for all of the user's zones
+    let zone_ids: Vec<surrealdb::types::RecordId> = zones.iter().map(|z| z.id.clone()).collect();
+    let mut reading_resp = db()
+        .query(
+            "SELECT * FROM climate_reading WHERE zone IN $zone_ids AND recorded_at > time::now() - 48h ORDER BY recorded_at DESC"
+        )
+        .bind(("zone_ids", zone_ids))
+        .await
+        .map_err(|e| internal_error("Get readings for snapshots failed", e))?;
+
+    let _ = reading_resp.take_errors();
+    let rows: Vec<ReadingDbRow> = reading_resp.take(0).unwrap_or_default();
+
+    // Group readings by zone_id
+    let mut by_zone: HashMap<String, Vec<crate::orchid::ClimateReading>> = HashMap::new();
+    for row in rows {
+        let reading = row.into_climate_reading();
+        by_zone.entry(reading.zone_id.clone()).or_default().push(reading);
+    }
+
+    // Build location_type lookup by zone ID
+    let zone_outdoor: HashMap<String, bool> = zones.iter().map(|z| {
+        let is_outdoor = z.location_type.as_ref().map(|lt| *lt == LocationType::Outdoor).unwrap_or(false);
+        (crate::server_fns::auth::record_id_to_string(&z.id), is_outdoor)
+    }).collect();
+
+    // Build snapshots
+    let mut snapshots = Vec::new();
+    for (zone_id, readings) in &by_zone {
+        let is_outdoor = zone_outdoor.get(zone_id).copied().unwrap_or(false);
+        let zone_name = readings.first().map(|r| r.zone_name.as_str()).unwrap_or("Unknown");
+        if let Some(snap) = crate::watering::ClimateSnapshot::from_readings(zone_name, readings, is_outdoor) {
+            snapshots.push(snap);
+        }
+    }
+
+    Ok(snapshots)
+}
+
 #[cfg(feature = "ssr")]
 pub(crate) mod ssr_types {
     use surrealdb::types::SurrealValue;
@@ -456,6 +525,15 @@ pub(crate) mod ssr_types {
 
     #[derive(serde::Deserialize, SurrealValue)]
     #[surreal(crate = "surrealdb::types")]
+    pub struct ZoneWithType {
+        pub id: surrealdb::types::RecordId,
+        pub name: String,
+        #[surreal(default)]
+        pub location_type: Option<crate::orchid::LocationType>,
+    }
+
+    #[derive(serde::Deserialize, SurrealValue)]
+    #[surreal(crate = "surrealdb::types")]
     pub struct ReadingDbRow {
         pub id: surrealdb::types::RecordId,
         pub zone: surrealdb::types::RecordId,
@@ -464,6 +542,8 @@ pub(crate) mod ssr_types {
         pub humidity: f64,
         #[surreal(default)]
         pub vpd: Option<f64>,
+        #[surreal(default)]
+        pub precipitation: Option<f64>,
         #[surreal(default)]
         pub source: Option<String>,
         pub recorded_at: chrono::DateTime<chrono::Utc>,
@@ -478,6 +558,7 @@ pub(crate) mod ssr_types {
                 temperature: self.temperature,
                 humidity: self.humidity,
                 vpd: self.vpd,
+                precipitation: self.precipitation,
                 source: self.source,
                 recorded_at: self.recorded_at,
             }

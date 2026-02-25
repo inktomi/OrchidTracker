@@ -136,6 +136,9 @@ pub struct ClimateReading {
     pub vpd: Option<f64>,
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
+    pub precipitation: Option<f64>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
     pub source: Option<String>,
     pub recorded_at: DateTime<Utc>,
 }
@@ -287,6 +290,45 @@ impl Orchid {
     /// Days since last repotted, or None if never repotted.
     pub fn days_since_repotted(&self) -> Option<i64> {
         self.last_repotted_at.map(|dt| (Utc::now() - dt).num_days())
+    }
+
+    /// Climate-adjusted watering frequency, falling back to seasonal-only
+    /// when no climate data is available.
+    pub fn climate_adjusted_water_frequency(
+        &self,
+        hemisphere: &Hemisphere,
+        climate: Option<&crate::watering::ClimateSnapshot>,
+    ) -> crate::watering::WateringEstimate {
+        let base = self.effective_water_frequency(hemisphere);
+        crate::watering::climate_adjusted_frequency(
+            base,
+            climate,
+            self.pot_medium.as_deref(),
+            &self.light_requirement,
+        )
+    }
+
+    /// Days until watering is due using climate-adjusted frequency.
+    /// Negative = overdue. None if never watered.
+    pub fn climate_days_until_due(
+        &self,
+        hemisphere: &Hemisphere,
+        climate: Option<&crate::watering::ClimateSnapshot>,
+    ) -> Option<i64> {
+        let estimate = self.climate_adjusted_water_frequency(hemisphere, climate);
+        self.days_since_watered()
+            .map(|days| estimate.adjusted_days as i64 - days)
+    }
+
+    /// Whether this orchid is overdue for watering using climate-adjusted frequency.
+    pub fn is_climate_overdue(
+        &self,
+        hemisphere: &Hemisphere,
+        climate: Option<&crate::watering::ClimateSnapshot>,
+    ) -> bool {
+        self.climate_days_until_due(hemisphere, climate)
+            .map(|days| days < 0)
+            .unwrap_or(false)
     }
 
     /// Whether this orchid has seasonal data configured.
@@ -502,6 +544,7 @@ mod tests {
             temperature: 22.5,
             humidity: 55.0,
             vpd: Some(0.85),
+            precipitation: None,
             source: Some("wizard".into()),
             recorded_at: Utc::now(),
         };

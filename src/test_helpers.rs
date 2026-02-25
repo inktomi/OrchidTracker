@@ -1,4 +1,5 @@
 use crate::orchid::{LightRequirement, Orchid};
+use crate::watering::{ClimateSnapshot, DataQuality};
 
 /// Minimal Orchid with defaults — suitable for most component tests.
 pub fn test_orchid() -> Orchid {
@@ -62,5 +63,50 @@ pub fn test_orchid_seasonal() -> Orchid {
         active_water_multiplier: Some(1.0),
         active_fertilizer_multiplier: Some(1.0),
         ..test_orchid_with_care()
+    }
+}
+
+/// Standard indoor climate snapshot at reference conditions (22°C, 55% RH).
+pub fn test_climate_snapshot() -> ClimateSnapshot {
+    ClimateSnapshot {
+        zone_name: "Test Zone".into(),
+        avg_temp_c: 22.0,
+        avg_humidity_pct: 55.0,
+        avg_vpd_kpa: crate::watering::REFERENCE_VPD_KPA,
+        precipitation_48h_mm: None,
+        newest_reading_at: chrono::Utc::now(),
+        reading_count: 10,
+        quality: DataQuality::Fresh,
+        is_outdoor: false,
+    }
+}
+
+/// Hot, dry indoor climate snapshot (30°C, 30% RH).
+pub fn test_climate_snapshot_hot_dry() -> ClimateSnapshot {
+    ClimateSnapshot {
+        zone_name: "Hot Zone".into(),
+        avg_temp_c: 30.0,
+        avg_humidity_pct: 30.0,
+        avg_vpd_kpa: 2.97,
+        precipitation_48h_mm: None,
+        newest_reading_at: chrono::Utc::now(),
+        reading_count: 10,
+        quality: DataQuality::Fresh,
+        is_outdoor: false,
+    }
+}
+
+/// Outdoor climate snapshot after heavy rain.
+pub fn test_climate_snapshot_rainy() -> ClimateSnapshot {
+    ClimateSnapshot {
+        zone_name: "Patio".into(),
+        avg_temp_c: 18.0,
+        avg_humidity_pct: 85.0,
+        avg_vpd_kpa: 0.31,
+        precipitation_48h_mm: Some(25.0),
+        newest_reading_at: chrono::Utc::now(),
+        reading_count: 48,
+        quality: DataQuality::Fresh,
+        is_outdoor: true,
     }
 }

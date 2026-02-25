@@ -260,6 +260,7 @@ async fn poll_legacy_zones(
                         temperature_c: h.temperature_c,
                         humidity_pct: h.humidity_pct,
                         vpd_kpa: Some(super::calculate_vpd(h.temperature_c, h.humidity_pct)),
+                        precipitation_mm: Some(h.precipitation_mm),
                     })
             }
             other => {
@@ -292,13 +293,15 @@ async fn store_reading(
             "CREATE climate_reading SET \
              zone = $zone_id, zone_name = $zone_name, \
              temperature = $temp, humidity = $humidity, \
-             vpd = $vpd, source = $source, recorded_at = time::now()",
+             vpd = $vpd, precipitation = $precip, \
+             source = $source, recorded_at = time::now()",
         )
         .bind(("zone_id", zone_id.clone()))
         .bind(("zone_name", zone_name.to_string()))
         .bind(("temp", raw.temperature_c))
         .bind(("humidity", raw.humidity_pct))
         .bind(("vpd", raw.vpd_kpa))
+        .bind(("precip", raw.precipitation_mm))
         .bind(("source", source.to_string()))
         .await
     {

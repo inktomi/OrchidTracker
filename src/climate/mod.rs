@@ -11,6 +11,7 @@ pub struct RawReading {
     pub temperature_c: f64,
     pub humidity_pct: f64,
     pub vpd_kpa: Option<f64>,
+    pub precipitation_mm: Option<f64>,
 }
 
 /// Calculate VPD (Vapor Pressure Deficit) from temperature and humidity

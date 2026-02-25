@@ -1,5 +1,6 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, GrowingZone, LightRequirement, LocationType, check_zone_compatibility};
+use crate::orchid::{Orchid, GrowingZone, LightRequirement, LocationType, Hemisphere, check_zone_compatibility};
+use crate::watering::ClimateSnapshot;
 use super::BTN_DANGER;
 
 const SECTION_BASE: &str = "rounded-xl border p-4 bg-surface border-stone-200 shadow-sm transition-all dark:border-stone-700";
@@ -19,6 +20,8 @@ fn border_color_for_light(light: &LightRequirement) -> &'static str {
 pub fn OrchidCabinetTable(
     orchids: Vec<Orchid>,
     zones: Vec<GrowingZone>,
+    #[prop(default = Vec::new())] climate_snapshots: Vec<ClimateSnapshot>,
+    #[prop(default = String::new())] hemisphere: String,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_update: impl Fn(Orchid) + 'static + Copy + Send + Sync,
@@ -30,6 +33,8 @@ pub fn OrchidCabinetTable(
 
     let orchids_stored = StoredValue::new(orchids);
     let zones_stored = StoredValue::new(zones);
+    let snapshots_stored = StoredValue::new(climate_snapshots);
+    let hemi = Hemisphere::from_code(&hemisphere);
 
     let render_zone_section = move |zone: GrowingZone| {
         let zone_name = zone.name.clone();
@@ -88,7 +93,7 @@ pub fn OrchidCabinetTable(
                 on:drop=handle_drop
             >
                 <h3 class="pb-2 mt-0 border-b text-primary border-stone-200 dark:border-stone-700">{display_name}</h3>
-                <OrchidTableSection orchids=zone_orchids zones=zones_for_section on_delete=on_delete on_select=on_select />
+                <OrchidTableSection orchids=zone_orchids zones=zones_for_section climate_snapshots=snapshots_stored.get_value() hemisphere=hemi.clone() on_delete=on_delete on_select=on_select />
             </div>
         }
     };
@@ -128,6 +133,8 @@ pub fn OrchidCabinetTable(
 fn OrchidTableSection(
     orchids: Vec<Orchid>,
     zones: Vec<GrowingZone>,
+    climate_snapshots: Vec<ClimateSnapshot>,
+    hemisphere: Hemisphere,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
@@ -163,6 +170,14 @@ fn OrchidTableSection(
                                 };
                                 let status_text = if is_misplaced { "Move Needed" } else { "OK" };
 
+                                let snap = climate_snapshots.iter().find(|s| s.zone_name == orchid.placement).cloned();
+                                let estimate = orchid.climate_adjusted_water_frequency(&hemisphere, snap.as_ref());
+                                let watering_text = if estimate.climate_active {
+                                    format!("Every ~{} days", estimate.adjusted_days)
+                                } else {
+                                    format!("Every {} days", orchid.water_frequency_days)
+                                };
+
                                 view! {
                                     <tr
                                         class="transition-colors cursor-pointer dark:hover:bg-stone-800/50 hover:bg-secondary/50"
@@ -186,7 +201,7 @@ fn OrchidTableSection(
                                     >
                                         <td class=TD_CLASS><span class="font-medium text-primary dark:text-primary-light">{orchid.name}</span></td>
                                         <td class=format!("{} italic", TD_CLASS)>{orchid.species}</td>
-                                        <td class=TD_CLASS>"Every " {orchid.water_frequency_days} " days"</td>
+                                        <td class=TD_CLASS>{watering_text}</td>
                                         <td class=TD_CLASS>{orchid.light_requirement.to_string()}</td>
                                         <td class=TD_CLASS>{orchid.temperature_range}</td>
                                         <td class=status_class>{status_text}</td>

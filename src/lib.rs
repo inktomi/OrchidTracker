@@ -9,6 +9,7 @@ pub mod model;
 pub mod update;
 pub mod pages;
 pub mod server_fns;
+pub mod watering;
 
 #[cfg(test)]
 pub mod test_helpers;

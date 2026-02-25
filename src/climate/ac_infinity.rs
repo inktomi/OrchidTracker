@@ -112,6 +112,7 @@ pub async fn fetch_ac_infinity_reading(
         temperature_c: temp_c,
         humidity_pct: humidity,
         vpd_kpa: vpd,
+        precipitation_mm: None,
     })
 }
 
@@ -215,6 +216,7 @@ pub async fn fetch_ac_infinity_all_ports(
             temperature_c: temp_c,
             humidity_pct: humidity,
             vpd_kpa: vpd,
+            precipitation_mm: None,
         });
     }
 

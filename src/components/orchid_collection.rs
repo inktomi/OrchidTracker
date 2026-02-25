@@ -2,7 +2,8 @@ use leptos::prelude::*;
 use crate::components::cabinet_table::OrchidCabinetTable;
 use crate::components::orchid_card::OrchidCard;
 use crate::model::ViewMode;
-use crate::orchid::{Orchid, GrowingZone};
+use crate::orchid::{Orchid, GrowingZone, Hemisphere};
+use crate::watering::ClimateSnapshot;
 
 const TAB_ACTIVE: &str = "flex gap-1.5 items-center py-2 px-4 text-sm font-semibold rounded-lg border-none shadow-sm transition-all cursor-pointer text-primary bg-surface dark:text-primary-light";
 const TAB_INACTIVE: &str = "flex gap-1.5 items-center py-2 px-4 text-sm font-medium bg-transparent rounded-lg border-none transition-all cursor-pointer text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200";
@@ -11,6 +12,8 @@ const TAB_INACTIVE: &str = "flex gap-1.5 items-center py-2 px-4 text-sm font-med
 pub fn OrchidCollection(
     orchids: Memo<Vec<Orchid>>,
     zones: Memo<Vec<GrowingZone>>,
+    #[prop(optional)] climate_snapshots: Option<Memo<Vec<ClimateSnapshot>>>,
+    #[prop(optional)] hemisphere: Option<Memo<String>>,
     view_mode: Memo<ViewMode>,
     on_set_view: impl Fn(ViewMode) + 'static + Copy + Send + Sync,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -77,6 +80,8 @@ pub fn OrchidCollection(
                         <OrchidGrid
                             orchids=orchids
                             zones=zones
+                            climate_snapshots=climate_snapshots
+                            hemisphere=hemisphere
                             sort_needs_water=sort_needs_water
                             on_delete=on_delete
                             on_select=on_select
@@ -87,10 +92,14 @@ pub fn OrchidCollection(
                     ViewMode::Table => {
                         let orchids_for_table = orchids.get();
                         let zones_for_table = zones.get();
+                        let snapshots_for_table = climate_snapshots.map(|m| m.get()).unwrap_or_default();
+                        let hemi_for_table = hemisphere.map(|m| m.get()).unwrap_or_else(|| "N".to_string());
                         view! {
                             <OrchidCabinetTable
                                 orchids=orchids_for_table
                                 zones=zones_for_table
+                                climate_snapshots=snapshots_for_table
+                                hemisphere=hemi_for_table
                                 on_delete=on_delete
                                 on_select=on_select
                                 on_update=on_update
@@ -110,6 +119,8 @@ pub fn OrchidCollection(
 fn OrchidGrid(
     orchids: Memo<Vec<Orchid>>,
     zones: Memo<Vec<GrowingZone>>,
+    climate_snapshots: Option<Memo<Vec<ClimateSnapshot>>>,
+    hemisphere: Option<Memo<String>>,
     sort_needs_water: ReadSignal<bool>,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
@@ -122,9 +133,14 @@ fn OrchidGrid(
                 each=move || {
                     let mut list = orchids.get();
                     if sort_needs_water.get() {
+                        let snaps = climate_snapshots.map(|m| m.get()).unwrap_or_default();
+                        let hemi_str = hemisphere.map(|m| m.get()).unwrap_or_else(|| "N".to_string());
+                        let hemi = Hemisphere::from_code(&hemi_str);
                         list.sort_by(|a, b| {
-                            let a_due = a.days_until_due().unwrap_or(i64::MAX);
-                            let b_due = b.days_until_due().unwrap_or(i64::MAX);
+                            let snap_a = snaps.iter().find(|s| s.zone_name == a.placement);
+                            let snap_b = snaps.iter().find(|s| s.zone_name == b.placement);
+                            let a_due = a.climate_days_until_due(&hemi, snap_a).unwrap_or(i64::MAX);
+                            let b_due = b.climate_days_until_due(&hemi, snap_b).unwrap_or(i64::MAX);
                             a_due.cmp(&b_due)
                         });
                     }
@@ -137,10 +153,15 @@ fn OrchidGrid(
                 )
                 children=move |orchid| {
                     let zones_clone = zones.get();
+                    let snaps = climate_snapshots.map(|m| m.get()).unwrap_or_default();
+                    let hemi_str = hemisphere.map(|m| m.get()).unwrap_or_else(|| "N".to_string());
+                    let snapshot = snaps.into_iter().find(|s| s.zone_name == orchid.placement);
                     view! {
                         <OrchidCard
                             orchid=orchid
                             zones=zones_clone
+                            climate_snapshot=snapshot
+                            hemisphere=hemi_str
                             on_delete=on_delete
                             on_select=on_select
                             on_water=on_water

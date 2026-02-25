@@ -81,5 +81,6 @@ pub async fn fetch_tempest_reading(
         temperature_c: temp_c,
         humidity_pct: humidity,
         vpd_kpa: Some(vpd),
+        precipitation_mm: None,
     })
 }

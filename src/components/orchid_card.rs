@@ -1,5 +1,6 @@
 use leptos::prelude::*;
-use crate::orchid::{Orchid, GrowingZone, check_zone_compatibility};
+use crate::orchid::{Orchid, GrowingZone, Hemisphere, check_zone_compatibility};
+use crate::watering::ClimateSnapshot;
 use super::BTN_DANGER;
 
 const BTN_WATER: &str = "flex gap-1 items-center py-1.5 px-3 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors text-sky-700 bg-sky-100 hover:bg-sky-200 dark:text-sky-300 dark:bg-sky-900/30 dark:hover:bg-sky-900/50";
@@ -8,6 +9,8 @@ const BTN_WATER: &str = "flex gap-1 items-center py-1.5 px-3 text-xs font-semibo
 pub fn OrchidCard(
     orchid: Orchid,
     zones: Vec<GrowingZone>,
+    #[prop(default = None)] climate_snapshot: Option<ClimateSnapshot>,
+    #[prop(default = String::new())] hemisphere: String,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_water: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -32,20 +35,31 @@ pub fn OrchidCard(
     let has_notes = !orchid.notes.is_empty();
     let notes = orchid.notes.clone();
 
-    // Watering status
-    let watering_text = match orchid.days_until_due() {
-        Some(days) if days < 0 => format!("Overdue by {} days", -days),
+    // Watering status — climate-aware when snapshot available
+    let hemi = Hemisphere::from_code(&hemisphere);
+    let estimate = orchid.climate_adjusted_water_frequency(&hemi, climate_snapshot.as_ref());
+    let climate_active = estimate.climate_active;
+    let approx = if climate_active { "~" } else { "" };
+
+    let watering_text = match orchid.climate_days_until_due(&hemi, climate_snapshot.as_ref()) {
+        Some(days) if days < 0 => format!("Overdue by {}{} days", approx, -days),
         Some(0) => "Due today".to_string(),
         Some(1) => "Due tomorrow".to_string(),
-        Some(days) if days <= 2 => format!("Due in {} days", days),
+        Some(days) if days <= 2 => format!("Due in {}{} days", approx, days),
         _ => match orchid.days_since_watered() {
             Some(0) => "Watered today".to_string(),
             Some(1) => "Watered 1d ago".to_string(),
             Some(d) => format!("Watered {}d ago", d),
-            None => format!("Every {} days", orchid.water_frequency_days),
+            None => {
+                if climate_active {
+                    format!("Every ~{} days", estimate.adjusted_days)
+                } else {
+                    format!("Every {} days", orchid.water_frequency_days)
+                }
+            }
         },
     };
-    let is_overdue = orchid.is_overdue();
+    let is_overdue = orchid.is_climate_overdue(&hemi, climate_snapshot.as_ref());
     let watering_class = if is_overdue {
         "font-medium text-danger"
     } else {

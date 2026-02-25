@@ -85,6 +85,18 @@ pub fn HomePage() -> impl IntoView {
             .unwrap_or_default()
     });
 
+    // Climate snapshots for watering algorithm (48h aggregated per zone)
+    let snapshots_resource = Resource::new(
+        move || zones_version.get(),
+        |_| crate::server_fns::climate::get_all_zone_snapshots(),
+    );
+
+    let climate_snapshots = Memo::new(move |_| {
+        snapshots_resource.get()
+            .and_then(|r| r.ok())
+            .unwrap_or_default()
+    });
+
     // Active alerts
     let alerts_resource = Resource::new(
         move || zones_version.get(),
@@ -238,6 +250,7 @@ pub fn HomePage() -> impl IntoView {
                 // hydration as they did during SSR (preventing DOM mismatches).
                 let _ = orchids_resource.get();
                 let _ = climate_resource.get();
+                let _ = snapshots_resource.get();
                 let _ = alerts_resource.get();
                 let _ = migration_resource.get();
                 let _ = zones_resource.get();
@@ -358,6 +371,8 @@ pub fn HomePage() -> impl IntoView {
                                                 <OrchidCollection
                                                     orchids=orchids_memo
                                                     zones=zones_memo
+                                                    climate_snapshots=climate_snapshots
+                                                    hemisphere=hemisphere
                                                     view_mode=view_mode
                                                     on_set_view=move |mode| send(Msg::SetViewMode(mode))
                                                     on_delete=on_delete
@@ -406,12 +421,14 @@ pub fn HomePage() -> impl IntoView {
                             {move || selected_orchid.get().map(|orchid| {
                                 let current_zones = zones_memo.get();
                                 let current_readings = climate_readings.get();
+                                let current_snapshots = climate_snapshots.get();
                                 let current_hemi = hemisphere.get();
                                 view! {
                                     <OrchidDetail
                                         orchid=orchid
                                         zones=current_zones
                                         climate_readings=current_readings
+                                        climate_snapshots=current_snapshots
                                         hemisphere=current_hemi
                                         on_close=move || send(Msg::SelectOrchid(None))
                                         on_update=on_update
