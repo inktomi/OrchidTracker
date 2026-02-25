@@ -46,7 +46,14 @@ async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
     Ok(record_id_to_string(&user_row.id))
 }
 
-/// Get the orchids for a user, provided their collection is public.
+/// **What is it?**
+/// A server function that retrieves all orchids for a given username, provided their collection is marked as public.
+///
+/// **Why does it exist?**
+/// It exists to allow unauthenticated guests to view a user's plant gallery, while strictly enforcing privacy settings at the database layer.
+///
+/// **How should it be used?**
+/// Call this from the public gallery route (`/public/:username`) to load the grid of orchids.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_orchids(
@@ -79,7 +86,14 @@ pub async fn get_public_orchids(
     Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
-/// Get the growing zones for a user, provided their collection is public.
+/// **What is it?**
+/// A server function that retrieves the growing zones for a given user, provided their collection is public.
+///
+/// **Why does it exist?**
+/// It exists so that public viewers can understand the context of where the orchids are grown (e.g., "Living Room" vs "Greenhouse") without exposing private data.
+///
+/// **How should it be used?**
+/// Fetch this alongside public orchids to properly render placement filters or zone labels on the public gallery.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_zones(
@@ -112,7 +126,14 @@ pub async fn get_public_zones(
     Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
 }
 
-/// Get the most recent climate readings for a public user's zones.
+/// **What is it?**
+/// A server function that retrieves the most recent climate reading for each of a public user's configured growing zones.
+///
+/// **Why does it exist?**
+/// It exists to show visitors the current environmental conditions (temperature, humidity) that a public user's orchids are experiencing right now.
+///
+/// **How should it be used?**
+/// Call this from the public gallery page to populate live weather widgets or zone status banners for visitors.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_climate_readings(
@@ -172,7 +193,14 @@ pub async fn get_public_climate_readings(
     Ok(readings)
 }
 
-/// Get the log entries for a specific orchid in a public collection.
+/// **What is it?**
+/// A server function that retrieves the log entries (care history, blooming events) for a specific orchid in a public collection.
+///
+/// **Why does it exist?**
+/// It exists to let visitors dive into the specific care history of a plant they find interesting on a public gallery without being authenticated.
+///
+/// **How should it be used?**
+/// Query this from the public orchid details modal or dedicated page when a guest clicks on an individual plant card.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_log_entries(
@@ -210,7 +238,14 @@ pub async fn get_public_log_entries(
     Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
 }
 
-/// Get the preferred hemisphere for a public user.
+/// **What is it?**
+/// A server function that gets the preferred hemisphere ("N" or "S") for a public user.
+///
+/// **Why does it exist?**
+/// It exists because displaying accurate season-dependent care information (like resting months) to a public visitor requires knowing where the grower is located geographically.
+///
+/// **How should it be used?**
+/// Call this from a public gallery route to properly interpret bloom or rest months based on the owner's hemisphere rather than the viewer's location.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_hemisphere(
@@ -242,7 +277,14 @@ pub async fn get_public_hemisphere(
     Ok(row.map(|r| r.hemisphere).unwrap_or_else(|| "N".to_string()))
 }
 
-/// Get the preferred temperature unit for a public user.
+/// **What is it?**
+/// A server function that gets the preferred temperature unit ("C" or "F") for a public user.
+///
+/// **Why does it exist?**
+/// It exists to render temperature readings and alerts on the public gallery in the unit format that the collection owner prefers, preserving their intent.
+///
+/// **How should it be used?**
+/// Call this when hydrating the public gallery page to format climate graphs or temperature alerts correctly.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_public_temp_unit(

@@ -70,20 +70,17 @@ pub fn OrchidCabinetTable(
             set_drag_target.set(None);
             #[cfg(feature = "hydrate")]
             {
-                if let Some(data) = ev.data_transfer() {
-                    if let Ok(id_str) = data.get_data("text/plain") {
+                if let Some(data) = ev.data_transfer()
+                    && let Ok(id_str) = data.get_data("text/plain") {
                         let new_placement = zone_name_for_drop.clone();
                         let current_orchids = orchids.get();
                         if let Some(mut orchid) =
                             current_orchids.iter().find(|o| o.id == id_str).cloned()
-                        {
-                            if orchid.placement != new_placement {
+                            && orchid.placement != new_placement {
                                 orchid.placement = new_placement;
                                 on_update(orchid);
                             }
-                        }
                     }
-                }
             }
             #[cfg(not(feature = "hydrate"))]
             {

@@ -2,12 +2,14 @@ use std::collections::HashMap;
 use super::RawReading;
 use crate::error::AppError;
 
-/// Fetch a climate reading from an AC Infinity controller via their cloud API.
+/// **What is it?**
+/// A function that authenticates with the AC Infinity cloud API, retrieves a device list, and extracts sensor readings for a target device/port.
 ///
-/// This is a reverse-engineered API — the endpoints and field names may change.
-/// Step 1: Login to get a token
-/// Step 2: Fetch device list with the token
-/// Step 3: Find the target device/port and extract sensor readings
+/// **Why does it exist?**
+/// It exists to interface with proprietary AC Infinity environmental controllers, parsing their reverse-engineered JSON responses into a standard `RawReading`.
+///
+/// **How should it be used?**
+/// Call this from the background polling task or the device testing endpoint, passing the user's email, password, and device ID to fetch the current temperature and humidity.
 pub async fn fetch_ac_infinity_reading(
     client: &reqwest::Client,
     email: &str,
@@ -116,8 +118,14 @@ pub async fn fetch_ac_infinity_reading(
     })
 }
 
-/// Fetch readings from ALL ports on an AC Infinity controller in a single API call.
-/// Returns a map of port_id -> RawReading for every port that has sensor data.
+/// **What is it?**
+/// A function that fetches readings from ALL active ports on a single AC Infinity controller in one API request.
+///
+/// **Why does it exist?**
+/// It exists to optimize API usage, returning a map of port data so the backend can update multiple growing zones using a single network call.
+///
+/// **How should it be used?**
+/// Call this from the grouped polling routine (Phase A) when multiple zones share the same AC Infinity controller hardware.
 pub async fn fetch_ac_infinity_all_ports(
     client: &reqwest::Client,
     email: &str,

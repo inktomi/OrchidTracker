@@ -2,12 +2,14 @@ use crate::db::db;
 use surrealdb::types::SurrealValue;
 use super::{tempest, ac_infinity, open_meteo};
 
-/// Poll all zones that have a configured data source, fetch readings, and store them.
-/// Called periodically by the background task in main.rs.
+/// **What is it?**
+/// A core orchestration task that fetches fresh climate readings for all active zones and stores them in the database.
 ///
-/// Two-phase approach:
-///   Phase A: Device-linked zones — grouped by hardware_device, one API call per device
-///   Phase B: Legacy zones — individual zones with data_source_type/data_source_config
+/// **Why does it exist?**
+/// It exists to keep the system's environmental data current, driving alerts, historical charts, and AI scanner context by systematically polling configured hardware and APIs.
+///
+/// **How should it be used?**
+/// Spawn this as a recurring job in the main background loop, executing the two-phase approach (hardware-grouped then legacy) periodically.
 pub async fn poll_all_zones() {
     let db = db();
     let client = reqwest::Client::new();
@@ -32,7 +34,14 @@ pub async fn poll_all_zones() {
     super::alerts::check_and_send_alerts().await;
 }
 
-/// Phase A: Fetch all hardware devices, group linked zones by device, make one API call per device.
+/// **What is it?**
+/// An asynchronous execution phase that fetches readings for zones linked to shared hardware devices (like an AC Infinity controller with multiple ports).
+///
+/// **Why does it exist?**
+/// It exists to optimize network calls, pulling data for multiple sensors simultaneously with a single API request per physical device rather than per zone.
+///
+/// **How should it be used?**
+/// Call this internally within `poll_all_zones` before processing legacy single-sensor zones.
 async fn poll_device_linked_zones(
     db: &surrealdb::Surreal<surrealdb::engine::remote::ws::Client>,
     client: &reqwest::Client,
@@ -169,7 +178,14 @@ async fn poll_device_linked_zones(
     }
 }
 
-/// Phase B: Poll legacy zones that have data_source_type set but no hardware_device.
+/// **What is it?**
+/// An asynchronous execution phase that fetches readings for individual legacy zones that specify their own `data_source_type`.
+///
+/// **Why does it exist?**
+/// It exists to maintain backwards compatibility for zones created before the shared hardware feature, ensuring they still receive data from APIs like Open-Meteo.
+///
+/// **How should it be used?**
+/// Call this internally within `poll_all_zones` after processing the shared hardware devices.
 async fn poll_legacy_zones(
     db: &surrealdb::Surreal<surrealdb::engine::remote::ws::Client>,
     client: &reqwest::Client,
@@ -280,7 +296,14 @@ async fn poll_legacy_zones(
     }
 }
 
-/// Shared helper: store a climate reading in the database.
+/// **What is it?**
+/// A shared helper function that inserts a climate reading into the database for a specific zone.
+///
+/// **Why does it exist?**
+/// It exists to deduplicate the database insertion logic across both Phase A (shared hardware) and Phase B (legacy single sensors).
+///
+/// **How should it be used?**
+/// Call this after successfully obtaining a `RawReading` from a data source, providing the target zone ID and name.
 async fn store_reading(
     db: &surrealdb::Surreal<surrealdb::engine::remote::ws::Client>,
     zone_id: &surrealdb::types::RecordId,
@@ -344,7 +367,14 @@ struct ZoneRow {
     data_source_config: String,
 }
 
-/// Configuration for a Tempest weather station.
+/// **What is it?**
+/// A struct representing the deserialized configuration for a Tempest weather station.
+///
+/// **Why does it exist?**
+/// It exists to securely unpack the JSON string stored in the database into the fields necessary for the Tempest API call.
+///
+/// **How should it be used?**
+/// Deserialize the encrypted `config_json` from a `hardware_device` or zone into this struct before calling `fetch_tempest_reading`.
 #[derive(serde::Deserialize)]
 pub struct TempestConfig {
     /// The station's unique identifier.
@@ -353,7 +383,14 @@ pub struct TempestConfig {
     pub token: String,
 }
 
-/// Configuration for an AC Infinity device.
+/// **What is it?**
+/// A struct representing the deserialized configuration for an AC Infinity controller.
+///
+/// **Why does it exist?**
+/// It exists to securely unpack the JSON string stored in the database into the credentials and parameters necessary for the AC Infinity cloud API.
+///
+/// **How should it be used?**
+/// Deserialize the encrypted `config_json` from a `hardware_device` or zone into this struct before calling the AC Infinity fetch functions.
 #[derive(serde::Deserialize)]
 pub struct AcInfinityConfig {
     /// User email for AC Infinity login.
@@ -371,7 +408,14 @@ fn default_port() -> u32 {
     1
 }
 
-/// Configuration for an open weather API integration.
+/// **What is it?**
+/// A struct representing the deserialized configuration for the Open-Meteo weather API integration.
+///
+/// **Why does it exist?**
+/// It exists to unpack the JSON string stored in the database into the specific latitude and longitude coordinates required by the API.
+///
+/// **How should it be used?**
+/// Deserialize the encrypted `config_json` from a zone into this struct before calling `fetch_habitat_weather`.
 #[derive(serde::Deserialize)]
 pub struct WeatherApiConfig {
     /// Latitude coordinate.

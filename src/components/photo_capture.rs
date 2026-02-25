@@ -138,11 +138,10 @@ pub fn PhotoCapture(
         {
             if let Some(input) = file_input_ref.get() {
                 let input_el: &web_sys::HtmlInputElement = input.as_ref();
-                if let Some(files) = input_el.files() {
-                    if let Some(file) = files.get(0) {
+                if let Some(files) = input_el.files()
+                    && let Some(file) = files.get(0) {
                         stage_photo(file);
                     }
-                }
             }
         }
     };
@@ -152,13 +151,11 @@ pub fn PhotoCapture(
         set_is_dragging.set(false);
         #[cfg(feature = "hydrate")]
         {
-            if let Some(dt) = ev.data_transfer() {
-                if let Some(files) = dt.files() {
-                    if let Some(file) = files.get(0) {
+            if let Some(dt) = ev.data_transfer()
+                && let Some(files) = dt.files()
+                    && let Some(file) = files.get(0) {
                         stage_photo(file);
                     }
-                }
-            }
         }
     };
 

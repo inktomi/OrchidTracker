@@ -2,8 +2,14 @@ use chrono::{Datelike, Utc};
 use super::alerts::NewAlert;
 use crate::orchid::Hemisphere;
 
-/// Check all orchids with seasonal data for upcoming transitions.
-/// Called daily from the background task.
+/// **What is it?**
+/// A background orchestration task that cross-references user hemisphere preferences with orchid resting and blooming schedules to generate seasonal transition warnings.
+///
+/// **Why does it exist?**
+/// It exists to proactively notify users when care routines need to change (e.g., cutting back on water in winter or increasing fertilizer in spring) without relying on real-time temperature drops.
+///
+/// **How should it be used?**
+/// Spawn this as a daily job in the main background loop so users receive timely alerts before a new month begins.
 pub async fn check_seasonal_alerts() {
     use crate::db::db;
     use surrealdb::types::SurrealValue;

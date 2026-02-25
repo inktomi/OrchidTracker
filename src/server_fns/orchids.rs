@@ -4,7 +4,14 @@ use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, LogEntry};
 
-/// The response when successfully adding a log entry.
+/// **What is it?**
+/// The struct representing the response when successfully adding a log entry for an orchid.
+///
+/// **Why does it exist?**
+/// It exists to return both the newly created log entry and additional context (like whether this was the first bloom) so the frontend can update its state immediately.
+///
+/// **How should it be used?**
+/// Parse this struct on the frontend after calling the `add_log_entry` server function to update the UI without needing a full reload.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddLogEntryResponse {
     /// The newly created log entry.
@@ -239,7 +246,14 @@ fn validate_filename(filename: &str) -> Result<(), ServerFnError> {
     Ok(())
 }
 
-/// Get all orchids owned by the current user.
+/// **What is it?**
+/// A server function that retrieves the entire collection of orchids owned by the currently authenticated user.
+///
+/// **Why does it exist?**
+/// It exists to securely query the database, ensuring users only see their own plants, and to serialize the resulting rows into frontend-compatible `Orchid` structs.
+///
+/// **How should it be used?**
+/// Call this from the main dashboard or collection view to load and display the user's plants.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
@@ -268,7 +282,14 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
-/// Create a new orchid record for the current user.
+/// **What is it?**
+/// A server function that validates and creates a new orchid record in the database.
+///
+/// **Why does it exist?**
+/// It exists to handle the complex validation and backend insertion logic needed to persist a new plant, ensuring it's safely associated with the authenticated user.
+///
+/// **How should it be used?**
+/// Call this from the "Add Orchid" form in the user interface, passing in all the collected plant details as arguments.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_orchid(
@@ -404,7 +425,14 @@ pub async fn create_orchid(
         .ok_or_else(|| ServerFnError::new("Failed to create orchid"))
 }
 
-/// Update an existing orchid record.
+/// **What is it?**
+/// A server function that applies changes to an existing orchid record.
+///
+/// **Why does it exist?**
+/// It exists to allow users to modify details about a plant (like its name or placement) after it has been created, persisting those changes in the backend.
+///
+/// **How should it be used?**
+/// Call this from the "Edit Orchid" modal, passing the fully updated `Orchid` struct containing the user's modifications.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn update_orchid(
@@ -491,7 +519,14 @@ pub async fn update_orchid(
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
 }
 
-/// Delete an orchid and its related records.
+/// **What is it?**
+/// A server function that deletes a specific orchid from the user's collection.
+///
+/// **Why does it exist?**
+/// It exists to securely handle the removal of a plant record from the database, ensuring that only the verified owner can delete it.
+///
+/// **How should it be used?**
+/// Call this from a confirmation dialog when the user clicks the "Delete" button on an orchid card.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_orchid(
@@ -516,7 +551,14 @@ pub async fn delete_orchid(
     Ok(())
 }
 
-/// Add a new log entry (watered, fertilized, repotted, notes, etc.) for an orchid.
+/// **What is it?**
+/// A server function that creates a new log entry for a specific orchid, such as a watering or repotting event.
+///
+/// **Why does it exist?**
+/// It exists to allow users to maintain a detailed history of care actions, and to automatically trigger side effects (like updating `last_watered_at`).
+///
+/// **How should it be used?**
+/// Call this from the "Add Entry" timeline UI, specifying the plant, the type of action performed, and any optional notes or images.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn add_log_entry(
@@ -650,7 +692,14 @@ pub async fn add_log_entry(
     Ok(AddLogEntryResponse { entry, is_first_bloom })
 }
 
-/// Retrieve all log entries for a specific orchid.
+/// **What is it?**
+/// A server function that retrieves all log entries for a specific orchid in the database.
+///
+/// **Why does it exist?**
+/// It exists to securely query the historical timeline of care events (watering, repotting, blooming) associated with a single plant owned by the current user.
+///
+/// **How should it be used?**
+/// Call this from the "Orchid Details" modal to load the timeline view of the plant's history.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_log_entries(
@@ -684,7 +733,14 @@ pub async fn get_log_entries(
     Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
 }
 
-/// Mark an orchid as watered right now.
+/// **What is it?**
+/// A server function that marks a specific orchid as having just been watered.
+///
+/// **Why does it exist?**
+/// It exists as a convenience endpoint to quickly update the `last_watered_at` timestamp and automatically create a corresponding log entry without requiring the user to fill out a full form.
+///
+/// **How should it be used?**
+/// Call this from a "Water Now" button in the collection grid or detailed view.
 #[server]
 #[tracing::instrument(level = "info", skip_all, fields(orchid_id = %orchid_id))]
 pub async fn mark_watered(
@@ -734,7 +790,14 @@ pub async fn mark_watered(
     Ok(orchid)
 }
 
-/// Mark an orchid as fertilized right now.
+/// **What is it?**
+/// A server function that marks a specific orchid as having just been fertilized.
+///
+/// **Why does it exist?**
+/// It exists as a quick-action endpoint to update the `last_fertilized_at` timestamp and automatically append a "Fertilized" event to the plant's timeline.
+///
+/// **How should it be used?**
+/// Call this from a "Fertilize Now" button when a user indicates they have applied nutrients to an orchid.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn mark_fertilized(
@@ -781,7 +844,14 @@ pub async fn mark_fertilized(
     Ok(orchid)
 }
 
-/// Mark an orchid as repotted right now.
+/// **What is it?**
+/// A server function that marks a specific orchid as having just been repotted.
+///
+/// **Why does it exist?**
+/// It exists to update the `last_repotted_at` timestamp and automatically track the new pot size or medium within the plant's history.
+///
+/// **How should it be used?**
+/// Call this from the "Repotting form" after a user supplies the updated medium and size information.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn mark_repotted(

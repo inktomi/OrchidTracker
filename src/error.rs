@@ -1,6 +1,8 @@
 use std::fmt;
 
-/// Represents all possible errors that can occur within the application.
+/// What is it? The unified error enumeration for the application backend and data layers.
+/// Why does it exist? It provides a single type to propagate failures (like network, database, or validation errors) up the call stack, simplifying error handling.
+/// How should it be used? Return it as the `Err` variant in `Result<T, AppError>` for all internal operations, and match against its variants when logging or translating to HTTP responses.
 #[derive(Debug)]
 pub enum AppError {
     /// Errors related to user authentication and authorization.
@@ -32,8 +34,9 @@ impl fmt::Display for AppError {
 
 impl std::error::Error for AppError {}
 
-/// Log an internal error and return a generic ServerFnError safe for the UI.
-/// The real error details go to the server logs only.
+/// What is it? A utility function for converting an internal error into a safe, user-facing error.
+/// Why does it exist? It ensures sensitive backend details (like database query syntax or stack traces) are logged but never leaked to the client browser.
+/// How should it be used? Call it within Leptos server functions (`#[server]`) when an `AppError` is encountered, returning its safe `ServerFnError` output to the frontend.
 #[cfg(feature = "ssr")]
 pub fn internal_error(
     context: &str,

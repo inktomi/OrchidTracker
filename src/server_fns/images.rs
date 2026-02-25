@@ -2,7 +2,14 @@
 // because multipart form data requires direct access to the Axum extractors.
 // See main.rs for the route registration.
 
-/// Handlers for processing image upload requests via Axum.
+/// **What is it?**
+/// A module containing custom Axum handlers for processing multipart image uploads.
+///
+/// **Why does it exist?**
+/// It exists because Leptos Server Functions do not natively support streaming raw `multipart/form-data` payloads (like large JPEGs) efficiently, requiring a direct Axum route.
+///
+/// **How should it be used?**
+/// Register the `upload_router` in the main Axum application setup (`src/main.rs`) to expose the `/api/images/upload` endpoint.
 #[cfg(feature = "ssr")]
 pub mod handlers {
     use axum::{

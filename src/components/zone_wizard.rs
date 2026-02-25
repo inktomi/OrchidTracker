@@ -601,8 +601,8 @@ fn OutdoorWizard(
                 // without requiring web_sys Geolocation feature
                 let nav = window.navigator();
                 let geo = js_sys::Reflect::get(&nav, &"geolocation".into()).ok();
-                if let Some(geo) = geo {
-                    if !geo.is_undefined() && !geo.is_null() {
+                if let Some(geo) = geo
+                    && !geo.is_undefined() && !geo.is_null() {
                         let _ = js_sys::Reflect::apply(
                             &js_sys::Function::from(
                                 js_sys::Reflect::get(&geo, &"getCurrentPosition".into())
@@ -615,7 +615,6 @@ fn OutdoorWizard(
                             ),
                         );
                     }
-                }
             }
 
             success.forget();

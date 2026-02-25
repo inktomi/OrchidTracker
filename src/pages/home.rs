@@ -197,11 +197,10 @@ pub fn HomePage() -> impl IntoView {
     let on_delete = move |id: String| {
         #[cfg(feature = "hydrate")]
         {
-            if let Some(window) = web_sys::window() {
-                if !window.confirm_with_message("Are you sure you want to delete this plant?").unwrap_or(false) {
+            if let Some(window) = web_sys::window()
+                && !window.confirm_with_message("Are you sure you want to delete this plant?").unwrap_or(false) {
                     return;
                 }
-            }
         }
         leptos::task::spawn_local(async move {
             if let Err(e) = delete_orchid(id).await {

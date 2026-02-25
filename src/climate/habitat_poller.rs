@@ -2,8 +2,14 @@ use crate::db::db;
 use surrealdb::types::SurrealValue;
 use super::open_meteo;
 
-/// Poll habitat weather for all unique native coordinates across orchids.
-/// Called periodically by the background task in main.rs (every 2 hours).
+/// **What is it?**
+/// A background orchestration task that queries Open-Meteo for the current weather at all unique native coordinates of the user's orchids.
+///
+/// **Why does it exist?**
+/// It exists to continuously track real-time climate conditions in the natural habitats of the plants, providing users with context on what their orchids would be experiencing in the wild.
+///
+/// **How should it be used?**
+/// Spawn this as part of the background polling loop, running it every few hours to keep the `habitat_weather` tables up to date.
 pub async fn poll_habitat_weather() {
     let db = db();
     let client = reqwest::Client::new();
@@ -95,10 +101,14 @@ pub async fn poll_habitat_weather() {
     tracing::info!("Habitat poll completed");
 }
 
-/// Compact raw readings into daily/weekly/monthly summaries.
-/// - Raw readings older than 7 days → daily summaries
-/// - Daily summaries older than 30 days → weekly summaries
-/// - Weekly summaries older than 90 days → monthly summaries
+/// **What is it?**
+/// A background cleanup task that aggregates older, high-frequency raw readings into lower-resolution summaries (daily, weekly, monthly).
+///
+/// **Why does it exist?**
+/// It exists to manage database size and performance by discarding fine-grained historical data that is no longer needed, preserving only the long-term trends.
+///
+/// **How should it be used?**
+/// Run this periodically (e.g., daily) as part of the backend maintenance tasks to maintain a clean and performant habitat history table.
 pub async fn compact_habitat_data() {
     let db = db();
 

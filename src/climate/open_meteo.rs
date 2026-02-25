@@ -1,6 +1,13 @@
 use crate::error::AppError;
 
-/// A raw habitat weather reading from Open-Meteo.
+/// **What is it?**
+/// A data structure representing the parsed response of an Open-Meteo weather API call.
+///
+/// **Why does it exist?**
+/// It exists to provide a clean, standardized format for temperature, humidity, and precipitation data before it is inserted into the `habitat_weather` table.
+///
+/// **How should it be used?**
+/// Instantiate this struct inside the `fetch_habitat_weather` function when returning a successful API reading.
 pub struct HabitatReading {
     /// Temperature in Celsius.
     pub temperature_c: f64,
@@ -10,8 +17,14 @@ pub struct HabitatReading {
     pub precipitation_mm: f64,
 }
 
-/// Fetch current weather conditions from Open-Meteo for a given coordinate pair.
-/// Free API, no key required.
+/// **What is it?**
+/// A function that fetches the current weather conditions from the Open-Meteo API for a specific geographic coordinate pair.
+///
+/// **Why does it exist?**
+/// It exists to provide a free, reliable source of current meteorological data for outdoor habitats or wild regions where the user does not have physical sensors.
+///
+/// **How should it be used?**
+/// Call this from the habitat polling loop or the manual "Test Weather API" endpoint, passing the target latitude and longitude.
 pub async fn fetch_habitat_weather(
     client: &reqwest::Client,
     latitude: f64,

@@ -1,7 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::Alert;
 
-/// Retrieves the VAPID public key for push notification subscriptions.
+/// **What is it?**
+/// A server function that retrieves the VAPID public key from the backend configuration.
+///
+/// **Why does it exist?**
+/// It exists because the browser's Push API requires a VAPID public key to authenticate the application and securely register for push notifications.
+///
+/// **How should it be used?**
+/// Call this from the frontend when initializing or toggling push notifications to get the key needed for the `pushManager.subscribe()` call.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
@@ -12,7 +19,14 @@ pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
     Ok(config().vapid_public_key.clone())
 }
 
-/// Subscribes the current user to push notifications for a specific endpoint.
+/// **What is it?**
+/// A server function that saves the current user's browser push subscription details to the database.
+///
+/// **Why does it exist?**
+/// It exists to securely map a user's device endpoint and cryptographic keys to their account, allowing the backend to route push notifications to them.
+///
+/// **How should it be used?**
+/// Pass the `endpoint`, `p256dh` public key, and `auth` secret returned by the browser's `pushManager.subscribe()` into this function to enable notifications on that device.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn subscribe_push(
@@ -67,7 +81,14 @@ pub async fn subscribe_push(
     Ok(())
 }
 
-/// Unsubscribes the current user from all push notifications.
+/// **What is it?**
+/// A server function that removes all push notification subscriptions for the current authenticated user.
+///
+/// **Why does it exist?**
+/// It exists to provide an opt-out mechanism for users who no longer wish to receive notifications, ensuring their subscription keys are deleted from the database.
+///
+/// **How should it be used?**
+/// Call this from the settings UI when a user turns off the push notifications toggle.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
@@ -88,7 +109,14 @@ pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
     Ok(())
 }
 
-/// Retrieves the active, unacknowledged alerts for the current user.
+/// **What is it?**
+/// A server function that retrieves a list of active, unacknowledged alerts for the currently authenticated user.
+///
+/// **Why does it exist?**
+/// It exists to keep the user informed about urgent issues requiring their attention, such as critical temperature drops or watering reminders.
+///
+/// **How should it be used?**
+/// Query this function from an application-wide notification panel or polling loop to populate the user's current alerts view.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
@@ -141,7 +169,14 @@ pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
     }).collect())
 }
 
-/// Checks if the current user has any active push subscriptions.
+/// **What is it?**
+/// A server function that checks if the current user has any active push notification subscriptions on record.
+///
+/// **Why does it exist?**
+/// It exists to determine the initial state of the "Enable Push Notifications" toggle in the user interface.
+///
+/// **How should it be used?**
+/// Fetch this boolean value when loading the user's notification settings to reflect whether their browser is currently subscribed.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
@@ -171,7 +206,14 @@ pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
     Ok(row.map(|r| r.count > 0).unwrap_or(false))
 }
 
-/// Sends a test push notification to all endpoints subscribed by the current user.
+/// **What is it?**
+/// A server function that triggers a test push notification to all endpoints subscribed by the current user.
+///
+/// **Why does it exist?**
+/// It exists to provide an immediate way for users to confirm their browser and operating system settings are correctly configured to receive alerts from OrchidTracker.
+///
+/// **How should it be used?**
+/// Call this from the frontend when the user clicks a "Send Test Notification" button in the settings panel.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn send_test_push() -> Result<String, ServerFnError> {
@@ -240,7 +282,14 @@ pub async fn send_test_push() -> Result<String, ServerFnError> {
     }
 }
 
-/// Marks a specific alert as acknowledged by the current user.
+/// **What is it?**
+/// A server function that marks a specific alert as acknowledged by the current user.
+///
+/// **Why does it exist?**
+/// It exists to clear an alert from the active list, indicating that the user has seen and resolved or accepted the notification.
+///
+/// **How should it be used?**
+/// Call this function when the user clicks the "Acknowledge" or "X" button on an active alert component.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn acknowledge_alert(

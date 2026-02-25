@@ -976,10 +976,7 @@ fn NotificationSettings() -> impl IntoView {
                 leptos::task::spawn_local(async move {
                     use wasm_bindgen_futures::JsFuture;
 
-                    match web_sys::Notification::request_permission() {
-                        Ok(promise) => { let _ = JsFuture::from(promise).await; }
-                        Err(_) => {}
-                    }
+                    if let Ok(promise) = web_sys::Notification::request_permission() { let _ = JsFuture::from(promise).await; }
 
                     let perm = web_sys::Notification::permission();
                     if perm == web_sys::NotificationPermission::Granted {
@@ -1093,9 +1090,6 @@ async fn unsubscribe_browser_push() {
     };
 
     if let Some(sub) = subscription {
-        match sub.unsubscribe() {
-            Ok(promise) => { let _ = JsFuture::from(promise).await; }
-            Err(_) => {}
-        }
+        if let Ok(promise) = sub.unsubscribe() { let _ = JsFuture::from(promise).await; }
     }
 }

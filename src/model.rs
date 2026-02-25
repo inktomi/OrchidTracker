@@ -1,7 +1,9 @@
 use crate::components::scanner::AnalysisResult;
 use crate::orchid::{GrowingZone, Orchid};
 
-/// UI view mode toggle
+/// What is it? A toggle representing the layout style for the primary plant list.
+/// Why does it exist? It allows the user to switch between a visual grid of cards and a denser tabular data view.
+/// How should it be used? Read from `Model::view_mode` to determine which component to render, and dispatch `Msg::SetViewMode` to change it.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ViewMode {
     /// Displays items in a visual grid layout.
@@ -10,7 +12,9 @@ pub enum ViewMode {
     Table,
 }
 
-/// Home page tab selection
+/// What is it? A selection representing the active tab on the main dashboard.
+/// Why does it exist? It separates the user's personal collection view from global seasonal care information.
+/// How should it be used? Read from `Model::home_tab` to display the correct tab content, and dispatch `Msg::SetHomeTab` when a user clicks a tab button.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HomeTab {
     /// The primary tab displaying the user's plant collection.
@@ -19,7 +23,9 @@ pub enum HomeTab {
     Seasons,
 }
 
-/// Centralized UI state (TEA Model) — data now comes from server Resources
+/// What is it? The central state struct for the application's UI, following The Elm Architecture (TEA).
+/// Why does it exist? It consolidates all client-side UI state into a single source of truth, making state transitions predictable and testable.
+/// How should it be used? Store it in a Leptos signal at the root of the application, derive fine-grained `Memo`s for component props, and mutate it exclusively through the `update` function via `Msg` dispatches.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Model {
     /// The currently active view layout for the plant list.
@@ -64,7 +70,9 @@ impl Default for Model {
     }
 }
 
-/// All possible state transitions (TEA Messages) — UI state only
+/// What is it? An enumeration of all possible state transitions in the application's UI.
+/// Why does it exist? It acts as the single mechanism for triggering state changes, ensuring all updates flow synchronously through a pure function.
+/// How should it be used? Construct a specific variant in response to a user action (e.g., clicking a button) and pass it to the `update::dispatch` function to modify the `Model`.
 pub enum Msg {
     // Navigation
     /// Select an orchid to view details, or clear the selection.
@@ -104,7 +112,9 @@ pub enum Msg {
     SetHomeTab(HomeTab),
 }
 
-/// Side effects returned by the update function (TEA Commands) — UI only
+/// What is it? An enumeration of side-effects that the application needs to perform after a state update.
+/// Why does it exist? It keeps the core `update` function pure by returning declarative descriptions of asynchronous or browser-specific actions (like changing themes).
+/// How should it be used? Return variants of this enum from the `update` function, which will then be interpreted and executed by the `execute_cmd` function.
 #[derive(Debug, PartialEq)]
 pub enum Cmd {
     /// Command to apply the dark mode theme to the document body.

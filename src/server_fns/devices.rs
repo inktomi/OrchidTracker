@@ -1,7 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::HardwareDevice;
 
-/// Parse the "table:key" user_id string into a SurrealDB RecordId
+/// **What is it?**
+/// A utility function that parses the "table:key" user_id string into a SurrealDB RecordId.
+///
+/// **Why does it exist?**
+/// It exists to standardize error handling across the backend when extracting the authenticated user's ID for database constraints.
+///
+/// **How should it be used?**
+/// Call this inside server functions after `require_auth` to obtain the `RecordId` needed for the `owner` field in database queries.
 #[cfg(feature = "ssr")]
 fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
     use crate::error::internal_error;
@@ -40,7 +47,14 @@ mod ssr_types {
 #[cfg(feature = "ssr")]
 use ssr_types::*;
 
-/// List all hardware devices for the current user.
+/// **What is it?**
+/// A server function that retrieves a list of all hardware devices configured by the current user.
+///
+/// **Why does it exist?**
+/// It exists so the user can view and manage their list of shared hardware (like AC Infinity controllers) across their different zones.
+///
+/// **How should it be used?**
+/// Call this from the Hardware Settings or Devices page to populate the list of available integrations.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_devices() -> Result<Vec<HardwareDevice>, ServerFnError> {
@@ -69,7 +83,14 @@ pub async fn get_devices() -> Result<Vec<HardwareDevice>, ServerFnError> {
     Ok(rows.into_iter().map(|r| r.into_hardware_device()).collect())
 }
 
-/// Create a new hardware device.
+/// **What is it?**
+/// A server function that registers a new hardware device in the database.
+///
+/// **Why does it exist?**
+/// It exists to securely encrypt and store credentials or connection strings for IoT devices (like Tempest weather stations), so the backend can automatically poll them later.
+///
+/// **How should it be used?**
+/// Call this when the user submits the "Add Device" form with their API keys or local IP configurations.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_device(
@@ -128,8 +149,14 @@ pub async fn create_device(
         .ok_or_else(|| ServerFnError::new("Failed to create device"))
 }
 
-/// Update an existing hardware device's name and/or config.
-/// Device type is immutable after creation.
+/// **What is it?**
+/// A server function that updates an existing hardware device's name or configuration.
+///
+/// **Why does it exist?**
+/// It exists to allow users to rotate their API keys, update IP addresses, or rename a device without having to delete and recreate it (which would break zone links).
+///
+/// **How should it be used?**
+/// Call this from the "Edit Device" form. Note that the device type cannot be changed after creation.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn update_device(
@@ -186,7 +213,14 @@ pub async fn update_device(
         .ok_or_else(|| ServerFnError::new("Device not found or not owned by you"))
 }
 
-/// Delete a hardware device and unlink all referencing zones.
+/// **What is it?**
+/// A server function that deletes a hardware device and removes its references from any associated zones.
+///
+/// **Why does it exist?**
+/// It exists to allow a user to remove a piece of hardware they no longer own or use, while maintaining referential integrity by safely unlinking it from their growing zones.
+///
+/// **How should it be used?**
+/// Call this when a user clicks "Delete" on a hardware device card.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_device(
@@ -222,7 +256,14 @@ pub async fn delete_device(
     Ok(())
 }
 
-/// Test a device connection by attempting to fetch a reading.
+/// **What is it?**
+/// A server function that verifies a set of device credentials by performing a live test fetch against the hardware.
+///
+/// **Why does it exist?**
+/// It exists to give users immediate feedback on whether their API keys, IP addresses, or passwords are correct *before* they save a broken device configuration.
+///
+/// **How should it be used?**
+/// Call this when the user clicks a "Test Connection" button in the device configuration form.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn test_device(
@@ -282,8 +323,14 @@ pub async fn test_device(
     }
 }
 
-/// Link a zone to a shared hardware device.
-/// Clears the zone's legacy data_source_type/data_source_config.
+/// **What is it?**
+/// A server function that assigns a growing zone to pull its climate data from a specific shared hardware device.
+///
+/// **Why does it exist?**
+/// It exists to establish the relationship between a physical location (zone) and a sensor (device), instructing the backend poller where to route the gathered data.
+///
+/// **How should it be used?**
+/// Call this when a user selects a device from the dropdown menu in a zone's settings panel.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn link_zone_to_device(
@@ -329,7 +376,14 @@ pub async fn link_zone_to_device(
     Ok(())
 }
 
-/// Unlink a zone from its hardware device.
+/// **What is it?**
+/// A server function that removes the hardware linkage from a growing zone.
+///
+/// **Why does it exist?**
+/// It exists to stop the background poller from associating data from a specific sensor with this zone, effectively returning the zone to a "manual data" or "no data" state.
+///
+/// **How should it be used?**
+/// Call this when the user clicks "Unlink" or selects "None" for the data source in a zone's settings.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn unlink_zone_from_device(

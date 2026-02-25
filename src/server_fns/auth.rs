@@ -4,7 +4,14 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use surrealdb::types::SurrealValue;
 
-/// Information about the currently authenticated user.
+/// **What is it?**
+/// A struct containing the essential details of the currently authenticated user.
+///
+/// **Why does it exist?**
+/// It exists to provide a serializable, client-friendly representation of the user without exposing sensitive backend data like password hashes.
+///
+/// **How should it be used?**
+/// Use this struct on the frontend to display the user's name, email, or to verify that an active session exists.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UserInfo {
     /// The unique identifier for the user.
@@ -15,7 +22,14 @@ pub struct UserInfo {
     pub email: String,
 }
 
-/// Convert a SurrealDB RecordId to a "table:key" string for session storage and UserInfo.
+/// **What is it?**
+/// A utility function that converts a SurrealDB `RecordId` into a standard "table:key" string format.
+///
+/// **Why does it exist?**
+/// It exists because SurrealDB returns native `RecordId` types in the backend, but the frontend and HTTP session cookies require simple string identifiers.
+///
+/// **How should it be used?**
+/// Call this when serializing a user record from the database to extract their string-based ID for session storage or `UserInfo`.
 #[cfg(feature = "ssr")]
 pub fn record_id_to_string(id: &surrealdb::types::RecordId) -> String {
     use surrealdb::types::RecordIdKey;
@@ -27,7 +41,14 @@ pub fn record_id_to_string(id: &surrealdb::types::RecordId) -> String {
     format!("{}:{}", id.table, key)
 }
 
-/// SSR-only struct matching SurrealDB's record shape (id is a RecordId, not a String).
+/// **What is it?**
+/// An SSR-only struct representing the shape of a user record exactly as it is returned from SurrealDB.
+///
+/// **Why does it exist?**
+/// It exists to safely deserialize the database query result, including its native `RecordId`, before mapping it to the frontend `UserInfo` struct.
+///
+/// **How should it be used?**
+/// Use this type internally within backend queries (like `SELECT * FROM user`) as the target struct for deserialization.
 #[cfg(feature = "ssr")]
 #[derive(Deserialize, SurrealValue)]
 #[surreal(crate = "surrealdb::types")]
@@ -52,7 +73,14 @@ impl UserDbRow {
     }
 }
 
-/// Registers a new user with the given username, email, and password.
+/// **What is it?**
+/// A server function that registers a new user with the given username, email, and password.
+///
+/// **Why does it exist?**
+/// It exists to handle account creation securely, hashing the provided password and creating the initial user record in the database.
+///
+/// **How should it be used?**
+/// Call this from the frontend registration form when a new user signs up.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn register(
@@ -110,7 +138,14 @@ pub async fn register(
     Ok(user)
 }
 
-/// Logs in an existing user with their username and password.
+/// **What is it?**
+/// A server function that authenticates an existing user and establishes an active HTTP session.
+///
+/// **Why does it exist?**
+/// It exists to securely verify credentials and generate the session cookies needed for subsequent backend requests.
+///
+/// **How should it be used?**
+/// Call this from the frontend login form when a user submits their username and password.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn login(
@@ -172,14 +207,28 @@ pub async fn login(
     })
 }
 
-/// Logs out the current user, destroying their session.
+/// **What is it?**
+/// A server function that logs out the current user by destroying their active HTTP session.
+///
+/// **Why does it exist?**
+/// It exists to revoke a user's access credentials on the backend and clear their session, forcing a re-login for any future secure actions.
+///
+/// **How should it be used?**
+/// Call this function when the user clicks a "Log Out" button in the application.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn logout() -> Result<(), ServerFnError> {
     crate::auth::destroy_session().await
 }
 
-/// Retrieves the current authenticated user's information.
+/// **What is it?**
+/// A server function that retrieves the current authenticated user's profile information based on their active session.
+///
+/// **Why does it exist?**
+/// It exists to check if the incoming request has a valid session cookie and, if so, loads the corresponding user record from the database.
+///
+/// **How should it be used?**
+/// Call this repeatedly during application startup or route transitions on the frontend to determine if a user is logged in.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_current_user() -> Result<Option<UserInfo>, ServerFnError> {

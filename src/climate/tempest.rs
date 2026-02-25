@@ -1,13 +1,14 @@
 use super::{RawReading, calculate_vpd};
 use crate::error::AppError;
 
-/// Fetch the latest observation from a WeatherFlow Tempest station.
+/// **What is it?**
+/// A function that fetches the latest environmental observation from a WeatherFlow Tempest station via their REST API.
 ///
-/// API docs: https://weatherflow.github.io/Tempest/api/
-/// GET /swd/rest/observations/station/{station_id}?token={token}
-/// Response `obs[0]` can be either:
-///   - An object with named keys (e.g. "air_temperature", "relative_humidity")
-///   - A positional array where index 7 = air_temperature, index 8 = relative_humidity
+/// **Why does it exist?**
+/// It exists to integrate user-owned, high-accuracy local weather stations into the system, parsing both named-key and positional-array JSON response formats from Tempest.
+///
+/// **How should it be used?**
+/// Call this from the background polling task, passing the configured station ID and personal access token, to extract the current temperature, humidity, and calculate the VPD.
 pub async fn fetch_tempest_reading(
     client: &reqwest::Client,
     station_id: &str,

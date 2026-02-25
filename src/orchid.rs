@@ -5,7 +5,9 @@ use std::fmt;
 #[cfg(feature = "ssr")]
 use surrealdb::types::SurrealValue;
 
-/// Specifies the general environment where an orchid is placed.
+/// What is it? An enumeration describing the overarching physical environment (indoor vs outdoor) for plant placement.
+/// Why does it exist? It provides a high-level categorization to differentiate environmental controls and expected exposure to natural weather conditions.
+/// How should it be used? Assign it as a property on a `GrowingZone` and match against it to determine relevant UI displays or climatic assumptions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
@@ -25,7 +27,9 @@ impl fmt::Display for LocationType {
     }
 }
 
-/// Describes how well a specific growing zone matches an orchid's requirements.
+/// What is it? A classification describing how closely a specific growing environment matches an orchid's needs.
+/// Why does it exist? It standardizes the visual representation of suitability (e.g., green for good, red for bad) based on AI or rule-based analysis.
+/// How should it be used? Read it from scanner `AnalysisResult` data or compute it dynamically to highlight problematic placements in the UI.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
@@ -51,7 +55,9 @@ impl fmt::Display for FitCategory {
     }
 }
 
-/// Defines the amount of light an orchid needs to thrive.
+/// What is it? An enumeration standardizing the illumination needs of a given orchid species.
+/// Why does it exist? It provides a simplified vocabulary (Low, Medium, High) to map orchids to compatible `GrowingZone`s without requiring exact Lux measurements.
+/// How should it be used? Set it on an `Orchid` profile, and compare it against the `light_level` of available `GrowingZone`s to determine a suitable `placement`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
@@ -90,7 +96,9 @@ impl fmt::Display for LightRequirement {
     }
 }
 
-/// A specific area where orchids are grown, defining environmental conditions.
+/// What is it? A structural representation of a distinct physical area where orchids are kept (e.g., "Living Room Window", "Greenhouse Bench 1").
+/// Why does it exist? It groups specific environmental baseline conditions (light, temp, humidity) so users can place multiple orchids into a shared environment.
+/// How should it be used? Create and store these in SurrealDB to model the user's home, then assign orchids to specific zones by referencing the zone's name.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
@@ -137,7 +145,9 @@ pub struct GrowingZone {
     pub hardware_port: Option<i32>,
 }
 
-/// Represents a physical device used to monitor or control a growing zone.
+/// What is it? A data structure representing a physical sensor or controller unit.
+/// Why does it exist? It tracks the metadata needed to connect and read environmental telemetry (like AC Infinity data) for a given `GrowingZone`.
+/// How should it be used? Link it to a `GrowingZone` via its ID, and parse its `config` JSON to establish local polling or network connections to the hardware.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HardwareDevice {
     /// The unique identifier of the hardware device.
@@ -151,7 +161,9 @@ pub struct HardwareDevice {
     pub config: String,
 }
 
-/// A snapshot of environmental conditions measured at a specific time.
+/// What is it? A snapshot of environmental metrics (temperature, humidity, etc.) recorded at a specific moment in time.
+/// Why does it exist? It provides the historical and current real-world data necessary to analyze zone conditions, calculate VPD, and adjust watering schedules dynamically.
+/// How should it be used? Insert these records into SurrealDB periodically via sensor polling or manual entry, and query them to generate climate charts and alerts.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
@@ -182,8 +194,9 @@ pub struct ClimateReading {
     pub recorded_at: DateTime<Utc>,
 }
 
-/// Check if an orchid's placement zone provides compatible light for its requirements.
-/// Returns true if compatible or if the zone is unknown.
+/// What is it? A utility function comparing an orchid's required light against the light available in its current placement.
+/// Why does it exist? It provides a quick way to validate whether a user has placed their plant in an environment that meets its basic photosynthetic needs.
+/// How should it be used? Call it with the orchid's placement name and light requirement, passing the list of known zones, to trigger warnings if it returns false.
 pub fn check_zone_compatibility(
     placement: &str,
     light_req: &LightRequirement,
@@ -196,7 +209,9 @@ pub fn check_zone_compatibility(
         .unwrap_or(true)
 }
 
-/// An event or note recorded in an orchid's history log.
+/// What is it? A record detailing a specific event, observation, or care action taken for a specific orchid.
+/// Why does it exist? It allows users to build a chronological diary of their plant's growth, bloom cycles, and maintenance over time.
+/// How should it be used? Create and attach these to a specific orchid in SurrealDB to document repotting, flowering, or general notes, optionally linking an uploaded image.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
@@ -217,7 +232,9 @@ pub struct LogEntry {
     pub event_type: Option<String>,
 }
 
-/// Represents an individual orchid plant in the user's collection.
+/// What is it? The primary data structure representing an individual orchid plant within the user's collection.
+/// Why does it exist? It centralizes all identifying metadata, care schedules, historical timestamps, and seasonal requirements for a single plant.
+/// How should it be used? Serialize/deserialize it to SurrealDB for persistence, pass it to UI components for rendering cards/details, and utilize its helper methods to compute due dates.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
@@ -543,7 +560,9 @@ impl Orchid {
     }
 }
 
-/// Hemisphere for seasonal calculations
+/// What is it? An enumeration specifying the global geographic half (Northern or Southern) where the user resides.
+/// Why does it exist? It enables the application to accurately invert and map the natural seasonal cycles (rest and bloom periods) of native species to the user's local calendar.
+/// How should it be used? Store it in the user's application settings and pass it to `Orchid` methods like `current_phase()` to accurately calculate adjusted care schedules.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Hemisphere {
     /// Northern Hemisphere.
@@ -578,7 +597,9 @@ impl Hemisphere {
     }
 }
 
-/// The current seasonal phase of an orchid
+/// What is it? An enumeration defining the current biological stage of an orchid based on its seasonal cycle.
+/// Why does it exist? It determines which set of care rules (e.g., watering multipliers, fertilizing habits) should be applied to the plant at any given time.
+/// How should it be used? Calculate it dynamically using `Orchid::current_phase()`, and use the result to adjust UI warnings and background watering calculations.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SeasonalPhase {
     /// The plant is in a period of dormancy or reduced growth.
@@ -602,7 +623,9 @@ impl fmt::Display for SeasonalPhase {
     }
 }
 
-/// Check if a given month falls within a range (handles wrap-around, e.g. Nov-Feb).
+/// What is it? A utility function that determines if a specific month falls within a given start and end month.
+/// Why does it exist? It correctly handles continuous month ranges that wrap around the calendar year (e.g., November to February).
+/// How should it be used? Call it during seasonal calculations to verify if the current month (1-12) sits within a defined rest or bloom period.
 pub fn month_in_range(month: u32, start: u32, end: u32) -> bool {
     if start <= end {
         month >= start && month <= end
@@ -612,7 +635,9 @@ pub fn month_in_range(month: u32, start: u32, end: u32) -> bool {
     }
 }
 
-/// An alert for condition drift or overdue watering
+/// What is it? A data structure representing a system-generated warning or notification requiring the user's attention.
+/// Why does it exist? It surfaces critical issues proactively—such as a plant being severely overdue for water or a zone drifting out of a safe temperature range.
+/// How should it be used? Generate these asynchronously based on data analysis, store them, and render them prominently in the UI dashboard until dismissed or resolved by the user.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Alert {
     /// The unique identifier of the alert.
@@ -633,7 +658,9 @@ pub struct Alert {
     pub created_at: DateTime<Utc>,
 }
 
-/// Raw weather data collected from an orchid's native habitat.
+/// What is it? A record of specific meteorological conditions observed at an orchid species' natural geographic origin.
+/// Why does it exist? It provides raw, historical climate data needed to establish an ideal care baseline for species without heavily documented horticultural guidelines.
+/// How should it be used? Fetch and store these data points from external weather APIs or databases, using them to synthesize a `HabitatWeatherSummary`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HabitatWeather {
     /// The recorded temperature in Celsius.
@@ -646,7 +673,9 @@ pub struct HabitatWeather {
     pub recorded_at: DateTime<Utc>,
 }
 
-/// Aggregated historical weather data for an orchid's native habitat.
+/// What is it? An aggregated compilation of historical weather data over a defined period (e.g., a month or year) for a native habitat.
+/// Why does it exist? It condenses voluminous daily weather observations into actionable average and extreme values (min/max temps, total rain) that map to home care parameters.
+/// How should it be used? Display these summaries to advanced users researching a species, or use the aggregated data programmatically to suggest temperature ranges and seasonal rest periods.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HabitatWeatherSummary {
     /// The duration covered by this summary (e.g., 'Month', 'Year').

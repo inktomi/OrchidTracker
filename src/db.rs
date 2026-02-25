@@ -8,7 +8,9 @@ use std::sync::LazyLock;
 
 static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
-/// Initialize the SurrealDB connection and apply migrations.
+/// What is it? An asynchronous initialization routine for the application's SurrealDB connection.
+/// Why does it exist? It manages the early-boot setup sequence, including resolving connection details, authenticating the root user, selecting the namespace/db, and automatically applying schema migrations before traffic is accepted.
+/// How should it be used? Call this exactly once during the server startup phase (e.g., in `main.rs`) before binding the Axum router. If it fails, the application should panic and exit.
 pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
     tracing::info!("Connecting to SurrealDB at {}", config.surreal_url);
 
@@ -40,12 +42,16 @@ pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
     Ok(())
 }
 
-/// Returns a static reference to the SurrealDB client.
+/// What is it? An accessor function for the global, lazily-initialized SurrealDB client.
+/// Why does it exist? It provides a thread-safe, static reference to the database connection pool, eliminating the need to pass connection clones manually through every function layer or framework context.
+/// How should it be used? Call `crate::db::db()` inside server functions or background tasks to obtain the client, then chain `.query()` or `.create()` methods to interact with SurrealDB.
 pub fn db() -> &'static Surreal<Client> {
     &DB
 }
 
-/// Run all pending migrations from the migrations/ directory
+/// What is it? An asynchronous utility that scans and executes `.surql` schema and data definition files.
+/// Why does it exist? It ensures the SurrealDB schema (tables, fields, events, and indexes) stays synchronized with the codebase structure and prevents older schema versions from causing runtime errors.
+/// How should it be used? It is called automatically by `init_db()` during startup. It reads files from the local `migrations/` directory, checks a `migration` tracking table to skip previously applied files, and runs new files sequentially.
 pub async fn run_migrations() -> Result<(), AppError> {
     let db = db();
 

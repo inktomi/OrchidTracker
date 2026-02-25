@@ -1,7 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::GrowingZone;
 
-/// Parse the "table:key" user_id string into a SurrealDB RecordId
+/// **What is it?**
+/// A utility function that parses the "table:key" user_id string into a SurrealDB RecordId.
+///
+/// **Why does it exist?**
+/// It exists to standardize error handling across the backend when extracting the authenticated user's ID for database constraints.
+///
+/// **How should it be used?**
+/// Call this inside server functions after `require_auth` to obtain the `RecordId` needed for the `owner` field in database queries.
 #[cfg(feature = "ssr")]
 fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
     use crate::error::internal_error;
@@ -9,7 +16,14 @@ fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnErro
         .map_err(|e| internal_error("Owner ID parse failed", e))
 }
 
-/// SSR-only struct matching SurrealDB's record shape (id is a RecordId, not a String).
+/// **What is it?**
+/// An SSR-only struct representing the shape of a growing zone record exactly as it is returned from SurrealDB.
+///
+/// **Why does it exist?**
+/// It exists to deserialize the database query result, including its native `RecordId` and raw string values for enums, before mapping it to the frontend `GrowingZone` struct.
+///
+/// **How should it be used?**
+/// Use this type internally within backend queries (like `SELECT * FROM growing_zone`) as the target struct for deserialization.
 #[cfg(feature = "ssr")]
 pub(crate) mod ssr_types {
     use surrealdb::types::SurrealValue;
@@ -80,7 +94,14 @@ pub(crate) mod ssr_types {
 #[cfg(feature = "ssr")]
 use ssr_types::*;
 
-/// Get all growing zones for the current user.
+/// **What is it?**
+/// A server function that retrieves all growing zones configured by the currently authenticated user.
+///
+/// **Why does it exist?**
+/// It exists to provide the frontend with the user's customized list of physical locations (like "Living Room" or "Greenhouse") where their orchids are grown.
+///
+/// **How should it be used?**
+/// Call this from the dashboard or zone management settings page to populate the list of available zones and their climate data sources.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
@@ -109,7 +130,14 @@ pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
 }
 
-/// Create a new growing zone.
+/// **What is it?**
+/// A server function that creates a new growing zone in the database.
+///
+/// **Why does it exist?**
+/// It exists to allow users to define new physical locations for their collection, specifying baseline conditions like light and location type.
+///
+/// **How should it be used?**
+/// Call this when the user submits the "Add Zone" form in the zone management settings.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_zone(
@@ -186,7 +214,14 @@ pub async fn create_zone(
         .ok_or_else(|| ServerFnError::new("Failed to create zone"))
 }
 
-/// Update an existing growing zone.
+/// **What is it?**
+/// A server function that updates the details of an existing growing zone.
+///
+/// **Why does it exist?**
+/// It exists to let users modify a zone's name, light level, or display order without having to delete and recreate it (which would break orchid placements).
+///
+/// **How should it be used?**
+/// Call this from the "Edit Zone" modal, passing the fully updated `GrowingZone` struct containing the user's modifications.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn update_zone(
@@ -250,7 +285,14 @@ pub async fn update_zone(
         .ok_or_else(|| ServerFnError::new("Zone not found or not owned by you"))
 }
 
-/// Delete a growing zone.
+/// **What is it?**
+/// A server function that deletes a specific growing zone from the database.
+///
+/// **Why does it exist?**
+/// It exists to allow users to remove obsolete locations from their settings.
+///
+/// **How should it be used?**
+/// Call this from a confirmation dialog when the user clicks the "Delete" button on a zone card. (Note: Ensure orchids in this zone are reassigned or warned).
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn delete_zone(
@@ -276,7 +318,14 @@ pub async fn delete_zone(
     Ok(())
 }
 
-/// Migrate legacy placement strings to proper growing zones.
+/// **What is it?**
+/// A server function that migrates legacy string-based placements into fully relational growing zone records.
+///
+/// **Why does it exist?**
+/// It exists because earlier versions of the app stored locations as simple strings on the orchid record, while newer versions require dedicated zone records to attach climate data sensors.
+///
+/// **How should it be used?**
+/// Call this once during application startup or user initialization to auto-generate default zones from their existing plant data.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {

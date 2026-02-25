@@ -419,7 +419,14 @@ async fn fetch_andys_orchids_care(species_name: &str) -> Option<String> {
 
 // ── Server Functions ────────────────────────────────────────────────
 
-/// Analyze an image of a plant using AI to determine its species and care requirements.
+/// **What is it?**
+/// A server function that analyzes a base64-encoded image using an AI vision model to identify an orchid and determine its care requirements.
+///
+/// **Why does it exist?**
+/// It exists to provide an automated, intelligent way for users to add plants to their collection by simply snapping a photo, offloading complex identification and climate matching to the backend.
+///
+/// **How should it be used?**
+/// Call this from the scanner UI after capturing an image from the device camera, passing in the user's current climate and zone data to receive a tailored `AnalysisResult`.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_image(
@@ -537,8 +544,14 @@ pub async fn analyze_orchid_image(
     Ok(result)
 }
 
-/// Core analysis logic — callable from server fn and CLI.
-/// Takes species name, climate context, and zone names; returns AnalysisResult.
+/// **What is it?**
+/// The core AI analysis logic for identifying and profiling a plant by its species name.
+///
+/// **Why does it exist?**
+/// It exists to isolate the complex prompt construction, API calling (with fallback), and Andy's Orchids data integration from the HTTP transport layer.
+///
+/// **How should it be used?**
+/// Call this internally from either the Leptos `#[server]` functions or a backend CLI tool to generate a standardized `AnalysisResult` for a given species name.
 #[cfg(feature = "ssr")]
 pub(crate) async fn analyze_species_core(
     species_name: &str,
@@ -617,7 +630,14 @@ pub(crate) async fn analyze_species_core(
     Ok(result)
 }
 
-/// Analyze a plant by its species name using AI to determine its care requirements.
+/// **What is it?**
+/// A server function that analyzes a plant species by its name using AI to determine its care requirements.
+///
+/// **Why does it exist?**
+/// It exists as a text-only alternative to the image scanner, allowing users who already know their plant's name to instantly populate its detailed care profile and alerts data.
+///
+/// **How should it be used?**
+/// Call this from the "Add Orchid" manual entry form when the user types in a species name and clicks the "Analyze" button.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_by_name(
@@ -650,7 +670,14 @@ pub async fn analyze_orchid_by_name(
         })
 }
 
-/// Generate a short, AI-written care recap for a specific event based on recent history.
+/// **What is it?**
+/// A server function that generates a short, AI-written care recap for a specific event (like flowering) based on recent history.
+///
+/// **Why does it exist?**
+/// It exists to provide encouraging feedback to users, interpreting their past 6 months of watering, fertilizing, and repotting history to explain *why* their plant is blooming or thriving.
+///
+/// **How should it be used?**
+/// Call this dynamically from the timeline UI when a user records a major event like a "First Bloom," so that an AI summary can be displayed alongside the log.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn generate_care_recap(

@@ -1,6 +1,13 @@
 use chrono::{DateTime, Utc};
 
-/// A new alert to be stored (before it has an ID)
+/// **What is it?**
+/// A struct representing a newly generated climate or watering alert before it is persisted to the database.
+///
+/// **Why does it exist?**
+/// It exists to hold the transient state of an alert (such as its severity and human-readable message) during the pure-logic evaluation phase.
+///
+/// **How should it be used?**
+/// Instantiate this struct inside `check_alerts` when a condition is violated, then pass the resulting vector to the database insertion logic.
 pub struct NewAlert {
     /// The ID of the user who owns the alert.
     pub owner: surrealdb::types::RecordId,
@@ -16,7 +23,14 @@ pub struct NewAlert {
     pub message: String,
 }
 
-/// An orchid with its structured climate requirements
+/// **What is it?**
+/// A lightweight representation of an orchid containing only the fields necessary for evaluating climate and watering alerts.
+///
+/// **Why does it exist?**
+/// It exists to decouple the alert-checking logic from the full database schema, making it easier to unit test and query efficiently.
+///
+/// **How should it be used?**
+/// Map full `OrchidDbRow` objects into this struct before passing them into the `check_alerts` evaluation function.
 pub struct OrchidRequirements {
     /// The orchid's record ID.
     pub id: surrealdb::types::RecordId,
@@ -40,7 +54,14 @@ pub struct OrchidRequirements {
     pub humidity_max: Option<f64>,
 }
 
-/// A latest reading for a zone
+/// **What is it?**
+/// A snapshot of the most recently recorded temperature and humidity for a specific growing zone.
+///
+/// **Why does it exist?**
+/// It exists to provide the `check_alerts` engine with the current environmental state needed to verify against plant tolerance requirements.
+///
+/// **How should it be used?**
+/// Query the latest `ClimateReading` for each zone from the database and map them into this struct before calling `check_alerts`.
 pub struct ZoneReading {
     /// The name of the zone.
     pub zone_name: String,
@@ -52,8 +73,14 @@ pub struct ZoneReading {
     pub humidity: f64,
 }
 
-/// Check all orchids against their zone readings and watering schedules.
-/// Returns new alerts that should be created.
+/// **What is it?**
+/// A pure function that cross-references a list of orchids with their respective zone readings to determine if any care thresholds have been violated.
+///
+/// **Why does it exist?**
+/// It exists to contain the core business logic for generating temperature, humidity, and watering alerts in a side-effect-free, easily testable way.
+///
+/// **How should it be used?**
+/// Call this function with the current plant requirements and latest zone conditions, then process the returned `Vec<NewAlert>` to notify users.
 pub fn check_alerts(
     orchids: &[OrchidRequirements],
     readings: &[ZoneReading],
@@ -162,8 +189,14 @@ pub fn check_alerts(
     alerts
 }
 
-/// Check alerts and store new ones + send push notifications.
-/// Called after poll_all_zones().
+/// **What is it?**
+/// An asynchronous orchestration function that fetches necessary data, evaluates conditions via `check_alerts`, and persists new alerts while sending push notifications.
+///
+/// **Why does it exist?**
+/// It exists to automate the entire alert lifecycle, running periodically in the background to proactively inform users of dangerous climate conditions.
+///
+/// **How should it be used?**
+/// Spawn this as part of the background polling loop, running it immediately after `poll_all_zones()` finishes ingesting new data.
 pub async fn check_and_send_alerts() {
     use crate::db::db;
     use surrealdb::types::SurrealValue;

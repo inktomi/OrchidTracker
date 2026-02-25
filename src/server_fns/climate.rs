@@ -1,7 +1,14 @@
 use leptos::prelude::*;
 use crate::orchid::{ClimateReading, HabitatWeather, HabitatWeatherSummary};
 
-/// Get the latest climate reading per zone for the current user.
+/// **What is it?**
+/// A server function that retrieves the single most recent climate reading for every zone owned by the user.
+///
+/// **Why does it exist?**
+/// It exists to quickly populate the "Current Conditions" overview on the dashboard without fetching massive amounts of historical data.
+///
+/// **How should it be used?**
+/// Call this on dashboard load or via a polling interval to display live temperature and humidity metrics for all zones at once.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError> {
@@ -50,7 +57,14 @@ pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError
     Ok(readings)
 }
 
-/// Get historical readings for a specific zone within the last N hours.
+/// **What is it?**
+/// A server function that retrieves the historical climate readings for a specific zone over the last specified number of hours.
+///
+/// **Why does it exist?**
+/// It exists to provide the time-series data necessary to render line charts showing temperature, humidity, and VPD trends over time.
+///
+/// **How should it be used?**
+/// Call this from a climate dashboard component, passing the desired `zone_id` and the `hours` lookback period (e.g., 24 or 48) to plot the historical data points.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_zone_history(
@@ -90,7 +104,14 @@ pub async fn get_zone_history(
     Ok(rows.into_iter().map(|r| r.into_climate_reading()).collect())
 }
 
-/// Build a formatted climate summary string for the AI scanner.
+/// **What is it?**
+/// A server function that builds a formatted climate summary string containing the latest readings from all user zones.
+///
+/// **Why does it exist?**
+/// It exists to inject the user's real-time environmental context into the AI scanner prompt, ensuring plant care suggestions are tailored to actual conditions.
+///
+/// **How should it be used?**
+/// Call this internally right before invoking the Gemini or Claude APIs in the scanner process to construct the `climate_summary` prompt section.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_climate_summary_for_scanner() -> Result<String, ServerFnError> {
@@ -114,8 +135,14 @@ pub async fn get_climate_summary_for_scanner() -> Result<String, ServerFnError> 
     Ok(parts.join(" | "))
 }
 
-/// Test a data source connection by attempting to fetch a reading.
-/// Returns a formatted result string on success or an error message.
+/// **What is it?**
+/// A server function that tests a data source connection by attempting to fetch a live reading.
+///
+/// **Why does it exist?**
+/// It exists to immediately validate user-provided API keys or connection strings, providing feedback before a broken configuration is saved to the database.
+///
+/// **How should it be used?**
+/// Call this when the user clicks a "Test Connection" button in a zone's configuration form, providing the unencrypted config JSON.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn test_data_source(
@@ -190,7 +217,14 @@ pub async fn test_data_source(
     }
 }
 
-/// Save a wizard estimation as a climate reading and update zone fields.
+/// **What is it?**
+/// A server function that saves an estimated set of temperature and humidity values to a specific zone, derived from a "wizard" or manual input process.
+///
+/// **Why does it exist?**
+/// It exists for users who do not have automated sensors (like Tempest or AC Infinity) but still want to store an approximate baseline of their climate data to improve AI care suggestions.
+///
+/// **How should it be used?**
+/// Call this from the zone configuration modal when a user finishes the "Estimate conditions" wizard form.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn save_wizard_estimation(
@@ -258,7 +292,14 @@ pub async fn save_wizard_estimation(
     Ok(())
 }
 
-/// Log a manual climate reading for a zone.
+/// **What is it?**
+/// A server function that logs a one-off, manually inputted climate reading into a zone's history.
+///
+/// **Why does it exist?**
+/// It exists to allow a user to use analog thermometers or simple, non-connected hygrometers and input their findings manually to track a zone's conditions over time.
+///
+/// **How should it be used?**
+/// Call this from a "Quick Add Reading" button near a specific zone, allowing the user to simply enter a temperature and humidity without going through the full wizard.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn log_manual_reading(
@@ -307,7 +348,14 @@ pub async fn log_manual_reading(
     Ok(())
 }
 
-/// Test weather API for a lat/lon pair, returning a preview string.
+/// **What is it?**
+/// A server function that tests a weather API connection for a specific latitude and longitude, returning a preview string.
+///
+/// **Why does it exist?**
+/// It exists to ensure that the provided coordinates are valid and can successfully fetch habitat weather from Open-Meteo before saving them to a zone configuration.
+///
+/// **How should it be used?**
+/// Call this from a "Test coordinates" button near the map input on a zone's configuration page.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn test_weather_api(
@@ -331,7 +379,14 @@ pub async fn test_weather_api(
     ))
 }
 
-/// Configure a zone's data source type and config.
+/// **What is it?**
+/// A server function that configures a zone's data source type and encrypts its configuration string.
+///
+/// **Why does it exist?**
+/// It exists to securely bind a zone to a specific polling data source (like a Tempest station), persisting its credentials so the backend loop can continuously pull readings.
+///
+/// **How should it be used?**
+/// Call this from a zone settings form when the user chooses "Tempest" or "AC Infinity" and inputs their API keys or IPs.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn configure_zone_data_source(
@@ -378,7 +433,14 @@ pub async fn configure_zone_data_source(
     Ok(())
 }
 
-/// Parse the "table:key" user_id string into a SurrealDB RecordId
+/// **What is it?**
+/// A utility function that parses the "table:key" user_id string into a SurrealDB RecordId.
+///
+/// **Why does it exist?**
+/// It exists to provide a common, error-checked way to extract the authenticated user's ID for database constraints across the climate module.
+///
+/// **How should it be used?**
+/// Call this inside server functions after `require_auth` to obtain the `RecordId` needed for the `owner` field in database queries.
 #[cfg(feature = "ssr")]
 pub(crate) fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, ServerFnError> {
     use crate::error::internal_error;
@@ -386,7 +448,14 @@ pub(crate) fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, S
         .map_err(|e| internal_error("Owner ID parse failed", e))
 }
 
-/// Get the latest habitat weather reading for a coordinate pair.
+/// **What is it?**
+/// A server function that retrieves the latest habitat weather reading for a specific geographic coordinate pair.
+///
+/// **Why does it exist?**
+/// It exists to provide the frontend with the live weather conditions (temperature, humidity, precipitation) of a specific outdoor area, like a plant's native habitat.
+///
+/// **How should it be used?**
+/// Call this from the "Native Habitat" view of an orchid to display what the weather is doing *right now* in that plant's natural range.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_current(
@@ -423,7 +492,14 @@ pub async fn get_habitat_current(
     Ok(row.map(|r| r.into_habitat_weather()))
 }
 
-/// Get habitat weather history (summaries + recent raw) for a coordinate pair.
+/// **What is it?**
+/// A server function that retrieves the habitat weather history summaries (like average, minimum, maximum temperature) over a specified number of days for a given coordinate pair.
+///
+/// **Why does it exist?**
+/// It exists to provide the time-series summary data necessary to render long-term trend charts of a plant's native habitat conditions.
+///
+/// **How should it be used?**
+/// Call this from a climate trend component, passing the `latitude`, `longitude`, and the `days` lookback period to plot the historical data points.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_history(
@@ -471,9 +547,14 @@ pub async fn get_habitat_history(
     Ok(rows.into_iter().map(|r| r.into_summary()).collect())
 }
 
-/// Get climate snapshots for all zones the current user owns.
-/// Returns a vec of (zone_name, ClimateSnapshot) pairs for zones
-/// that have recent readings (last 48 hours).
+/// **What is it?**
+/// A server function that retrieves climate snapshots (aggregated 48-hour data) for all zones the current user owns.
+///
+/// **Why does it exist?**
+/// It exists to provide a high-level, performant overview of the recent environmental conditions across all of a user's growing locations at once, without running N separate queries.
+///
+/// **How should it be used?**
+/// Call this from a dashboard component that needs to display aggregate metrics like average temperature, VPD, or humidity for all zones.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_all_zone_snapshots() -> Result<Vec<crate::watering::ClimateSnapshot>, ServerFnError> {

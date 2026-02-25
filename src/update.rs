@@ -1,8 +1,9 @@
 use crate::model::{Cmd, Model, Msg};
 use leptos::prelude::*;
 
-/// Pure update function: applies a message to the model and returns side-effect commands.
-/// This function contains NO side effects — it only mutates the model and declares intent.
+/// What is it? A pure function that calculates the next state of the application.
+/// Why does it exist? It implements the core logic of The Elm Architecture by interpreting a given `Msg` to modify the current `Model` in a strictly synchronous, side-effect-free way.
+/// How should it be used? Call it with a mutable reference to the current `Model` and the incoming `Msg`. It will mutate the `Model` in place and return a `Vec<Cmd>` detailing any needed side effects.
 pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
     match msg {
         Msg::SelectOrchid(orchid) => {
@@ -51,7 +52,9 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
     }
 }
 
-/// Dispatch a message: update the model, then execute any resulting commands.
+/// What is it? A wrapper function that coordinates state updates and side effect execution.
+/// Why does it exist? It acts as the bridge between the UI event handlers and the pure `update` function, committing the new model state to Leptos signals and triggering any returned commands.
+/// How should it be used? Bind it inside component event handlers (e.g., `on:click`), passing the `set_model` and `model` signals, along with the specific `Msg` to process.
 pub fn dispatch(set_model: WriteSignal<Model>, model: ReadSignal<Model>, msg: Msg) {
     let mut m = model.get_untracked();
     let cmds = update(&mut m, msg);
@@ -67,8 +70,8 @@ fn execute_cmd(cmd: Cmd) {
         Cmd::ApplyDarkMode(enabled) => {
             #[cfg(feature = "hydrate")]
             {
-                if let Some(document) = web_sys::window().and_then(|w| w.document()) {
-                    if let Some(root) = document.document_element() {
+                if let Some(document) = web_sys::window().and_then(|w| w.document())
+                    && let Some(root) = document.document_element() {
                         let class_list = root.class_list();
                         if enabled {
                             let _ = class_list.add_1("dark");
@@ -76,7 +79,6 @@ fn execute_cmd(cmd: Cmd) {
                             let _ = class_list.remove_1("dark");
                         }
                     }
-                }
             }
             let _ = enabled; // suppress unused warning in SSR
         }
