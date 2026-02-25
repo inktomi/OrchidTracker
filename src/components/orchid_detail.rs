@@ -89,7 +89,7 @@ pub fn OrchidDetail(
                         <p class="mt-0.5 mb-0 text-sm italic text-stone-500 dark:text-stone-400">{move || orchid_signal.get().species}</p>
                     </div>
                     <div class="flex gap-2">
-                        <button class=BTN_CLOSE on:click=move |_| on_close()>"\u{00D7}"</button>
+                        <button class=BTN_CLOSE aria-label="Close details" title="Close" on:click=move |_| on_close()>"\u{00D7}"</button>
                     </div>
                 </div>
 

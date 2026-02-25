@@ -1,7 +1,7 @@
-use leptos::prelude::*;
-use crate::orchid::LogEntry;
 use crate::components::event_types::get_event_info;
+use crate::orchid::LogEntry;
 use chrono::Local;
+use leptos::prelude::*;
 
 const GALLERY_GRID: &str = "grid grid-cols-2 gap-2 sm:grid-cols-3";
 
@@ -9,9 +9,7 @@ const GALLERY_GRID: &str = "grid grid-cols-2 gap-2 sm:grid-cols-3";
 /// chronological filmstrip grid with a full-screen lightbox
 /// supporting prev/next navigation and side-by-side compare.
 #[component]
-pub fn PhotoGallery(
-    entries: ReadSignal<Vec<LogEntry>>,
-) -> impl IntoView {
+pub fn PhotoGallery(entries: ReadSignal<Vec<LogEntry>>) -> impl IntoView {
     // Active lightbox index (None = closed)
     let (lightbox_idx, set_lightbox_idx) = signal(Option::<usize>::None);
     // Compare mode: show current vs. a second photo side-by-side
@@ -192,6 +190,7 @@ fn GalleryLightbox(
                 </div>
                 <button
                     class="text-2xl bg-transparent border-none cursor-pointer hover:text-white text-white/70"
+                    aria-label="Close lightbox" title="Close"
                     on:click=move |_| on_close2()
                 >"\u{00D7}"</button>
             </div>
@@ -202,6 +201,7 @@ fn GalleryLightbox(
                 view! {
                     <button
                         class="flex absolute left-2 top-1/2 z-20 justify-center items-center w-10 h-10 text-xl bg-transparent rounded-full border-none transition-colors -translate-y-1/2 cursor-pointer hover:text-white text-white/70 hover:bg-white/10"
+                        aria-label="Previous photo" title="Previous photo"
                         on:click=move |ev: leptos::ev::MouseEvent| { ev.stop_propagation(); op(); }
                     >"\u{2039}"</button>
                 }
@@ -211,6 +211,7 @@ fn GalleryLightbox(
                 view! {
                     <button
                         class="flex absolute right-2 top-1/2 z-20 justify-center items-center w-10 h-10 text-xl bg-transparent rounded-full border-none transition-colors -translate-y-1/2 cursor-pointer hover:text-white text-white/70 hover:bg-white/10"
+                        aria-label="Next photo" title="Next photo"
                         on:click=move |ev: leptos::ev::MouseEvent| { ev.stop_propagation(); on(); }
                     >"\u{203A}"</button>
                 }

@@ -195,6 +195,7 @@ pub fn PhotoCapture(
                             <button
                                 type="button"
                                 class="flex absolute top-1 right-1 justify-center items-center w-6 h-6 text-xs font-bold text-white rounded-full border-none cursor-pointer bg-danger hover:bg-danger-dark"
+                                aria-label="Clear photo" title="Clear photo"
                                 on:click=clear_photo
                             >
                                 "\u{00D7}"

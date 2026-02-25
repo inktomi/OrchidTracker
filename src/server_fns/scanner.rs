@@ -868,7 +868,7 @@ mod tests {
         let html = r#"
             <div class="results">
                 <a href="pictureframe.asp?picid=12345">
-                    <img src="thumb.jpg" />
+                    <img src="thumb.jpg" alt="Thumbnail" />
                 </a>
             </div>
         "#;

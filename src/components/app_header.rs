@@ -1,5 +1,5 @@
-use leptos::prelude::*;
 use super::BTN_GHOST;
+use leptos::prelude::*;
 
 #[component]
 pub fn AppHeader(
@@ -22,7 +22,7 @@ pub fn AppHeader(
                     <h1 class="m-0 font-sans text-sm font-semibold tracking-widest uppercase text-white/90">"Orchid Tracker"</h1>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
-                    <button class=BTN_GHOST on:click=move |_| on_toggle_dark()>
+                    <button class=BTN_GHOST aria-label="Toggle dark mode" title="Toggle dark mode" on:click=move |_| on_toggle_dark()>
                         {move || if dark_mode.get() { "\u{2600}" } else { "\u{263E}" }}
                     </button>
                     <button class=BTN_GHOST on:click=move |_| on_add()>"Add"</button>

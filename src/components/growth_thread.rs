@@ -331,6 +331,7 @@ fn PhotoLightbox(
             </div>
             <button
                 class="absolute top-4 right-4 text-2xl bg-transparent border-none cursor-pointer hover:text-white text-white/70"
+                aria-label="Close photo" title="Close"
                 on:click=move |_| on_close2()
             >"\u{00D7}"</button>
         </div>
