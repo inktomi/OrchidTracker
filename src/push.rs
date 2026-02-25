@@ -51,7 +51,6 @@ pub async fn send_push(
 
     let sig_builder = VapidSignatureBuilder::from_base64(
         &cfg.vapid_private_key,
-        URL_SAFE_NO_PAD,
         &subscription_info,
     )
     .map_err(|e| {
