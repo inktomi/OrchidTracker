@@ -2,8 +2,11 @@ use crate::error::AppError;
 
 /// A raw habitat weather reading from Open-Meteo.
 pub struct HabitatReading {
+    /// Temperature in Celsius.
     pub temperature_c: f64,
+    /// Relative humidity percentage.
     pub humidity_pct: f64,
+    /// Precipitation in millimeters.
     pub precipitation_mm: f64,
 }
 

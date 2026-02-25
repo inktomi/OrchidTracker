@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use crate::orchid::Alert;
 
+/// Retrieves the VAPID public key for push notification subscriptions.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
@@ -11,11 +12,15 @@ pub async fn get_vapid_public_key() -> Result<String, ServerFnError> {
     Ok(config().vapid_public_key.clone())
 }
 
+/// Subscribes the current user to push notifications for a specific endpoint.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn subscribe_push(
+    /// The push notification endpoint URL.
     endpoint: String,
+    /// The P-256 elliptic curve Diffie-Hellman public key.
     p256dh: String,
+    /// The authentication secret for the subscription.
     auth: String,
 ) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
@@ -62,6 +67,7 @@ pub async fn subscribe_push(
     Ok(())
 }
 
+/// Unsubscribes the current user from all push notifications.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
@@ -82,6 +88,7 @@ pub async fn unsubscribe_push() -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Retrieves the active, unacknowledged alerts for the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
@@ -134,6 +141,7 @@ pub async fn get_active_alerts() -> Result<Vec<Alert>, ServerFnError> {
     }).collect())
 }
 
+/// Checks if the current user has any active push subscriptions.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
@@ -163,6 +171,7 @@ pub async fn has_push_subscription() -> Result<bool, ServerFnError> {
     Ok(row.map(|r| r.count > 0).unwrap_or(false))
 }
 
+/// Sends a test push notification to all endpoints subscribed by the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn send_test_push() -> Result<String, ServerFnError> {
@@ -231,9 +240,13 @@ pub async fn send_test_push() -> Result<String, ServerFnError> {
     }
 }
 
+/// Marks a specific alert as acknowledged by the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn acknowledge_alert(alert_id: String) -> Result<(), ServerFnError> {
+pub async fn acknowledge_alert(
+    /// The unique identifier of the alert to acknowledge.
+    alert_id: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;

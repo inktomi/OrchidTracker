@@ -5,11 +5,14 @@ use std::fmt;
 #[cfg(feature = "ssr")]
 use surrealdb::types::SurrealValue;
 
+/// Specifies the general environment where an orchid is placed.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum LocationType {
+    /// Placed inside a home, greenhouse, or other enclosed structure.
     Indoor,
+    /// Placed outside, exposed to natural weather conditions.
     Outdoor,
 }
 
@@ -22,14 +25,18 @@ impl fmt::Display for LocationType {
     }
 }
 
+/// Describes how well a specific growing zone matches an orchid's requirements.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum FitCategory {
+    /// The zone's conditions are well-suited for the orchid.
     #[serde(rename = "Good Fit")]
     GoodFit,
+    /// The zone's conditions are detrimental to the orchid.
     #[serde(rename = "Bad Fit")]
     BadFit,
+    /// The zone's conditions are borderline; requires monitoring.
     #[serde(rename = "Caution Fit")]
     CautionFit,
 }
@@ -44,14 +51,18 @@ impl fmt::Display for FitCategory {
     }
 }
 
+/// Defines the amount of light an orchid needs to thrive.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
 pub enum LightRequirement {
+    /// Needs bright, indirect light (e.g., Phalaenopsis).
     #[serde(alias = "low", alias = "Low Light")]
     Low,
+    /// Needs bright, somewhat direct light (e.g., Cattleya).
     #[serde(alias = "medium", alias = "Medium Light")]
     Medium,
+    /// Needs very bright, direct light (e.g., Vanda).
     #[serde(alias = "high", alias = "High Light")]
     High,
 }
@@ -79,67 +90,95 @@ impl fmt::Display for LightRequirement {
     }
 }
 
+/// A specific area where orchids are grown, defining environmental conditions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct GrowingZone {
+    /// The unique identifier of the zone.
     pub id: String,
+    /// The display name of the zone.
     pub name: String,
+    /// The general light level available in this zone.
     pub light_level: LightRequirement,
+    /// Whether this zone is indoor or outdoor.
     pub location_type: LocationType,
+    /// Text description of typical temperature range.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub temperature_range: String,
+    /// Text description of typical humidity levels.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub humidity: String,
+    /// Additional notes about this zone.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub description: String,
+    /// Order for displaying zones in UI lists.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub sort_order: i32,
+    /// How climate data is sourced (e.g., 'manual', 'sensor').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub data_source_type: Option<String>,
+    /// Configuration data needed by the specific data source.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub data_source_config: String,
+    /// ID of the hardware device associated with this zone, if any.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub hardware_device_id: Option<String>,
+    /// Port number on the hardware device, if applicable.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub hardware_port: Option<i32>,
 }
 
+/// Represents a physical device used to monitor or control a growing zone.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HardwareDevice {
+    /// The unique identifier of the hardware device.
     pub id: String,
+    /// The user-defined name of the device.
     pub name: String,
+    /// The type or model of the device (e.g., 'Sensor_v1').
     pub device_type: String,
+    /// JSON-encoded configuration data specific to the device.
     #[serde(default)]
     pub config: String,
 }
 
+/// A snapshot of environmental conditions measured at a specific time.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct ClimateReading {
+    /// The unique identifier of the climate reading.
     pub id: String,
+    /// The ID of the zone where this reading was taken.
     pub zone_id: String,
+    /// The name of the zone at the time the reading was taken.
     pub zone_name: String,
+    /// Recorded temperature in Celsius.
     pub temperature: f64,
+    /// Recorded relative humidity percentage.
     pub humidity: f64,
+    /// Vapor Pressure Deficit, if calculated.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub vpd: Option<f64>,
+    /// Amount of precipitation recorded in mm, if any.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub precipitation: Option<f64>,
+    /// The system or device that generated this reading.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub source: Option<String>,
+    /// When this reading was recorded.
     pub recorded_at: DateTime<Utc>,
 }
 
@@ -157,104 +196,144 @@ pub fn check_zone_compatibility(
         .unwrap_or(true)
 }
 
+/// An event or note recorded in an orchid's history log.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct LogEntry {
+    /// The unique identifier of the log entry.
     pub id: String,
+    /// When the event occurred.
     pub timestamp: DateTime<Utc>,
+    /// User-provided text describing the event.
     pub note: String,
+    /// Path or filename of an associated image, if any.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub image_filename: Option<String>,
+    /// Classification of the event (e.g., 'Watering', 'Repotting').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub event_type: Option<String>,
 }
 
+/// Represents an individual orchid plant in the user's collection.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
 #[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types"))]
 pub struct Orchid {
+    /// The unique identifier of the orchid.
     pub id: String,
+    /// The user-defined display name or nickname of the orchid.
     pub name: String,
+    /// The botanical species, hybrid, or grex name.
     pub species: String,
+    /// The baseline watering frequency in days.
     pub water_frequency_days: u32,
+    /// The general light requirement for this orchid.
     pub light_requirement: LightRequirement,
+    /// User-provided notes about the plant.
     pub notes: String,
+    /// The name of the growing zone where the plant is located.
     pub placement: String,
+    /// Measured or estimated light intensity in Lux.
     pub light_lux: String,
+    /// Preferred temperature range description.
     pub temperature_range: String,
+    /// Formal conservation status in the wild (e.g., CITES Appendix).
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub conservation_status: Option<String>,
+    /// The geographic region where the species is native.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub native_region: Option<String>,
+    /// Latitude coordinate of the native habitat.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub native_latitude: Option<f64>,
+    /// Longitude coordinate of the native habitat.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub native_longitude: Option<f64>,
+    /// Timestamp when the plant was last watered.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub last_watered_at: Option<DateTime<Utc>>,
+    /// Absolute minimum temperature tolerance in Celsius.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub temp_min: Option<f64>,
+    /// Absolute maximum temperature tolerance in Celsius.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub temp_max: Option<f64>,
+    /// Minimum required humidity percentage.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub humidity_min: Option<f64>,
+    /// Maximum ideal humidity percentage.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub humidity_max: Option<f64>,
+    /// Timestamp when the plant first bloomed under the user's care.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub first_bloom_at: Option<DateTime<Utc>>,
+    /// Timestamp when the plant was last fertilized.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub last_fertilized_at: Option<DateTime<Utc>>,
+    /// How often to fertilize in days.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub fertilize_frequency_days: Option<u32>,
+    /// The type or brand of fertilizer used.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub fertilizer_type: Option<String>,
+    /// Timestamp when the plant was last repotted.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub last_repotted_at: Option<DateTime<Utc>>,
+    /// The potting substrate used (e.g., 'Bark', 'Sphagnum Moss').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub pot_medium: Option<String>,
+    /// The size of the pot (e.g., '4 inch').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub pot_size: Option<String>,
     // Seasonal care fields
+    /// The starting month (1-12) of the plant's natural rest period.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub rest_start_month: Option<u32>,
+    /// The ending month (1-12) of the plant's natural rest period.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub rest_end_month: Option<u32>,
+    /// The starting month (1-12) of the plant's natural blooming season.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub bloom_start_month: Option<u32>,
+    /// The ending month (1-12) of the plant's natural blooming season.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub bloom_end_month: Option<u32>,
+    /// Multiplier to reduce watering frequency during the rest period.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub rest_water_multiplier: Option<f64>,
+    /// Multiplier to reduce fertilizer frequency during the rest period.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub rest_fertilizer_multiplier: Option<f64>,
+    /// Multiplier to increase watering frequency during active growth.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub active_water_multiplier: Option<f64>,
+    /// Multiplier to increase fertilizer frequency during active growth.
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub active_fertilizer_multiplier: Option<f64>,
@@ -467,7 +546,9 @@ impl Orchid {
 /// Hemisphere for seasonal calculations
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Hemisphere {
+    /// Northern Hemisphere.
     Northern,
+    /// Southern Hemisphere.
     Southern,
 }
 
@@ -500,9 +581,13 @@ impl Hemisphere {
 /// The current seasonal phase of an orchid
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SeasonalPhase {
+    /// The plant is in a period of dormancy or reduced growth.
     Rest,
+    /// The plant is actively growing vegetative structures (roots, leaves).
     Active,
+    /// The plant is actively producing or supporting flowers.
     Blooming,
+    /// The seasonal phase cannot be determined from the available data.
     Unknown,
 }
 
@@ -530,34 +615,55 @@ pub fn month_in_range(month: u32, start: u32, end: u32) -> bool {
 /// An alert for condition drift or overdue watering
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Alert {
+    /// The unique identifier of the alert.
     pub id: String,
+    /// The name of the specific orchid this alert relates to, if any.
     #[serde(default)]
     pub orchid_name: Option<String>,
+    /// The name of the specific growing zone this alert relates to, if any.
     #[serde(default)]
     pub zone_name: Option<String>,
+    /// The category of the alert (e.g., 'Watering', 'Temperature').
     pub alert_type: String,
+    /// The urgency level (e.g., 'Warning', 'Critical').
     pub severity: String,
+    /// The human-readable message describing the issue.
     pub message: String,
+    /// When this alert was generated.
     pub created_at: DateTime<Utc>,
 }
 
+/// Raw weather data collected from an orchid's native habitat.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HabitatWeather {
+    /// The recorded temperature in Celsius.
     pub temperature: f64,
+    /// The recorded relative humidity percentage.
     pub humidity: f64,
+    /// The recorded precipitation in mm.
     pub precipitation: f64,
+    /// When the weather observation was made.
     pub recorded_at: DateTime<Utc>,
 }
 
+/// Aggregated historical weather data for an orchid's native habitat.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HabitatWeatherSummary {
+    /// The duration covered by this summary (e.g., 'Month', 'Year').
     pub period_type: String,
+    /// The starting date and time of the summarized period.
     pub period_start: DateTime<Utc>,
+    /// The average temperature across the period in Celsius.
     pub avg_temperature: f64,
+    /// The lowest temperature recorded in the period.
     pub min_temperature: f64,
+    /// The highest temperature recorded in the period.
     pub max_temperature: f64,
+    /// The average relative humidity percentage across the period.
     pub avg_humidity: f64,
+    /// The cumulative precipitation in mm over the period.
     pub total_precipitation: f64,
+    /// The number of individual weather readings included in the summary.
     pub sample_count: u32,
 }
 

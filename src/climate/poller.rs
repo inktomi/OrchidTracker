@@ -344,17 +344,25 @@ struct ZoneRow {
     data_source_config: String,
 }
 
+/// Configuration for a Tempest weather station.
 #[derive(serde::Deserialize)]
 pub struct TempestConfig {
+    /// The station's unique identifier.
     pub station_id: String,
+    /// API token for accessing the station data.
     pub token: String,
 }
 
+/// Configuration for an AC Infinity device.
 #[derive(serde::Deserialize)]
 pub struct AcInfinityConfig {
+    /// User email for AC Infinity login.
     pub email: String,
+    /// User password for AC Infinity login.
     pub password: String,
+    /// The device's unique identifier.
     pub device_id: String,
+    /// The hardware port on the device to read from.
     #[serde(default = "default_port")]
     pub port: u32,
 }
@@ -363,8 +371,11 @@ fn default_port() -> u32 {
     1
 }
 
+/// Configuration for an open weather API integration.
 #[derive(serde::Deserialize)]
 pub struct WeatherApiConfig {
+    /// Latitude coordinate.
     pub latitude: f64,
+    /// Longitude coordinate.
     pub longitude: f64,
 }

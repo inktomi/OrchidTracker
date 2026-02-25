@@ -5,6 +5,7 @@ use tower_sessions::session_store;
 
 use crate::db::db;
 
+/// A Tower Sessions store backed by SurrealDB.
 #[derive(Debug, Clone)]
 pub struct SurrealSessionStore;
 
@@ -115,6 +116,7 @@ impl session_store::SessionStore for SurrealSessionStore {
 }
 
 impl SurrealSessionStore {
+    /// Periodically cleans up expired sessions from the database.
     pub async fn cleanup_expired(&self) {
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
         let result = db()

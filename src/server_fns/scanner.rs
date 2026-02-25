@@ -419,12 +419,17 @@ async fn fetch_andys_orchids_care(species_name: &str) -> Option<String> {
 
 // ── Server Functions ────────────────────────────────────────────────
 
+/// Analyze an image of a plant using AI to determine its species and care requirements.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_image(
+    /// The base64-encoded image data.
     image_base64: String,
+    /// A list of species names the user already owns.
     existing_species: Option<Vec<String>>,
+    /// A text summary of the user's current climate conditions.
     climate_summary: String,
+    /// A list of the user's configured growing zones.
     zone_names: Option<Vec<String>>,
 ) -> Result<AnalysisResult, ServerFnError> {
     use crate::auth::require_auth;
@@ -612,12 +617,17 @@ pub(crate) async fn analyze_species_core(
     Ok(result)
 }
 
+/// Analyze a plant by its species name using AI to determine its care requirements.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn analyze_orchid_by_name(
+    /// The name of the plant species.
     species_name: String,
+    /// A list of species names the user already owns.
     existing_species: Option<Vec<String>>,
+    /// A text summary of the user's current climate conditions.
     climate_summary: String,
+    /// A list of the user's configured growing zones.
     zone_names: Option<Vec<String>>,
 ) -> Result<AnalysisResult, ServerFnError> {
     use crate::auth::require_auth;
@@ -640,10 +650,13 @@ pub async fn analyze_orchid_by_name(
         })
 }
 
+/// Generate a short, AI-written care recap for a specific event based on recent history.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn generate_care_recap(
+    /// The unique identifier of the orchid.
     orchid_id: String,
+    /// The type of event (e.g., "Flowering").
     event_type: String,
 ) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;

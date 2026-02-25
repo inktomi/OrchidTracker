@@ -2,27 +2,45 @@ use std::sync::OnceLock;
 
 static CONFIG: OnceLock<AppConfig> = OnceLock::new();
 
+/// Application configuration loaded from environment variables.
 #[derive(Clone, Debug)]
 pub struct AppConfig {
+    /// URL of the SurrealDB server.
     pub surreal_url: String,
+    /// The SurrealDB namespace.
     pub surreal_ns: String,
+    /// The SurrealDB database name.
     pub surreal_db: String,
+    /// Username for SurrealDB.
     pub surreal_user: String,
+    /// Password for SurrealDB.
     pub surreal_pass: String,
+    /// Directory path for storing uploaded images.
     pub image_storage_path: String,
+    /// API key for Google Gemini.
     pub gemini_api_key: String,
+    /// The Google Gemini model to use.
     pub gemini_model: String,
+    /// API key for Anthropic Claude.
     pub claude_api_key: String,
+    /// The Anthropic Claude model to use.
     pub claude_model: String,
+    /// Secret key used for session encryption.
     pub session_secret: String,
+    /// Address to bind the Leptos server to.
     pub site_addr: String,
+    /// Port used for Leptos hot reloading.
     pub reload_port: u32,
+    /// VAPID private key for web push notifications.
     pub vapid_private_key: String,
+    /// VAPID public key for web push notifications.
     pub vapid_public_key: String,
+    /// Contact information (email/URL) for VAPID.
     pub vapid_contact: String,
 }
 
 impl AppConfig {
+    /// Reads configuration values from the environment.
     pub fn from_env() -> Self {
         Self {
             surreal_url: std::env::var("SURREAL_URL").unwrap_or_else(|_| "ws://127.0.0.1:8000".into()),
@@ -45,10 +63,16 @@ impl AppConfig {
     }
 }
 
+/// Initializes the global configuration instance.
 pub fn init_config() {
-    CONFIG.set(AppConfig::from_env()).expect("Config already initialized");
+    CONFIG
+        .set(AppConfig::from_env())
+        .expect("Config already initialized");
 }
 
+/// Returns a reference to the global configuration.
 pub fn config() -> &'static AppConfig {
-    CONFIG.get().expect("Config not initialized — call init_config() first")
+    CONFIG
+        .get()
+        .expect("Config not initialized — call init_config() first")
 }

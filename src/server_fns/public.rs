@@ -46,9 +46,13 @@ async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
     Ok(record_id_to_string(&user_row.id))
 }
 
+/// Get the orchids for a user, provided their collection is public.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_orchids(username: String) -> Result<Vec<Orchid>, ServerFnError> {
+pub async fn get_public_orchids(
+    /// The username of the user whose collection to view.
+    username: String
+) -> Result<Vec<Orchid>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;
@@ -75,9 +79,13 @@ pub async fn get_public_orchids(username: String) -> Result<Vec<Orchid>, ServerF
     Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
+/// Get the growing zones for a user, provided their collection is public.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_zones(username: String) -> Result<Vec<GrowingZone>, ServerFnError> {
+pub async fn get_public_zones(
+    /// The username of the user whose collection to view.
+    username: String
+) -> Result<Vec<GrowingZone>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;
@@ -104,9 +112,13 @@ pub async fn get_public_zones(username: String) -> Result<Vec<GrowingZone>, Serv
     Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
 }
 
+/// Get the most recent climate readings for a public user's zones.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_climate_readings(username: String) -> Result<Vec<ClimateReading>, ServerFnError> {
+pub async fn get_public_climate_readings(
+    /// The username of the user whose collection to view.
+    username: String
+) -> Result<Vec<ClimateReading>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;
@@ -160,9 +172,15 @@ pub async fn get_public_climate_readings(username: String) -> Result<Vec<Climate
     Ok(readings)
 }
 
+/// Get the log entries for a specific orchid in a public collection.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_log_entries(username: String, orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
+pub async fn get_public_log_entries(
+    /// The username of the user whose collection to view.
+    username: String, 
+    /// The unique identifier of the orchid.
+    orchid_id: String
+) -> Result<Vec<LogEntry>, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;
@@ -192,9 +210,13 @@ pub async fn get_public_log_entries(username: String, orchid_id: String) -> Resu
     Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
 }
 
+/// Get the preferred hemisphere for a public user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_hemisphere(username: String) -> Result<String, ServerFnError> {
+pub async fn get_public_hemisphere(
+    /// The username of the user.
+    username: String
+) -> Result<String, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;
@@ -220,9 +242,13 @@ pub async fn get_public_hemisphere(username: String) -> Result<String, ServerFnE
     Ok(row.map(|r| r.hemisphere).unwrap_or_else(|| "N".to_string()))
 }
 
+/// Get the preferred temperature unit for a public user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_public_temp_unit(username: String) -> Result<String, ServerFnError> {
+pub async fn get_public_temp_unit(
+    /// The username of the user.
+    username: String
+) -> Result<String, ServerFnError> {
     use crate::db::db;
     use crate::error::internal_error;
     use crate::server_fns::climate::parse_owner;

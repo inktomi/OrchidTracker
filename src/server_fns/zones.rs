@@ -80,6 +80,7 @@ pub(crate) mod ssr_types {
 #[cfg(feature = "ssr")]
 use ssr_types::*;
 
+/// Get all growing zones for the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
@@ -108,15 +109,23 @@ pub async fn get_zones() -> Result<Vec<GrowingZone>, ServerFnError> {
     Ok(db_rows.into_iter().map(|r| r.into_growing_zone()).collect())
 }
 
+/// Create a new growing zone.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_zone(
+    /// The name of the zone.
     name: String,
+    /// The light level ("Low", "Medium", "High").
     light_level: String,
+    /// The location type ("Indoor", "Outdoor").
     location_type: String,
+    /// The typical temperature range.
     temperature_range: String,
+    /// The typical humidity level.
     humidity: String,
+    /// A short description of the zone.
     description: String,
+    /// The ordering for UI display.
     sort_order: i32,
 ) -> Result<GrowingZone, ServerFnError> {
     use crate::auth::require_auth;
@@ -177,9 +186,13 @@ pub async fn create_zone(
         .ok_or_else(|| ServerFnError::new("Failed to create zone"))
 }
 
+/// Update an existing growing zone.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError> {
+pub async fn update_zone(
+    /// The updated growing zone struct.
+    zone: GrowingZone
+) -> Result<GrowingZone, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -237,9 +250,13 @@ pub async fn update_zone(zone: GrowingZone) -> Result<GrowingZone, ServerFnError
         .ok_or_else(|| ServerFnError::new("Zone not found or not owned by you"))
 }
 
+/// Delete a growing zone.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
+pub async fn delete_zone(
+    /// The unique identifier of the zone to delete.
+    id: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -259,6 +276,7 @@ pub async fn delete_zone(id: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Migrate legacy placement strings to proper growing zones.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {

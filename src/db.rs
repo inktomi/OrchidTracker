@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 
 static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
+/// Initialize the SurrealDB connection and apply migrations.
 pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
     tracing::info!("Connecting to SurrealDB at {}", config.surreal_url);
 
@@ -39,6 +40,7 @@ pub async fn init_db(config: &AppConfig) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Returns a static reference to the SurrealDB client.
 pub fn db() -> &'static Surreal<Client> {
     &DB
 }

@@ -4,9 +4,12 @@ use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::orchid::{Orchid, LogEntry};
 
+/// The response when successfully adding a log entry.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddLogEntryResponse {
+    /// The newly created log entry.
     pub entry: LogEntry,
+    /// Indicates if this was the first bloom recorded for the orchid.
     pub is_first_bloom: bool,
 }
 
@@ -236,6 +239,7 @@ fn validate_filename(filename: &str) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Get all orchids owned by the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
@@ -264,36 +268,65 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
+/// Create a new orchid record for the current user.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_orchid(
+    /// The name given to the orchid.
     name: String,
+    /// The species or hybrid name of the orchid.
     species: String,
+    /// The number of days between waterings.
     water_frequency_days: u32,
+    /// The light requirement for the orchid.
     light_requirement: String,
+    /// Any additional notes about the orchid.
     notes: String,
+    /// Where the orchid is placed.
     placement: String,
+    /// The optimal light level in lux.
     light_lux: String,
+    /// The optimal temperature range for the orchid.
     temperature_range: String,
+    /// The conservation status in the wild.
     conservation_status: Option<String>,
+    /// The native geographic region of the orchid.
     native_region: Option<String>,
+    /// The native latitude coordinate.
     native_latitude: Option<f64>,
+    /// The native longitude coordinate.
     native_longitude: Option<f64>,
+    /// The minimum tolerated temperature.
     temp_min: Option<f64>,
+    /// The maximum tolerated temperature.
     temp_max: Option<f64>,
+    /// The minimum required humidity percentage.
     humidity_min: Option<f64>,
+    /// The maximum tolerated humidity percentage.
     humidity_max: Option<f64>,
+    /// The number of days between fertilizer applications.
     fertilize_frequency_days: Option<u32>,
+    /// The type of fertilizer to use.
     fertilizer_type: Option<String>,
+    /// The potting medium used for the orchid.
     pot_medium: Option<String>,
+    /// The size of the pot the orchid is in.
     pot_size: Option<String>,
+    /// The starting month of the resting period.
     rest_start_month: Option<u32>,
+    /// The ending month of the resting period.
     rest_end_month: Option<u32>,
+    /// The typical starting month for blooming.
     bloom_start_month: Option<u32>,
+    /// The typical ending month for blooming.
     bloom_end_month: Option<u32>,
+    /// The watering multiplier during the resting period.
     rest_water_multiplier: Option<f64>,
+    /// The fertilizer multiplier during the resting period.
     rest_fertilizer_multiplier: Option<f64>,
+    /// The watering multiplier during active growth.
     active_water_multiplier: Option<f64>,
+    /// The fertilizer multiplier during active growth.
     active_fertilizer_multiplier: Option<f64>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
@@ -371,9 +404,13 @@ pub async fn create_orchid(
         .ok_or_else(|| ServerFnError::new("Failed to create orchid"))
 }
 
+/// Update an existing orchid record.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
+pub async fn update_orchid(
+    /// The fully populated Orchid struct containing the updated data.
+    orchid: Orchid
+) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -454,9 +491,13 @@ pub async fn update_orchid(orchid: Orchid) -> Result<Orchid, ServerFnError> {
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
 }
 
+/// Delete an orchid and its related records.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
+pub async fn delete_orchid(
+    /// The unique identifier of the orchid to delete.
+    id: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -475,12 +516,17 @@ pub async fn delete_orchid(id: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Add a new log entry (watered, fertilized, repotted, notes, etc.) for an orchid.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn add_log_entry(
+    /// The unique identifier of the orchid.
     orchid_id: String,
+    /// The note or description of the event.
     note: String,
+    /// An optional image filename associated with the entry.
     image_filename: Option<String>,
+    /// The type of event (e.g., "Watered", "Fertilized").
     event_type: Option<String>,
 ) -> Result<AddLogEntryResponse, ServerFnError> {
     use crate::auth::require_auth;
@@ -604,9 +650,13 @@ pub async fn add_log_entry(
     Ok(AddLogEntryResponse { entry, is_first_bloom })
 }
 
+/// Retrieve all log entries for a specific orchid.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerFnError> {
+pub async fn get_log_entries(
+    /// The unique identifier of the orchid.
+    orchid_id: String
+) -> Result<Vec<LogEntry>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -634,9 +684,13 @@ pub async fn get_log_entries(orchid_id: String) -> Result<Vec<LogEntry>, ServerF
     Ok(db_rows.into_iter().map(|r| r.into_log_entry()).collect())
 }
 
+/// Mark an orchid as watered right now.
 #[server]
 #[tracing::instrument(level = "info", skip_all, fields(orchid_id = %orchid_id))]
-pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
+pub async fn mark_watered(
+    /// The unique identifier of the orchid.
+    orchid_id: String
+) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -680,9 +734,13 @@ pub async fn mark_watered(orchid_id: String) -> Result<Orchid, ServerFnError> {
     Ok(orchid)
 }
 
+/// Mark an orchid as fertilized right now.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn mark_fertilized(orchid_id: String) -> Result<Orchid, ServerFnError> {
+pub async fn mark_fertilized(
+    /// The unique identifier of the orchid.
+    orchid_id: String
+) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -723,9 +781,17 @@ pub async fn mark_fertilized(orchid_id: String) -> Result<Orchid, ServerFnError>
     Ok(orchid)
 }
 
+/// Mark an orchid as repotted right now.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn mark_repotted(orchid_id: String, pot_medium: Option<String>, pot_size: Option<String>) -> Result<Orchid, ServerFnError> {
+pub async fn mark_repotted(
+    /// The unique identifier of the orchid.
+    orchid_id: String, 
+    /// The new potting medium used.
+    pot_medium: Option<String>, 
+    /// The new pot size used.
+    pot_size: Option<String>
+) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;

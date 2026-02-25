@@ -53,7 +53,12 @@ pub async fn get_current_readings() -> Result<Vec<ClimateReading>, ServerFnError
 /// Get historical readings for a specific zone within the last N hours.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn get_zone_history(zone_id: String, hours: u32) -> Result<Vec<ClimateReading>, ServerFnError> {
+pub async fn get_zone_history(
+    /// The unique identifier of the zone.
+    zone_id: String, 
+    /// The number of hours of history to fetch.
+    hours: u32
+) -> Result<Vec<ClimateReading>, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -113,7 +118,12 @@ pub async fn get_climate_summary_for_scanner() -> Result<String, ServerFnError> 
 /// Returns a formatted result string on success or an error message.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn test_data_source(provider: String, config_json: String) -> Result<String, ServerFnError> {
+pub async fn test_data_source(
+    /// The name of the data provider (e.g., "tempest", "ac_infinity").
+    provider: String, 
+    /// The JSON configuration string for the data source.
+    config_json: String
+) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
 
     require_auth().await?;
@@ -184,9 +194,13 @@ pub async fn test_data_source(provider: String, config_json: String) -> Result<S
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn save_wizard_estimation(
+    /// The unique identifier of the zone.
     zone_id: String,
+    /// The name of the zone.
     zone_name: String,
+    /// The estimated temperature in Celsius.
     temperature: f64,
+    /// The estimated humidity percentage.
     humidity: f64,
 ) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
@@ -248,9 +262,13 @@ pub async fn save_wizard_estimation(
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn log_manual_reading(
+    /// The unique identifier of the zone.
     zone_id: String,
+    /// The name of the zone.
     zone_name: String,
+    /// The manually recorded temperature in Celsius.
     temperature: f64,
+    /// The manually recorded humidity percentage.
     humidity: f64,
 ) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
@@ -292,7 +310,12 @@ pub async fn log_manual_reading(
 /// Test weather API for a lat/lon pair, returning a preview string.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn test_weather_api(latitude: f64, longitude: f64) -> Result<String, ServerFnError> {
+pub async fn test_weather_api(
+    /// The latitude coordinate.
+    latitude: f64, 
+    /// The longitude coordinate.
+    longitude: f64
+) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
 
     require_auth().await?;
@@ -312,8 +335,11 @@ pub async fn test_weather_api(latitude: f64, longitude: f64) -> Result<String, S
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn configure_zone_data_source(
+    /// The unique identifier of the zone.
     zone_id: String,
+    /// The data provider name, if any.
     provider: Option<String>,
+    /// The JSON configuration string for the data source.
     config_json: String,
 ) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
@@ -364,7 +390,9 @@ pub(crate) fn parse_owner(user_id: &str) -> Result<surrealdb::types::RecordId, S
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_current(
+    /// The latitude coordinate.
     latitude: f64,
+    /// The longitude coordinate.
     longitude: f64,
 ) -> Result<Option<HabitatWeather>, ServerFnError> {
     use crate::auth::require_auth;
@@ -399,8 +427,11 @@ pub async fn get_habitat_current(
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_habitat_history(
+    /// The latitude coordinate.
     latitude: f64,
+    /// The longitude coordinate.
     longitude: f64,
+    /// The number of days of history to fetch.
     days: u32,
 ) -> Result<Vec<HabitatWeatherSummary>, ServerFnError> {
     use crate::auth::require_auth;

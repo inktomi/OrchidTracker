@@ -4,10 +4,14 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use surrealdb::types::SurrealValue;
 
+/// Information about the currently authenticated user.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct UserInfo {
+    /// The unique identifier for the user.
     pub id: String,
+    /// The user's username.
     pub username: String,
+    /// The user's email address.
     pub email: String,
 }
 
@@ -28,13 +32,17 @@ pub fn record_id_to_string(id: &surrealdb::types::RecordId) -> String {
 #[derive(Deserialize, SurrealValue)]
 #[surreal(crate = "surrealdb::types")]
 pub struct UserDbRow {
+    /// The underlying SurrealDB record ID for the user.
     pub id: surrealdb::types::RecordId,
+    /// The user's username.
     pub username: String,
+    /// The user's email address.
     pub email: String,
 }
 
 #[cfg(feature = "ssr")]
 impl UserDbRow {
+    /// Converts a UserDbRow into a UserInfo struct for the client.
     pub fn into_user_info(self) -> UserInfo {
         UserInfo {
             id: record_id_to_string(&self.id),
@@ -44,11 +52,15 @@ impl UserDbRow {
     }
 }
 
+/// Registers a new user with the given username, email, and password.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn register(
+    /// The desired username for the new account.
     username: String,
+    /// The user's email address.
     email: String,
+    /// The password for the new account.
     password: String,
 ) -> Result<UserInfo, ServerFnError> {
     use crate::auth::{hash_password, create_session};
@@ -98,9 +110,15 @@ pub async fn register(
     Ok(user)
 }
 
+/// Logs in an existing user with their username and password.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn login(username: String, password: String) -> Result<UserInfo, ServerFnError> {
+pub async fn login(
+    /// The user's username.
+    username: String, 
+    /// The user's password.
+    password: String
+) -> Result<UserInfo, ServerFnError> {
     use crate::auth::verify_password;
     use crate::db::db;
     use crate::error::internal_error;
@@ -154,12 +172,14 @@ pub async fn login(username: String, password: String) -> Result<UserInfo, Serve
     })
 }
 
+/// Logs out the current user, destroying their session.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn logout() -> Result<(), ServerFnError> {
     crate::auth::destroy_session().await
 }
 
+/// Retrieves the current authenticated user's information.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_current_user() -> Result<Option<UserInfo>, ServerFnError> {

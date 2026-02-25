@@ -2,33 +2,53 @@ use chrono::{DateTime, Utc};
 
 /// A new alert to be stored (before it has an ID)
 pub struct NewAlert {
+    /// The ID of the user who owns the alert.
     pub owner: surrealdb::types::RecordId,
+    /// The associated orchid, if any.
     pub orchid: Option<surrealdb::types::RecordId>,
+    /// The associated zone, if any.
     pub zone: Option<surrealdb::types::RecordId>,
+    /// The type of the alert (e.g. temperature_low).
     pub alert_type: String,
+    /// The severity level (e.g. warning, critical).
     pub severity: String,
+    /// Human-readable message explaining the alert.
     pub message: String,
 }
 
 /// An orchid with its structured climate requirements
 pub struct OrchidRequirements {
+    /// The orchid's record ID.
     pub id: surrealdb::types::RecordId,
+    /// The ID of the owner.
     pub owner: surrealdb::types::RecordId,
+    /// The orchid's name.
     pub name: String,
+    /// The placement or zone of the orchid.
     pub placement: String,
+    /// Target watering frequency in days.
     pub water_frequency_days: u32,
+    /// When the orchid was last watered.
     pub last_watered_at: Option<DateTime<Utc>>,
+    /// Minimum temperature requirement in Celsius.
     pub temp_min: Option<f64>,
+    /// Maximum temperature requirement in Celsius.
     pub temp_max: Option<f64>,
+    /// Minimum humidity requirement percentage.
     pub humidity_min: Option<f64>,
+    /// Maximum humidity requirement percentage.
     pub humidity_max: Option<f64>,
 }
 
 /// A latest reading for a zone
 pub struct ZoneReading {
+    /// The name of the zone.
     pub zone_name: String,
+    /// The unique record ID of the zone.
     pub zone_id: surrealdb::types::RecordId,
+    /// The recorded temperature in Celsius.
     pub temperature: f64,
+    /// The recorded relative humidity.
     pub humidity: f64,
 }
 

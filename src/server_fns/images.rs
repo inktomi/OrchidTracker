@@ -2,6 +2,7 @@
 // because multipart form data requires direct access to the Axum extractors.
 // See main.rs for the route registration.
 
+/// Handlers for processing image upload requests via Axum.
 #[cfg(feature = "ssr")]
 pub mod handlers {
     use axum::{
@@ -22,6 +23,7 @@ pub mod handlers {
             .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
     }
 
+    /// Receives a multipart image upload, validates its size and format, and stores it.
     pub async fn upload_image(
         session: tower_sessions::Session,
         mut multipart: Multipart,

@@ -4,13 +4,16 @@ use crate::auth::hash_password;
 use crate::db::db;
 use surrealdb::types::SurrealValue;
 
+/// Command-line arguments for the OrchidTracker server application.
 #[derive(Parser)]
 #[command(name = "orchid-tracker", about = "OrchidTracker web server")]
 pub struct Cli {
+    /// The subcommand to execute.
     #[command(subcommand)]
     pub command: Option<Command>,
 }
 
+/// Available CLI subcommands.
 #[derive(Subcommand)]
 pub enum Command {
     /// Reset a user's password
@@ -39,6 +42,7 @@ pub enum Command {
     },
 }
 
+/// Executes the reset-password subcommand, hashing and updating the user's password.
 pub async fn run_reset_password(username: &str, password: &str) -> Result<(), Box<dyn std::error::Error>> {
     let hash = hash_password(password)?;
 
@@ -71,6 +75,7 @@ pub async fn run_reset_password(username: &str, password: &str) -> Result<(), Bo
     Ok(())
 }
 
+/// Executes the reprocess-plants subcommand, running AI analysis on a user's orchids.
 pub async fn run_reprocess_plants(
     username: &str,
     batch_size: usize,

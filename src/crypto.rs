@@ -1,8 +1,8 @@
-use aes_gcm::{Aes256Gcm, AeadCore, KeyInit, Nonce};
 use aes_gcm::aead::{Aead, OsRng};
-use base64::Engine;
+use aes_gcm::{AeadCore, Aes256Gcm, KeyInit, Nonce};
 use base64::engine::general_purpose::STANDARD as BASE64;
-use sha2::{Sha256, Digest};
+use base64::Engine;
+use sha2::{Digest, Sha256};
 
 use crate::config::config;
 use crate::error::AppError;
@@ -17,6 +17,7 @@ fn derive_key() -> [u8; 32] {
     hasher.finalize().into()
 }
 
+/// Encrypts a string using AES-256-GCM.
 pub fn encrypt(plaintext: &str) -> Result<String, AppError> {
     let key = derive_key();
     let cipher = Aes256Gcm::new_from_slice(&key)
@@ -35,6 +36,7 @@ pub fn encrypt(plaintext: &str) -> Result<String, AppError> {
     Ok(BASE64.encode(&combined))
 }
 
+/// Decrypts a base64 encoded AES-256-GCM encrypted string.
 pub fn decrypt(ciphertext_b64: &str) -> Result<String, AppError> {
     let combined = BASE64
         .decode(ciphertext_b64)
@@ -55,8 +57,7 @@ pub fn decrypt(ciphertext_b64: &str) -> Result<String, AppError> {
         .decrypt(nonce, ciphertext)
         .map_err(|e| AppError::Serialization(format!("decrypt: {e}")))?;
 
-    String::from_utf8(plaintext)
-        .map_err(|e| AppError::Serialization(format!("utf8: {e}")))
+    String::from_utf8(plaintext).map_err(|e| AppError::Serialization(format!("utf8: {e}")))
 }
 
 /// Try to decrypt; fall back to returning the raw string (handles legacy plaintext).
@@ -78,7 +79,10 @@ mod tests {
         INIT.call_once(|| {
             // SAFETY: only called once via Once, before any threads read these vars
             unsafe {
-                std::env::set_var("SESSION_SECRET", "test-secret-for-unit-tests-must-be-long-enough");
+                std::env::set_var(
+                    "SESSION_SECRET",
+                    "test-secret-for-unit-tests-must-be-long-enough",
+                );
             }
             let _ = std::panic::catch_unwind(|| crate::config::init_config());
         });

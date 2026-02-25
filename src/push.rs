@@ -2,8 +2,11 @@ use crate::config::config;
 
 /// A push subscription row from the database
 pub struct PushSubscriptionRow {
+    /// The subscription endpoint URL.
     pub endpoint: String,
+    /// The P-256 Elliptic Curve Diffie-Hellman public key.
     pub p256dh: String,
+    /// The authentication secret.
     pub auth: String,
 }
 

@@ -4,13 +4,21 @@ use std::fmt;
 /// Room type for indoor estimation.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RoomType {
+    /// A kitchen area, typically warmer and slightly more humid.
     Kitchen,
+    /// A bathroom, characterized by high humidity fluctuations.
     Bathroom,
+    /// A living room, usually maintaining average indoor conditions.
     LivingRoom,
+    /// A bedroom, typically stable with average conditions.
     Bedroom,
+    /// A sunroom, experiencing higher temperatures and light levels.
     Sunroom,
+    /// An office space, often with average, stable conditions.
     Office,
+    /// A garage, typically cooler and subject to outdoor swings.
     Garage,
+    /// Any other undefined room type.
     Other,
 }
 
@@ -32,9 +40,13 @@ impl fmt::Display for RoomType {
 /// Cardinal window direction.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum WindowDirection {
+    /// North-facing window, providing low, indirect light (Northern Hemisphere).
     North,
+    /// South-facing window, providing high, direct light (Northern Hemisphere).
     South,
+    /// East-facing window, providing gentle morning sunlight.
     East,
+    /// West-facing window, providing intense afternoon sunlight.
     West,
 }
 
@@ -52,8 +64,11 @@ impl fmt::Display for WindowDirection {
 /// Qualitative air description.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum AirDescription {
+    /// Very dry air, typically below 30% humidity.
     VeryDry,
+    /// Average indoor humidity, typically 30-50%.
     Average,
+    /// Humid air, typically above 50% humidity.
     Humid,
 }
 
@@ -70,9 +85,13 @@ impl fmt::Display for AirDescription {
 /// Humidity booster methods.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HumidityBooster {
+    /// Use of an electric humidifier to actively increase moisture.
     Humidifier,
+    /// Manually spraying water on or around the plants.
     RegularMisting,
+    /// Placing pots on a tray filled with pebbles and water.
     PebbleTray,
+    /// Clustering plants together to create a microclimate.
     GroupedPlants,
 }
 
@@ -90,20 +109,30 @@ impl fmt::Display for HumidityBooster {
 /// All wizard answers for indoor estimation.
 #[derive(Clone, Debug)]
 pub struct IndoorEstimationInput {
+    /// The type of room where the orchid is located.
     pub room_type: RoomType,
+    /// The baseline thermostat temperature setting in Celsius.
     pub thermostat_c: f64,
+    /// Whether the room has a window providing natural light.
     pub has_window: bool,
+    /// The primary direction the window faces, if applicable.
     pub window_direction: Option<WindowDirection>,
+    /// Whether artificial grow lights are used.
     pub has_grow_lights: bool,
+    /// A qualitative description of the room's baseline humidity.
     pub air_description: AirDescription,
+    /// Any active methods used to increase local humidity.
     pub humidity_boosters: Vec<HumidityBooster>,
 }
 
 /// Result of the estimation algorithm.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EstimationResult {
+    /// The estimated low temperature in Celsius.
     pub temperature_low_c: f64,
+    /// The estimated high temperature in Celsius.
     pub temperature_high_c: f64,
+    /// The estimated average relative humidity percentage.
     pub humidity_pct: f64,
 }
 
@@ -228,7 +257,11 @@ mod tests {
     fn test_roundtrip_conversion() {
         let temps = [0.0, 20.0, 37.0, -10.0, 100.0];
         for t in temps {
-            assert!((f_to_c(c_to_f(t)) - t).abs() < 0.001, "Roundtrip failed for {}C", t);
+            assert!(
+                (f_to_c(c_to_f(t)) - t).abs() < 0.001,
+                "Roundtrip failed for {}C",
+                t
+            );
         }
     }
 
@@ -238,14 +271,22 @@ mod tests {
     fn test_calculate_vpd_typical_orchid_conditions() {
         // At 22°C / 60% RH, VPD ~1.06 kPa (good for orchids: 0.8-1.2 range)
         let vpd = calculate_vpd(22.0, 60.0);
-        assert!(vpd > 0.9 && vpd < 1.2, "Expected VPD ~1.06 at 22C/60%, got {:.3}", vpd);
+        assert!(
+            vpd > 0.9 && vpd < 1.2,
+            "Expected VPD ~1.06 at 22C/60%, got {:.3}",
+            vpd
+        );
     }
 
     #[test]
     fn test_calculate_vpd_100_percent_humidity() {
         // At 100% RH, VPD should be ~0
         let vpd = calculate_vpd(25.0, 100.0);
-        assert!(vpd.abs() < 0.01, "Expected VPD ~0 at 100% RH, got {:.3}", vpd);
+        assert!(
+            vpd.abs() < 0.01,
+            "Expected VPD ~0 at 100% RH, got {:.3}",
+            vpd
+        );
     }
 
     #[test]

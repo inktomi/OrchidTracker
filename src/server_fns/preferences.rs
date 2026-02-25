@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+/// Get the user's preferred temperature unit ("C" or "F").
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_temp_unit() -> Result<String, ServerFnError> {
@@ -29,9 +30,13 @@ pub async fn get_temp_unit() -> Result<String, ServerFnError> {
     Ok(row.map(|r| r.temp_unit).unwrap_or_else(|| "C".to_string()))
 }
 
+/// Save the user's preferred temperature unit.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
+pub async fn save_temp_unit(
+    /// The temperature unit ("C" or "F").
+    unit: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -66,6 +71,7 @@ pub async fn save_temp_unit(unit: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Get the user's preferred hemisphere ("N" or "S").
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_hemisphere() -> Result<String, ServerFnError> {
@@ -95,9 +101,13 @@ pub async fn get_hemisphere() -> Result<String, ServerFnError> {
     Ok(row.map(|r| r.hemisphere).unwrap_or_else(|| "N".to_string()))
 }
 
+/// Save the user's preferred hemisphere.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn save_hemisphere(hemisphere: String) -> Result<(), ServerFnError> {
+pub async fn save_hemisphere(
+    /// The hemisphere ("N" or "S").
+    hemisphere: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -131,6 +141,7 @@ pub async fn save_hemisphere(hemisphere: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
+/// Check if the user's collection is marked as public.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn get_collection_public() -> Result<bool, ServerFnError> {
@@ -161,9 +172,13 @@ pub async fn get_collection_public() -> Result<bool, ServerFnError> {
     Ok(row.map(|r| r.collection_public).unwrap_or(false))
 }
 
+/// Set whether the user's collection should be public.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn save_collection_public(public: bool) -> Result<(), ServerFnError> {
+pub async fn save_collection_public(
+    /// True if public, false if private.
+    public: bool
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;

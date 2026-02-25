@@ -73,8 +73,11 @@ pub async fn get_devices() -> Result<Vec<HardwareDevice>, ServerFnError> {
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn create_device(
+    /// The user-defined name for the device.
     name: String,
+    /// The type of the device (e.g., "tempest", "ac_infinity").
     device_type: String,
+    /// The JSON configuration string for the device.
     config_json: String,
 ) -> Result<HardwareDevice, ServerFnError> {
     use crate::auth::require_auth;
@@ -130,8 +133,11 @@ pub async fn create_device(
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn update_device(
+    /// The unique identifier of the device.
     device_id: String,
+    /// The new name for the device.
     name: String,
+    /// The new JSON configuration string.
     config_json: String,
 ) -> Result<HardwareDevice, ServerFnError> {
     use crate::auth::require_auth;
@@ -183,7 +189,10 @@ pub async fn update_device(
 /// Delete a hardware device and unlink all referencing zones.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn delete_device(device_id: String) -> Result<(), ServerFnError> {
+pub async fn delete_device(
+    /// The unique identifier of the device to delete.
+    device_id: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
@@ -217,7 +226,9 @@ pub async fn delete_device(device_id: String) -> Result<(), ServerFnError> {
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn test_device(
+    /// The type of the device to test.
     device_type: String,
+    /// The JSON configuration string for the device.
     config_json: String,
 ) -> Result<String, ServerFnError> {
     use crate::auth::require_auth;
@@ -276,8 +287,11 @@ pub async fn test_device(
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
 pub async fn link_zone_to_device(
+    /// The unique identifier of the zone.
     zone_id: String,
+    /// The unique identifier of the hardware device.
     device_id: String,
+    /// The specific port or sensor on the device, if applicable.
     port: Option<i32>,
 ) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
@@ -318,7 +332,10 @@ pub async fn link_zone_to_device(
 /// Unlink a zone from its hardware device.
 #[server]
 #[tracing::instrument(level = "info", skip_all)]
-pub async fn unlink_zone_from_device(zone_id: String) -> Result<(), ServerFnError> {
+pub async fn unlink_zone_from_device(
+    /// The unique identifier of the zone.
+    zone_id: String
+) -> Result<(), ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;

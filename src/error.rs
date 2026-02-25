@@ -1,12 +1,19 @@
 use std::fmt;
 
+/// Represents all possible errors that can occur within the application.
 #[derive(Debug)]
 pub enum AppError {
+    /// Errors related to user authentication and authorization.
     Auth(String),
+    /// Errors originating from database operations.
     Database(String),
+    /// Errors caused by network requests or connectivity issues.
     Network(String),
+    /// Errors occurring during serialization or deserialization of data.
     Serialization(String),
+    /// Errors due to invalid user input or data constraints.
     Validation(String),
+    /// Errors encountered while saving or retrieving images.
     ImageStorage(String),
 }
 
@@ -28,7 +35,10 @@ impl std::error::Error for AppError {}
 /// Log an internal error and return a generic ServerFnError safe for the UI.
 /// The real error details go to the server logs only.
 #[cfg(feature = "ssr")]
-pub fn internal_error(context: &str, err: impl std::fmt::Display) -> leptos::prelude::ServerFnError {
+pub fn internal_error(
+    context: &str,
+    err: impl std::fmt::Display,
+) -> leptos::prelude::ServerFnError {
     tracing::error!("{context}: {err}");
     leptos::prelude::ServerFnError::new("An internal error occurred. Please try again later.")
 }
