@@ -1,6 +1,6 @@
+use chrono::{DateTime, Datelike, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use chrono::{DateTime, Datelike, Utc};
 
 #[cfg(feature = "ssr")]
 use surrealdb::types::SurrealValue;
@@ -145,8 +145,13 @@ pub struct ClimateReading {
 
 /// Check if an orchid's placement zone provides compatible light for its requirements.
 /// Returns true if compatible or if the zone is unknown.
-pub fn check_zone_compatibility(placement: &str, light_req: &LightRequirement, zones: &[GrowingZone]) -> bool {
-    zones.iter()
+pub fn check_zone_compatibility(
+    placement: &str,
+    light_req: &LightRequirement,
+    zones: &[GrowingZone],
+) -> bool {
+    zones
+        .iter()
         .find(|z| z.name == placement)
         .map(|z| z.light_level == *light_req)
         .unwrap_or(true)
@@ -276,15 +281,14 @@ impl Orchid {
 
     /// Days since last fertilized, or None if never fertilized.
     pub fn days_since_fertilized(&self) -> Option<i64> {
-        self.last_fertilized_at.map(|dt| (Utc::now() - dt).num_days())
+        self.last_fertilized_at
+            .map(|dt| (Utc::now() - dt).num_days())
     }
 
     /// Days until fertilizing is due. None if no schedule set.
     pub fn fertilize_days_until_due(&self) -> Option<i64> {
-        self.fertilize_frequency_days.and_then(|freq| {
-            self.days_since_fertilized()
-                .map(|days| freq as i64 - days)
-        })
+        self.fertilize_frequency_days
+            .and_then(|freq| self.days_since_fertilized().map(|days| freq as i64 - days))
     }
 
     /// Days since last repotted, or None if never repotted.
@@ -397,9 +401,18 @@ impl Orchid {
     /// Get month name for display.
     pub fn month_name(month: u32) -> &'static str {
         match month {
-            1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr",
-            5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug",
-            9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dec",
+            1 => "Jan",
+            2 => "Feb",
+            3 => "Mar",
+            4 => "Apr",
+            5 => "May",
+            6 => "Jun",
+            7 => "Jul",
+            8 => "Aug",
+            9 => "Sep",
+            10 => "Oct",
+            11 => "Nov",
+            12 => "Dec",
             _ => "???",
         }
     }
@@ -415,7 +428,11 @@ impl Orchid {
         }
         if let (Some(_rs), Some(re)) = (self.rest_start_month, self.rest_end_month) {
             let end_adjusted = hemisphere.adjust_month(re);
-            let active_month = if end_adjusted == 12 { 1 } else { end_adjusted + 1 };
+            let active_month = if end_adjusted == 12 {
+                1
+            } else {
+                end_adjusted + 1
+            };
             transitions.push((active_month, "Rest ends".to_string()));
         }
         if let (Some(bs), Some(_be)) = (self.bloom_start_month, self.bloom_end_month) {
@@ -423,16 +440,27 @@ impl Orchid {
         }
         if let (Some(_bs), Some(be)) = (self.bloom_start_month, self.bloom_end_month) {
             let end_adjusted = hemisphere.adjust_month(be);
-            let after_month = if end_adjusted == 12 { 1 } else { end_adjusted + 1 };
+            let after_month = if end_adjusted == 12 {
+                1
+            } else {
+                end_adjusted + 1
+            };
             transitions.push((after_month, "Bloom ends".to_string()));
         }
 
         // Find the next transition after the current month
         transitions.sort_by_key(|(m, _)| {
-            if *m > now_month { *m - now_month } else { *m + 12 - now_month }
+            if *m > now_month {
+                *m - now_month
+            } else {
+                *m + 12 - now_month
+            }
         });
 
-        transitions.into_iter().find(|(m, _)| *m != now_month).or(None)
+        transitions
+            .into_iter()
+            .find(|(m, _)| *m != now_month)
+            .or(None)
     }
 }
 
@@ -444,6 +472,7 @@ pub enum Hemisphere {
 }
 
 impl Hemisphere {
+    /// Creates a Hemisphere from a single-character code ("N" or "S").
     pub fn from_code(code: &str) -> Self {
         match code {
             "S" => Hemisphere::Southern,
@@ -451,6 +480,7 @@ impl Hemisphere {
         }
     }
 
+    /// Returns the single-character code ("N" or "S") for the Hemisphere.
     pub fn code(&self) -> &str {
         match self {
             Hemisphere::Northern => "N",
@@ -601,11 +631,27 @@ mod tests {
             },
         ];
 
-        assert!(check_zone_compatibility("Low Light Area", &LightRequirement::Low, &zones));
-        assert!(!check_zone_compatibility("Low Light Area", &LightRequirement::High, &zones));
-        assert!(check_zone_compatibility("High Light Area", &LightRequirement::High, &zones));
+        assert!(check_zone_compatibility(
+            "Low Light Area",
+            &LightRequirement::Low,
+            &zones
+        ));
+        assert!(!check_zone_compatibility(
+            "Low Light Area",
+            &LightRequirement::High,
+            &zones
+        ));
+        assert!(check_zone_compatibility(
+            "High Light Area",
+            &LightRequirement::High,
+            &zones
+        ));
         // Unknown zone = don't flag
-        assert!(check_zone_compatibility("Unknown Zone", &LightRequirement::High, &zones));
+        assert!(check_zone_compatibility(
+            "Unknown Zone",
+            &LightRequirement::High,
+            &zones
+        ));
     }
 
     #[test]
@@ -1033,8 +1079,14 @@ mod tests {
 
     #[test]
     fn test_hemisphere_code_roundtrip() {
-        assert_eq!(Hemisphere::from_code(Hemisphere::Northern.code()), Hemisphere::Northern);
-        assert_eq!(Hemisphere::from_code(Hemisphere::Southern.code()), Hemisphere::Southern);
+        assert_eq!(
+            Hemisphere::from_code(Hemisphere::Northern.code()),
+            Hemisphere::Northern
+        );
+        assert_eq!(
+            Hemisphere::from_code(Hemisphere::Southern.code()),
+            Hemisphere::Southern
+        );
     }
 
     #[test]
@@ -1044,8 +1096,13 @@ mod tests {
         // Jan(1)→Jul(7), Feb(2)→Aug(8), ..., Jun(6)→Dec(12), Jul(7)→Jan(1), ..., Dec(12)→Jun(6)
         let expected = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
         for (nh_month, &sh_expected) in (1..=12u32).zip(expected.iter()) {
-            assert_eq!(s.adjust_month(nh_month), sh_expected,
-                "NH month {} should map to SH month {}", nh_month, sh_expected);
+            assert_eq!(
+                s.adjust_month(nh_month),
+                sh_expected,
+                "NH month {} should map to SH month {}",
+                nh_month,
+                sh_expected
+            );
         }
     }
 
@@ -1091,21 +1148,39 @@ mod tests {
     #[test]
     fn test_current_phase_unknown_without_seasonal_data() {
         let orchid = seasonal_orchid(7, None, None, None, None, None, None, None);
-        assert_eq!(orchid.current_phase(&Hemisphere::Northern), SeasonalPhase::Unknown);
+        assert_eq!(
+            orchid.current_phase(&Hemisphere::Northern),
+            SeasonalPhase::Unknown
+        );
     }
 
     #[test]
     fn test_current_phase_rest_period() {
         // Create an orchid with rest covering all 12 months to guarantee we hit it
         let orchid = seasonal_orchid(7, None, Some((1, 12)), None, None, None, None, None);
-        assert_eq!(orchid.current_phase(&Hemisphere::Northern), SeasonalPhase::Rest);
+        assert_eq!(
+            orchid.current_phase(&Hemisphere::Northern),
+            SeasonalPhase::Rest
+        );
     }
 
     #[test]
     fn test_current_phase_bloom_takes_priority_over_rest() {
         // Bloom covering all months AND rest covering all months — bloom wins
-        let orchid = seasonal_orchid(7, None, Some((1, 12)), Some((1, 12)), None, None, None, None);
-        assert_eq!(orchid.current_phase(&Hemisphere::Northern), SeasonalPhase::Blooming);
+        let orchid = seasonal_orchid(
+            7,
+            None,
+            Some((1, 12)),
+            Some((1, 12)),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(
+            orchid.current_phase(&Hemisphere::Northern),
+            SeasonalPhase::Blooming
+        );
     }
 
     #[test]
@@ -1116,7 +1191,16 @@ mod tests {
         // Use a month that's exactly 6 months away from now — very unlikely to match
         let now_month = Utc::now().month();
         let far_month = ((now_month + 5) % 12) + 1; // 6 months from now
-        let orchid = seasonal_orchid(7, None, Some((far_month, far_month)), None, None, None, None, None);
+        let orchid = seasonal_orchid(
+            7,
+            None,
+            Some((far_month, far_month)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let phase = orchid.current_phase(&Hemisphere::Northern);
         // Should be either Active (if now != far_month) or Rest (if now == far_month)
         assert!(phase == SeasonalPhase::Active || phase == SeasonalPhase::Rest);
@@ -1200,29 +1284,59 @@ mod tests {
     #[test]
     fn test_effective_fertilize_frequency_no_schedule() {
         let orchid = seasonal_orchid(7, None, None, None, None, None, None, None);
-        assert_eq!(orchid.effective_fertilize_frequency(&Hemisphere::Northern), None);
+        assert_eq!(
+            orchid.effective_fertilize_frequency(&Hemisphere::Northern),
+            None
+        );
     }
 
     #[test]
     fn test_effective_fertilize_frequency_no_multiplier() {
         let orchid = seasonal_orchid(7, Some(14), Some((1, 12)), None, None, None, None, None);
         // Has rest period but no fertilizer multiplier → base unchanged
-        assert_eq!(orchid.effective_fertilize_frequency(&Hemisphere::Northern), Some(14));
+        assert_eq!(
+            orchid.effective_fertilize_frequency(&Hemisphere::Northern),
+            Some(14)
+        );
     }
 
     #[test]
     fn test_effective_fertilize_frequency_rest_stop() {
         // rest_fertilizer_multiplier = 0.0 → should still return base (division by 0 guarded)
-        let orchid = seasonal_orchid(7, Some(14), Some((1, 12)), None, None, Some(0.0), None, None);
+        let orchid = seasonal_orchid(
+            7,
+            Some(14),
+            Some((1, 12)),
+            None,
+            None,
+            Some(0.0),
+            None,
+            None,
+        );
         // multiplier 0.0 is not > 0.0, so falls through to base
-        assert_eq!(orchid.effective_fertilize_frequency(&Hemisphere::Northern), Some(14));
+        assert_eq!(
+            orchid.effective_fertilize_frequency(&Hemisphere::Northern),
+            Some(14)
+        );
     }
 
     #[test]
     fn test_effective_fertilize_frequency_rest_reduced() {
         // rest_fertilizer_multiplier = 0.25 → 14 / 0.25 = 56 days (much less frequent)
-        let orchid = seasonal_orchid(7, Some(14), Some((1, 12)), None, None, Some(0.25), None, None);
-        assert_eq!(orchid.effective_fertilize_frequency(&Hemisphere::Northern), Some(56));
+        let orchid = seasonal_orchid(
+            7,
+            Some(14),
+            Some((1, 12)),
+            None,
+            None,
+            Some(0.25),
+            None,
+            None,
+        );
+        assert_eq!(
+            orchid.effective_fertilize_frequency(&Hemisphere::Northern),
+            Some(56)
+        );
     }
 
     // ── next_transition tests ────────────────────────────────────────
@@ -1250,7 +1364,11 @@ mod tests {
         let transition = orchid.next_transition(&Hemisphere::Northern);
         assert!(transition.is_some());
         let (_, label) = transition.unwrap();
-        assert!(label.contains("Bloom"), "Label should mention bloom: {}", label);
+        assert!(
+            label.contains("Bloom"),
+            "Label should mention bloom: {}",
+            label
+        );
     }
 
     #[test]
@@ -1266,8 +1384,9 @@ mod tests {
 
     #[test]
     fn test_month_name_all_valid() {
-        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let names = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
         for (i, expected) in names.iter().enumerate() {
             assert_eq!(Orchid::month_name((i + 1) as u32), *expected);
         }
@@ -1284,10 +1403,14 @@ mod tests {
     #[test]
     fn test_seasonal_fields_serde_roundtrip() {
         let orchid = seasonal_orchid(
-            7, Some(14),
-            Some((11, 2)), Some((3, 5)),
-            Some(0.3), Some(0.0),
-            Some(1.0), Some(1.5),
+            7,
+            Some(14),
+            Some((11, 2)),
+            Some((3, 5)),
+            Some(0.3),
+            Some(0.0),
+            Some(1.0),
+            Some(1.5),
         );
 
         let json = serde_json::to_string(&orchid).unwrap();
@@ -1331,7 +1454,12 @@ mod tests {
 
     #[test]
     fn test_seasonal_phase_serde_roundtrip() {
-        for phase in [SeasonalPhase::Rest, SeasonalPhase::Active, SeasonalPhase::Blooming, SeasonalPhase::Unknown] {
+        for phase in [
+            SeasonalPhase::Rest,
+            SeasonalPhase::Active,
+            SeasonalPhase::Blooming,
+            SeasonalPhase::Unknown,
+        ] {
             let json = serde_json::to_string(&phase).unwrap();
             let deserialized: SeasonalPhase = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized, phase);
@@ -1355,7 +1483,10 @@ mod tests {
         assert_eq!(deserialized.id, "hardware_device:abc123");
         assert_eq!(deserialized.name, "My Tempest");
         assert_eq!(deserialized.device_type, "tempest");
-        assert_eq!(deserialized.config, r#"{"station_id":"12345","token":"tok"}"#);
+        assert_eq!(
+            deserialized.config,
+            r#"{"station_id":"12345","token":"tok"}"#
+        );
     }
 
     #[test]
@@ -1397,7 +1528,10 @@ mod tests {
         let json = serde_json::to_string(&zone).unwrap();
         let deserialized: GrowingZone = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(deserialized.hardware_device_id, Some("hardware_device:abc".into()));
+        assert_eq!(
+            deserialized.hardware_device_id,
+            Some("hardware_device:abc".into())
+        );
         assert_eq!(deserialized.hardware_port, Some(3));
     }
 }

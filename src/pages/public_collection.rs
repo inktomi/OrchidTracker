@@ -1,5 +1,3 @@
-use leptos::prelude::*;
-use leptos_router::hooks::use_params_map;
 use crate::components::botanical_art::{OrchidAccent, OrchidSpray};
 use crate::components::climate_dashboard::ClimateDashboard;
 use crate::components::orchid_collection::OrchidCollection;
@@ -9,9 +7,11 @@ use crate::model::ViewMode;
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
 use crate::server_fns::public::{
-    get_public_orchids, get_public_zones, get_public_climate_readings,
-    get_public_hemisphere, get_public_temp_unit,
+    get_public_climate_readings, get_public_hemisphere, get_public_orchids, get_public_temp_unit,
+    get_public_zones,
 };
+use leptos::prelude::*;
+use leptos_router::hooks::use_params_map;
 
 fn capitalize_first(s: &str) -> String {
     let mut chars = s.chars();
@@ -55,10 +55,7 @@ fn PublicBackground() -> impl IntoView {
 
 /// Hero section with brand badge, username heading, and plant count
 #[component]
-fn PublicHero(
-    display_name: String,
-    plant_count: usize,
-) -> impl IntoView {
+fn PublicHero(display_name: String, plant_count: usize) -> impl IntoView {
     view! {
         <header class="relative z-10 py-10 px-4 mx-auto text-center max-w-[1200px] public-hero-in">
             // Brand badge
@@ -126,64 +123,52 @@ fn PublicCTA() -> impl IntoView {
 #[component]
 pub fn PublicCollectionPage() -> impl IntoView {
     let params = use_params_map();
-    let username = Memo::new(move |_| {
-        params.get().get("username").unwrap_or_default()
-    });
+    let username = Memo::new(move |_| params.get().get("username").unwrap_or_default());
 
-    let orchids_resource = Resource::new(
-        move || username.get(),
-        |uname| get_public_orchids(uname),
-    );
+    let orchids_resource = Resource::new(move || username.get(), get_public_orchids);
 
-    let zones_resource = Resource::new(
-        move || username.get(),
-        |uname| get_public_zones(uname),
-    );
+    let zones_resource = Resource::new(move || username.get(), get_public_zones);
 
-    let climate_resource = Resource::new(
-        move || username.get(),
-        |uname| get_public_climate_readings(uname),
-    );
+    let climate_resource = Resource::new(move || username.get(), get_public_climate_readings);
 
-    let hemisphere_resource = Resource::new(
-        move || username.get(),
-        |uname| get_public_hemisphere(uname),
-    );
+    let hemisphere_resource = Resource::new(move || username.get(), get_public_hemisphere);
 
-    let temp_unit_resource = Resource::new(
-        move || username.get(),
-        |uname| get_public_temp_unit(uname),
-    );
+    let temp_unit_resource = Resource::new(move || username.get(), get_public_temp_unit);
 
     // Auth check for CTA visibility
     let current_user = Resource::new(|| (), |_| get_current_user());
 
     let zones_memo = Memo::new(move |_| {
-        zones_resource.get()
+        zones_resource
+            .get()
             .and_then(|r| r.ok())
             .unwrap_or_default()
     });
 
     let climate_readings = Memo::new(move |_| {
-        climate_resource.get()
+        climate_resource
+            .get()
             .and_then(|r| r.ok())
             .unwrap_or_default()
     });
 
     let temp_unit = Memo::new(move |_| {
-        temp_unit_resource.get()
+        temp_unit_resource
+            .get()
             .and_then(|r| r.ok())
             .unwrap_or_else(|| "C".to_string())
     });
 
     let hemisphere = Memo::new(move |_| {
-        hemisphere_resource.get()
+        hemisphere_resource
+            .get()
             .and_then(|r| r.ok())
             .unwrap_or_else(|| "N".to_string())
     });
 
     let orchids_memo = Memo::new(move |_| {
-        orchids_resource.get()
+        orchids_resource
+            .get()
             .and_then(|r| r.ok())
             .unwrap_or_default()
     });

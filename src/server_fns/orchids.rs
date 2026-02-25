@@ -193,7 +193,7 @@ fn validate_orchid_fields(
     if notes.len() > 5000 {
         return Err(ServerFnError::new("Notes must be at most 5000 characters"));
     }
-    if water_frequency_days < 1 || water_frequency_days > 365 {
+    if !(1..=365).contains(&water_frequency_days) {
         return Err(ServerFnError::new("Water frequency must be 1-365 days"));
     }
     if light_requirement.len() > 100 {
@@ -208,10 +208,10 @@ fn validate_orchid_fields(
     if temperature_range.len() > 100 {
         return Err(ServerFnError::new("Temperature range must be at most 100 characters"));
     }
-    if let Some(cs) = conservation_status {
-        if cs.len() > 200 {
-            return Err(ServerFnError::new("Conservation status must be at most 200 characters"));
-        }
+    if let Some(cs) = conservation_status
+        && cs.len() > 200
+    {
+        return Err(ServerFnError::new("Conservation status must be at most 200 characters"));
     }
     Ok(())
 }
@@ -499,10 +499,10 @@ pub async fn add_log_entry(
         "Flowering", "NewGrowth", "Repotted", "Fertilized",
         "PestTreatment", "Purchased", "Watered", "Note",
     ];
-    if let Some(ref et) = event_type {
-        if !allowed_event_types.contains(&et.as_str()) {
-            return Err(ServerFnError::new("Invalid event type"));
-        }
+    if let Some(ref et) = event_type
+        && !allowed_event_types.contains(&et.as_str())
+    {
+        return Err(ServerFnError::new("Invalid event type"));
     }
 
     let user_id = require_auth().await?;

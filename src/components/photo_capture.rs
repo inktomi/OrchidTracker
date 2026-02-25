@@ -89,11 +89,11 @@ pub fn PhotoCapture(
     if let Some(reset_signal) = reset {
         Effect::new(move |prev: Option<u32>| {
             let current = reset_signal.get();
-            if let Some(prev_val) = prev {
-                if current != prev_val {
-                    set_preview_data_url.set(None);
-                    set_error_msg.set(None);
-                }
+            if let Some(prev_val) = prev
+                && current != prev_val
+            {
+                set_preview_data_url.set(None);
+                set_error_msg.set(None);
             }
             current
         });

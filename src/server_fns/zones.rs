@@ -284,10 +284,10 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
     } else {
         let count_row: Option<CountRow> = response.take(0)
             .map_err(|e| internal_error("Zone count parse failed", e))?;
-        if let Some(row) = count_row {
-            if row.total > 0 {
-                return Ok(false); // Already has zones, skip migration
-            }
+        if let Some(row) = count_row
+            && row.total > 0
+        {
+            return Ok(false); // Already has zones, skip migration
         }
     }
 

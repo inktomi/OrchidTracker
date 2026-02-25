@@ -1,9 +1,9 @@
-use leptos::prelude::*;
 use crate::components::cabinet_table::OrchidCabinetTable;
 use crate::components::orchid_card::OrchidCard;
 use crate::model::ViewMode;
-use crate::orchid::{Orchid, GrowingZone, Hemisphere};
+use crate::orchid::{GrowingZone, Hemisphere, Orchid};
 use crate::watering::ClimateSnapshot;
+use leptos::prelude::*;
 
 const TAB_ACTIVE: &str = "flex gap-1.5 items-center py-2 px-4 text-sm font-semibold rounded-lg border-none shadow-sm transition-all cursor-pointer text-primary bg-surface dark:text-primary-light";
 const TAB_INACTIVE: &str = "flex gap-1.5 items-center py-2 px-4 text-sm font-medium bg-transparent rounded-lg border-none transition-all cursor-pointer text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200";
@@ -90,16 +90,12 @@ pub fn OrchidCollection(
                         />
                     }.into_any(),
                     ViewMode::Table => {
-                        let orchids_for_table = orchids.get();
-                        let zones_for_table = zones.get();
-                        let snapshots_for_table = climate_snapshots.map(|m| m.get()).unwrap_or_default();
-                        let hemi_for_table = hemisphere.map(|m| m.get()).unwrap_or_else(|| "N".to_string());
                         view! {
                             <OrchidCabinetTable
-                                orchids=orchids_for_table
-                                zones=zones_for_table
-                                climate_snapshots=snapshots_for_table
-                                hemisphere=hemi_for_table
+                                orchids=orchids
+                                zones=zones
+                                climate_snapshots=climate_snapshots
+                                hemisphere=hemisphere
                                 on_delete=on_delete
                                 on_select=on_select
                                 on_update=on_update

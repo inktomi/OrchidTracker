@@ -14,15 +14,23 @@ async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
         return Err(ServerFnError::new("User not found"));
     }
 
-    // Look up user by username
+    // Look up user by username and get their public preference in one query
     #[derive(serde::Deserialize, SurrealValue)]
     #[surreal(crate = "surrealdb::types")]
     struct UserRow {
         id: surrealdb::types::RecordId,
+        is_public: Option<bool>,
     }
 
     let mut resp = db()
-        .query("SELECT id FROM user WHERE username = $uname LIMIT 1")
+        .query("
+            SELECT 
+                id, 
+                (SELECT VALUE collection_public FROM user_preference WHERE owner = $parent.id LIMIT 1)[0] AS is_public 
+            FROM user 
+            WHERE username = $uname 
+            LIMIT 1
+        ")
         .bind(("uname", username.to_string()))
         .await
         .map_err(|e| internal_error("Public user lookup failed", e))?;
@@ -30,32 +38,12 @@ async fn resolve_public_user(username: &str) -> Result<String, ServerFnError> {
     let _ = resp.take_errors();
     let user_row: Option<UserRow> = resp.take(0).unwrap_or(None);
     let user_row = user_row.ok_or_else(|| ServerFnError::new("User not found"))?;
-    let user_id = record_id_to_string(&user_row.id);
-    let owner = user_row.id;
-
-    // Check collection_public preference
-    #[derive(serde::Deserialize, SurrealValue)]
-    #[surreal(crate = "surrealdb::types")]
-    struct PrefRow {
-        #[surreal(default)]
-        collection_public: bool,
-    }
-
-    let mut pref_resp = db()
-        .query("SELECT collection_public FROM user_preference WHERE owner = $owner LIMIT 1")
-        .bind(("owner", owner))
-        .await
-        .map_err(|e| internal_error("Public pref lookup failed", e))?;
-
-    let _ = pref_resp.take_errors();
-    let pref: Option<PrefRow> = pref_resp.take(0).unwrap_or(None);
-    let is_public = pref.map(|p| p.collection_public).unwrap_or(false);
-
-    if !is_public {
+    
+    if !user_row.is_public.unwrap_or(false) {
         return Err(ServerFnError::new("This collection is private"));
     }
 
-    Ok(user_id)
+    Ok(record_id_to_string(&user_row.id))
 }
 
 #[server]
@@ -143,19 +131,27 @@ pub async fn get_public_climate_readings(username: String) -> Result<Vec<Climate
         .map_err(|e| internal_error("Public get climate zones parse failed", e))?;
 
     let mut readings = Vec::new();
+    let mut set = tokio::task::JoinSet::new();
 
     for zone in &zones {
-        let mut resp = db()
-            .query(
-                "SELECT * FROM climate_reading WHERE zone = $zone_id ORDER BY recorded_at DESC LIMIT 1"
-            )
-            .bind(("zone_id", zone.id.clone()))
-            .await
-            .map_err(|e| internal_error("Public get reading query failed", e))?;
+        let zone_id = zone.id.clone();
+        set.spawn(async move {
+            let mut resp = db()
+                .query(
+                    "SELECT * FROM climate_reading WHERE zone = $zone_id ORDER BY recorded_at DESC LIMIT 1"
+                )
+                .bind(("zone_id", zone_id))
+                .await
+                .map_err(|e| internal_error("Public get reading query failed", e))?;
 
-        let _ = resp.take_errors();
+            let _ = resp.take_errors();
+            let reading: Option<ReadingDbRow> = resp.take(0).unwrap_or(None);
+            Ok::<_, ServerFnError>(reading)
+        });
+    }
 
-        let reading: Option<ReadingDbRow> = resp.take(0).unwrap_or(None);
+    while let Some(res) = set.join_next().await {
+        let reading = res.map_err(|e| internal_error("Join error", e))??;
         if let Some(row) = reading {
             readings.push(row.into_climate_reading());
         }
