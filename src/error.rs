@@ -43,5 +43,5 @@ pub fn internal_error(
     err: impl std::fmt::Display,
 ) -> leptos::prelude::ServerFnError {
     tracing::error!("{context}: {err}");
-    leptos::prelude::ServerFnError::new("An internal error occurred. Please try again later.")
+    leptos::prelude::ServerFnError::new("Oops, that didn't work. We're on it!")
 }

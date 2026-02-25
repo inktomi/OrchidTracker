@@ -202,7 +202,7 @@ fn extract_claude_text(json: &serde_json::Value) -> Result<String, String> {
 
 /// Call AI vision with automatic fallback: tries Gemini first, then Claude.
 #[cfg(feature = "ssr")]
-async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, ServerFnError> {
+async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, String> {
     use crate::config::config;
     let cfg = config();
 
@@ -210,9 +210,7 @@ async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, Serv
     let has_claude = !cfg.claude_api_key.is_empty();
 
     if !has_gemini && !has_claude {
-        return Err(ServerFnError::new(
-            "No AI API keys configured. Set GEMINI_API_KEY and/or CLAUDE_API_KEY in your .env file."
-        ));
+        return Err("No AI API keys configured. Set GEMINI_API_KEY and/or CLAUDE_API_KEY in your .env file.".to_string());
     }
 
     // Try Gemini first
@@ -223,7 +221,7 @@ async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, Serv
                 if has_claude {
                     tracing::warn!("Gemini failed ({}), falling back to Claude", e);
                 } else {
-                    return Err(ServerFnError::new(e));
+                    return Err(e);
                 }
             }
         }
@@ -234,9 +232,9 @@ async fn call_ai_vision(prompt: &str, image_base64: &str) -> Result<String, Serv
         match call_claude_vision(&cfg.claude_api_key, &cfg.claude_model, prompt, image_base64).await {
             Ok(text) => return Ok(text),
             Err(e) => {
-                return Err(ServerFnError::new(format!(
+                return Err(format!(
                     "AI analysis failed (both providers). Last error: {}", e
-                )));
+                ));
             }
         }
     }
@@ -490,14 +488,16 @@ pub async fn analyze_orchid_image(
     );
 
     let text = call_ai_vision(&prompt, &image_base64).await
-        .inspect_err(|e| tracing::error!("AI vision call failed: {}", e))?;
+        .map_err(|e| crate::error::internal_error("AI vision call failed", e))?;
 
     tracing::debug!("AI vision raw response ({} chars): {}", text.len(), &text[..text.len().min(500)]);
 
     let mut result: AnalysisResult = serde_json::from_str(&text)
         .map_err(|e| {
-            tracing::error!("Failed to parse AI response: {}. Raw text: {}", e, &text[..text.len().min(1000)]);
-            ServerFnError::new(format!("Failed to parse AI response: {}", e))
+            crate::error::internal_error(
+                "Failed to parse AI response",
+                format!("{}. Raw text: {}", e, &text[..text.len().min(1000)])
+            )
         })?;
 
     // Refine with Andy's Orchids data if available
@@ -617,7 +617,7 @@ pub(crate) async fn analyze_species_core(
     );
 
     let text = call_ai_text(&prompt).await
-        .inspect_err(|e| tracing::error!("AI text call failed for '{}': {}", species_name, e))?;
+        .map_err(|e| format!("AI text call failed for '{}': {}", species_name, e))?;
 
     tracing::debug!("AI text raw response for '{}' ({} chars): {}", species_name, text.len(), &text[..text.len().min(500)]);
 
@@ -664,10 +664,7 @@ pub async fn analyze_orchid_by_name(
 
     analyze_species_core(&species_name, &climate_summary, &zone_names, &existing_species)
         .await
-        .map_err(|e| {
-            tracing::error!("analyze_orchid_by_name failed for '{}': {}", species_name, e);
-            ServerFnError::new(e)
-        })
+        .map_err(|e| crate::error::internal_error(&format!("analyze_orchid_by_name failed for '{}'", species_name), e))
 }
 
 /// **What is it?**
