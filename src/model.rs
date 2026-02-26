@@ -19,6 +19,8 @@ pub enum ViewMode {
 pub enum HomeTab {
     /// The primary tab displaying the user's plant collection.
     MyPlants,
+    /// The tab displaying tasks that need to be done today.
+    Tasks,
     /// The tab displaying seasonal care information and transitions.
     Seasons,
 }

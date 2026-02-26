@@ -791,6 +791,72 @@ pub async fn mark_watered(
 }
 
 /// **What is it?**
+/// A server function that marks multiple orchids as having just been watered.
+///
+/// **Why does it exist?**
+/// It provides a bulk action endpoint to update the `last_watered_at` timestamp for a group of plants in a single request.
+///
+/// **How should it be used?**
+/// Call this from a "Water All" button in the Today tasks view or collection view.
+#[server]
+#[tracing::instrument(level = "info", skip_all, fields(count = orchid_ids.len()))]
+pub async fn mark_watered_batch(
+    /// The unique identifiers of the orchids to water.
+    orchid_ids: Vec<String>
+) -> Result<Vec<Orchid>, ServerFnError> {
+    use crate::auth::require_auth;
+    use crate::db::db;
+    use crate::error::internal_error;
+
+    if orchid_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let user_id = require_auth().await?;
+    tracing::info!(user_id = %user_id, count = %orchid_ids.len(), "mark_watered_batch called");
+    let owner = parse_record_id(&user_id)?;
+
+    let mut oids = Vec::new();
+    for id in &orchid_ids {
+        oids.push(parse_record_id(id)?);
+    }
+
+    // Update last_watered_at — targets MULTIPLE records by $ids
+    let mut response = db()
+        .query(
+            "UPDATE $ids SET last_watered_at = time::now() WHERE owner = $owner RETURN *"
+        )
+        .bind(("ids", oids.clone()))
+        .bind(("owner", owner.clone()))
+        .await
+        .map_err(|e| internal_error("Mark watered batch query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Mark watered batch query error", err_msg));
+    }
+
+    let db_rows: Vec<OrchidDbRow> = response.take(0)
+        .map_err(|e| internal_error("Mark watered batch parse failed", e))?;
+
+    let orchids: Vec<Orchid> = db_rows.into_iter().map(|r| r.into_orchid()).collect();
+
+    // Create log entries for each
+    for oid in oids {
+        let _ = db()
+            .query(
+                "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered', event_type = 'Watered'"
+            )
+            .bind(("orchid_id", oid))
+            .bind(("owner", owner.clone()))
+            .await;
+    }
+
+    Ok(orchids)
+}
+
+/// **What is it?**
 /// A server function that marks a specific orchid as having just been fertilized.
 ///
 /// **Why does it exist?**

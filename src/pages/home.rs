@@ -10,11 +10,12 @@ use crate::components::orchid_detail::OrchidDetail;
 use crate::components::seasonal_calendar::SeasonalCalendar;
 use crate::components::scanner::ScannerModal;
 use crate::components::settings::SettingsModal;
+use crate::components::today_tasks::TodayTasks;
 use crate::orchid::Alert;
 use crate::model::{HomeTab, Model, Msg};
 use crate::orchid::Orchid;
 use crate::server_fns::auth::get_current_user;
-use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered};
+use crate::server_fns::orchids::{get_orchids, create_orchid, update_orchid, delete_orchid, mark_watered, mark_watered_batch};
 use crate::server_fns::preferences::{get_temp_unit, get_hemisphere, get_collection_public};
 use crate::server_fns::devices::get_devices;
 use crate::server_fns::zones::{get_zones, migrate_legacy_placements};
@@ -236,6 +237,42 @@ pub fn HomePage() -> impl IntoView {
         });
     };
 
+    let on_water_all = move |ids: Vec<String>| {
+        let mut to_water = Vec::new();
+        watering_in_flight.update(|set| {
+            for id in &ids {
+                if !set.contains(id) {
+                    set.insert(id.clone());
+                    to_water.push(id.clone());
+                }
+            }
+        });
+
+        if to_water.is_empty() {
+            return;
+        }
+
+        leptos::task::spawn_local(async move {
+            match mark_watered_batch(to_water.clone()).await {
+                Ok(updated_orchids) => {
+                    orchids_local.update(|list| {
+                        for updated in updated_orchids {
+                            if let Some(o) = list.iter_mut().find(|o| o.id == updated.id) {
+                                *o = updated;
+                            }
+                        }
+                    });
+                }
+                Err(e) => set_toast_msg.set(Some(format!("Failed to mark all watered: {}", e))),
+            }
+            watering_in_flight.update(|set| {
+                for id in &to_water {
+                    set.remove(id);
+                }
+            });
+        });
+    };
+
     let on_zones_changed = move || {
         set_zones_version.update(|v| *v += 1);
     };
@@ -312,6 +349,20 @@ pub fn HomePage() -> impl IntoView {
                                         "My Plants"
                                     </button>
                                     <button
+                                        class=move || if home_tab.get() == HomeTab::Tasks {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
+                                        } else {
+                                            "flex gap-2 items-center py-2.5 px-5 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-500 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300"
+                                        }
+                                        on:click=move |_| send(Msg::SetHomeTab(HomeTab::Tasks))
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                                        </svg>
+                                        "Today"
+                                    </button>
+                                    <button
                                         class=move || if home_tab.get() == HomeTab::Seasons {
                                             "flex gap-2 items-center py-2.5 px-5 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary dark:text-primary-light dark:border-primary-light"
                                         } else {
@@ -381,6 +432,27 @@ pub fn HomePage() -> impl IntoView {
                                                     on_add=move || send(Msg::ShowAddModal(true))
                                                     on_scan=move || send(Msg::ShowScanner(true))
                                                 />
+                                            </div>
+                                        }.into_any(),
+                                        HomeTab::Tasks => view! {
+                                            <div>
+                                                <Suspense fallback=|| ()>
+                                                    {move || {
+                                                        let o_memo = orchids_memo;
+                                                        let snap_memo = climate_snapshots;
+                                                        let h_memo = hemisphere;
+                                                        view! { 
+                                                            <TodayTasks 
+                                                                orchids=o_memo 
+                                                                climate_snapshots=snap_memo 
+                                                                hemisphere=h_memo
+                                                                on_select=move |o: Orchid| send(Msg::SelectOrchid(Some(o)))
+                                                                on_water=on_water
+                                                                on_water_all=on_water_all
+                                                            /> 
+                                                        }
+                                                    }}
+                                                </Suspense>
                                             </div>
                                         }.into_any(),
                                         HomeTab::Seasons => view! {

@@ -86,6 +86,10 @@ pub mod seasonal_calendar;
 /// It exists to guide users through estimating indoor conditions or linking hardware sensors.
 /// It is used during user onboarding and when adding new zones from the settings.
 pub mod zone_wizard;
+/// Dashboard for today's tasks.
+/// It exists to show a list of plants that need to be watered today.
+/// It is used as a tab on the home page.
+pub mod today_tasks;
 /// Inline form for manually entering current temperature and humidity.
 /// It exists to allow users without automated sensors to record climate snapshots.
 /// It is used within the `climate_dashboard` or zone settings.
