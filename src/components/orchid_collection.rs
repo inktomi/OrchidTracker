@@ -1,7 +1,7 @@
 use crate::components::cabinet_table::OrchidCabinetTable;
 use crate::components::orchid_card::OrchidCard;
 use crate::model::ViewMode;
-use crate::orchid::{GrowingZone, Hemisphere, Orchid};
+use crate::orchid::{GrowingZone, Orchid};
 use crate::watering::ClimateSnapshot;
 use leptos::prelude::*;
 
@@ -24,7 +24,6 @@ pub fn OrchidCollection(
     on_scan: impl Fn() + 'static + Copy + Send + Sync,
     #[prop(optional)] read_only: bool,
 ) -> impl IntoView {
-    let (sort_needs_water, set_sort_needs_water) = signal(false);
     let is_empty = Memo::new(move |_| orchids.get().is_empty());
 
     view! {
@@ -42,8 +41,8 @@ pub fn OrchidCollection(
             <div class="flex justify-center mb-6">
                 <div class="inline-flex gap-1 p-1 rounded-xl bg-secondary">
                     <button
-                        class=move || if view_mode.get() == ViewMode::Grid && !sort_needs_water.get() { TAB_ACTIVE } else { TAB_INACTIVE }
-                        on:click=move |_| { set_sort_needs_water.set(false); on_set_view(ViewMode::Grid); }
+                        class=move || if view_mode.get() == ViewMode::Grid { TAB_ACTIVE } else { TAB_INACTIVE }
+                        on:click=move |_| on_set_view(ViewMode::Grid)
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
@@ -51,17 +50,8 @@ pub fn OrchidCollection(
                         "All Plants"
                     </button>
                     <button
-                        class=move || if sort_needs_water.get() { TAB_ACTIVE } else { TAB_INACTIVE }
-                        on:click=move |_| { set_sort_needs_water.set(true); on_set_view(ViewMode::Grid); }
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
-                        </svg>
-                        "Needs Water"
-                    </button>
-                    <button
                         class=move || if view_mode.get() == ViewMode::Table { TAB_ACTIVE } else { TAB_INACTIVE }
-                        on:click=move |_| { set_sort_needs_water.set(false); on_set_view(ViewMode::Table); }
+                        on:click=move |_| on_set_view(ViewMode::Table)
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M2 4.5A2.5 2.5 0 014.5 2h11A2.5 2.5 0 0118 4.5v2A2.5 2.5 0 0115.5 9h-11A2.5 2.5 0 012 6.5v-2zM2 13.5A2.5 2.5 0 014.5 11h11a2.5 2.5 0 012.5 2.5v2a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 012 15.5v-2z"/>
@@ -82,7 +72,6 @@ pub fn OrchidCollection(
                             zones=zones
                             climate_snapshots=climate_snapshots
                             hemisphere=hemisphere
-                            sort_needs_water=sort_needs_water
                             on_delete=on_delete
                             on_select=on_select
                             on_water=on_water
@@ -117,7 +106,6 @@ fn OrchidGrid(
     zones: Memo<Vec<GrowingZone>>,
     climate_snapshots: Option<Memo<Vec<ClimateSnapshot>>>,
     hemisphere: Option<Memo<String>>,
-    sort_needs_water: ReadSignal<bool>,
     on_delete: impl Fn(String) + 'static + Copy + Send + Sync,
     on_select: impl Fn(Orchid) + 'static + Copy + Send + Sync,
     on_water: impl Fn(String) + 'static + Copy + Send + Sync,
@@ -126,22 +114,7 @@ fn OrchidGrid(
     view! {
         <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
             <For
-                each=move || {
-                    let mut list = orchids.get();
-                    if sort_needs_water.get() {
-                        let snaps = climate_snapshots.map(|m| m.get()).unwrap_or_default();
-                        let hemi_str = hemisphere.map(|m| m.get()).unwrap_or_else(|| "N".to_string());
-                        let hemi = Hemisphere::from_code(&hemi_str);
-                        list.sort_by(|a, b| {
-                            let snap_a = snaps.iter().find(|s| s.zone_name == a.placement);
-                            let snap_b = snaps.iter().find(|s| s.zone_name == b.placement);
-                            let a_due = a.climate_days_until_due(&hemi, snap_a).unwrap_or(i64::MAX);
-                            let b_due = b.climate_days_until_due(&hemi, snap_b).unwrap_or(i64::MAX);
-                            a_due.cmp(&b_due)
-                        });
-                    }
-                    list
-                }
+                each=move || orchids.get()
                 key=|orchid| format!(
                     "{}-{}",
                     orchid.id,
