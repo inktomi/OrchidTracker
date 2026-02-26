@@ -561,7 +561,6 @@ pub async fn get_all_zone_snapshots() -> Result<Vec<crate::watering::ClimateSnap
     use crate::auth::require_auth;
     use crate::db::db;
     use crate::error::internal_error;
-    use crate::orchid::LocationType;
     use std::collections::HashMap;
 
     let user_id = require_auth().await?;
@@ -604,7 +603,7 @@ pub async fn get_all_zone_snapshots() -> Result<Vec<crate::watering::ClimateSnap
 
     // Build location_type lookup by zone ID
     let zone_outdoor: HashMap<String, bool> = zones.iter().map(|z| {
-        let is_outdoor = z.location_type.as_ref().map(|lt| *lt == LocationType::Outdoor).unwrap_or(false);
+        let is_outdoor = z.location_type.as_deref() == Some("Outdoor");
         (crate::server_fns::auth::record_id_to_string(&z.id), is_outdoor)
     }).collect();
 
@@ -641,7 +640,7 @@ pub(crate) mod ssr_types {
         pub id: surrealdb::types::RecordId,
         pub name: String,
         #[surreal(default)]
-        pub location_type: Option<crate::orchid::LocationType>,
+        pub location_type: Option<String>,
     }
 
     #[derive(serde::Deserialize, SurrealValue)]
@@ -730,3 +729,31 @@ pub(crate) mod ssr_types {
 
 #[cfg(feature = "ssr")]
 use ssr_types::*;
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::ssr_types::ZoneWithType;
+    use surrealdb::engine::local::Mem;
+    use surrealdb::Surreal;
+
+    #[tokio::test]
+    async fn test_zone_with_type_deserialization() {
+        let db = Surreal::new::<Mem>(()).await.unwrap();
+        db.use_ns("test").use_db("test").await.unwrap();
+
+        // This simulates the exact state that caused the crash!
+        let mut response = db.query("CREATE type::record('growing_zone', '1') SET name = 'Test', location_type = 'Outdoor'")
+            .await
+            .unwrap();
+            
+        let _ = response.take_errors();
+        
+        // This line used to crash due to LocationType enum deserialization rules!
+        let mut get_resp = db.query("SELECT * FROM type::record('growing_zone', '1')").await.unwrap();
+        let zone: Option<ZoneWithType> = get_resp.take(0).unwrap();
+        
+        let z = zone.unwrap();
+        assert_eq!(z.name, "Test");
+        assert_eq!(z.location_type, Some("Outdoor".to_string()));
+    }
+}
