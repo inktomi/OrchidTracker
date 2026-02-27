@@ -168,10 +168,6 @@ pub fn CookiePolicyPage() -> impl IntoView {
                     "If you have questions about this Cookie Policy, please contact us through the Velamen application."
                 </p>
 
-                // Footer
-                <div class="pt-6 mt-8 text-xs border-t border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500">
-                    "\u{00a9} 2026 Velamen. All rights reserved."
-                </div>
             </div>
         </main>
     }

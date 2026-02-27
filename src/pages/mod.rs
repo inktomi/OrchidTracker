@@ -22,3 +22,11 @@ pub mod register;
 /// It exists for GDPR/CCPA transparency about our essential session cookie.
 /// It is used by the router for the `/cookie-policy` path.
 pub mod cookie_policy;
+/// The standalone account deletion page for GDPR/CCPA-linkable deletion.
+/// It exists as a dedicated URL that can be referenced from emails, support pages, or privacy policies.
+/// It is used by the router for the `/account/delete` path.
+pub mod account_delete;
+/// The Terms of Service page outlining usage rules and legal obligations.
+/// It exists for legal compliance and user transparency about service usage terms.
+/// It is used by the router for the `/terms` path.
+pub mod terms_of_service;

@@ -388,27 +388,32 @@ pub async fn migrate_legacy_placements() -> Result<bool, ServerFnError> {
 
     for (old_val, new_name, light, location, order) in &legacy_map {
         if placements.iter().any(|p| p == *old_val) {
-            let _ = db()
+            // Create zone + update orchid placements atomically
+            let mut resp = db()
                 .query(
-                    "CREATE growing_zone SET \
-                     owner = $owner, name = $name, light_level = $light_level, \
-                     location_type = $location_type, temperature_range = '', \
-                     humidity = '', description = '', sort_order = $sort_order"
+                    "BEGIN TRANSACTION; \
+                     CREATE growing_zone SET \
+                         owner = $owner, name = $name, light_level = $light_level, \
+                         location_type = $location_type, temperature_range = '', \
+                         humidity = '', description = '', sort_order = $sort_order; \
+                     UPDATE orchid SET placement = $new_name WHERE owner = $owner AND placement = $old_val; \
+                     COMMIT TRANSACTION;"
                 )
                 .bind(("owner", owner.clone()))
                 .bind(("name", new_name.to_string()))
                 .bind(("light_level", light.to_string()))
                 .bind(("location_type", location.to_string()))
                 .bind(("sort_order", *order as i64))
-                .await;
-
-            // Update orchid placement strings
-            let _ = db()
-                .query("UPDATE orchid SET placement = $new_name WHERE owner = $owner AND placement = $old_val")
-                .bind(("owner", owner.clone()))
                 .bind(("new_name", new_name.to_string()))
                 .bind(("old_val", old_val.to_string()))
-                .await;
+                .await
+                .map_err(|e| internal_error("Migrate placement query failed", e))?;
+
+            let errors = resp.take_errors();
+            if !errors.is_empty() {
+                let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+                return Err(internal_error("Migrate placement query error", err_msg));
+            }
         }
     }
 

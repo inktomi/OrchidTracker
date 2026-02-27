@@ -249,45 +249,37 @@ pub async fn save_wizard_estimation(
 
     let vpd = calculate_vpd(temperature, humidity);
 
-    // Create climate reading with wizard source
+    // Create climate reading and update zone text fields atomically
+    let temp_range = format!("{:.0}-{:.0}C", temperature - 2.0, temperature + 2.0);
+    let humidity_str = format!("{:.0}%", humidity);
+
     let mut resp = db()
         .query(
-            "CREATE climate_reading SET \
-             zone = $zone_id, zone_name = $zone_name, \
-             temperature = $temp, humidity = $humidity, \
-             vpd = $vpd, source = $source, recorded_at = time::now()"
+            "BEGIN TRANSACTION; \
+             CREATE climate_reading SET \
+                 zone = $zone_id, zone_name = $zone_name, \
+                 temperature = $temp, humidity = $humidity, \
+                 vpd = $vpd, source = $source, recorded_at = time::now(); \
+             UPDATE $zone_id SET temperature_range = $temp_range, humidity = $hum WHERE owner = $owner; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("zone_id", zone_record.clone()))
+        .bind(("zone_id", zone_record))
         .bind(("zone_name", zone_name))
         .bind(("temp", temperature))
         .bind(("humidity", humidity))
         .bind(("vpd", vpd))
         .bind(("source", "wizard".to_string()))
-        .await
-        .map_err(|e| internal_error("Save wizard reading failed", e))?;
-
-    let errors = resp.take_errors();
-    if !errors.is_empty() {
-        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
-        return Err(internal_error("Save wizard reading error", err_msg));
-    }
-
-    // Update zone's text fields too
-    let temp_range = format!("{:.0}-{:.0}C", temperature - 2.0, temperature + 2.0);
-    let humidity_str = format!("{:.0}%", humidity);
-
-    let mut zone_resp = db()
-        .query(
-            "UPDATE $id SET temperature_range = $temp_range, humidity = $hum WHERE owner = $owner"
-        )
-        .bind(("id", zone_record))
         .bind(("temp_range", temp_range))
         .bind(("hum", humidity_str))
         .bind(("owner", owner))
         .await
-        .map_err(|e| internal_error("Update zone fields failed", e))?;
+        .map_err(|e| internal_error("Save wizard estimation failed", e))?;
 
-    let _ = zone_resp.take_errors();
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Save wizard estimation error", err_msg));
+    }
 
     Ok(())
 }

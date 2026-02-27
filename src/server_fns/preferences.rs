@@ -70,16 +70,21 @@ pub async fn save_temp_unit(
         .await
         .map_err(|e| internal_error("Save preference query failed", e))?;
 
-    let _ = resp.take_errors();
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Save preference query error", err_msg));
+    }
 
     // If no row existed, create one
     let updated: Vec<serde_json::Value> = resp.take(0).unwrap_or_default();
     if updated.is_empty() {
-        let _ = db()
+        db()
             .query("CREATE user_preference SET owner = $owner, temp_unit = $unit")
             .bind(("owner", owner))
             .bind(("unit", unit.to_string()))
-            .await;
+            .await
+            .map_err(|e| internal_error("Create preference query failed", e))?;
     }
 
     Ok(())
@@ -154,16 +159,21 @@ pub async fn save_hemisphere(
         .await
         .map_err(|e| internal_error("Save hemisphere query failed", e))?;
 
-    let _ = resp.take_errors();
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Save hemisphere query error", err_msg));
+    }
 
     // If no row existed, create one
     let updated: Vec<serde_json::Value> = resp.take(0).unwrap_or_default();
     if updated.is_empty() {
-        let _ = db()
+        db()
             .query("CREATE user_preference SET owner = $owner, hemisphere = $hemi")
             .bind(("owner", owner))
             .bind(("hemi", hemisphere.to_string()))
-            .await;
+            .await
+            .map_err(|e| internal_error("Create hemisphere preference query failed", e))?;
     }
 
     Ok(())
@@ -236,16 +246,21 @@ pub async fn save_collection_public(
         .await
         .map_err(|e| internal_error("Save collection_public query failed", e))?;
 
-    let _ = resp.take_errors();
+    let errors = resp.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Save collection_public query error", err_msg));
+    }
 
     // If no row existed, create one
     let updated: Vec<serde_json::Value> = resp.take(0).unwrap_or_default();
     if updated.is_empty() {
-        let _ = db()
+        db()
             .query("CREATE user_preference SET owner = $owner, collection_public = $public")
             .bind(("owner", owner))
             .bind(("public", public))
-            .await;
+            .await
+            .map_err(|e| internal_error("Create collection_public preference query failed", e))?;
     }
 
     Ok(())

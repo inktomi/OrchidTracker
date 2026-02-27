@@ -623,13 +623,20 @@ pub async fn add_log_entry(
     let orchid_record = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
 
+    // Create log entry + update care timestamps atomically
+    // The WHERE clause with $event_type comparison makes non-matching UPDATEs no-ops
     let mut response = db()
         .query(
-            "CREATE log_entry SET \
-             orchid = $orchid_id, owner = $owner, \
-             note = $note, image_filename = $image_filename, \
-             event_type = $event_type \
-             RETURN *"
+            "BEGIN TRANSACTION; \
+             CREATE log_entry SET \
+                 orchid = $orchid_id, owner = $owner, \
+                 note = $note, image_filename = $image_filename, \
+                 event_type = $event_type \
+                 RETURN *; \
+             UPDATE $orchid_id SET last_watered_at = time::now() WHERE owner = $owner AND $event_type = 'Watered'; \
+             UPDATE $orchid_id SET last_fertilized_at = time::now() WHERE owner = $owner AND $event_type = 'Fertilized'; \
+             UPDATE $orchid_id SET last_repotted_at = time::now() WHERE owner = $owner AND $event_type = 'Repotted'; \
+             COMMIT TRANSACTION;"
         )
         .bind(("orchid_id", orchid_record.clone()))
         .bind(("owner", owner.clone()))
@@ -645,42 +652,16 @@ pub async fn add_log_entry(
         return Err(internal_error("Add log entry query error", err_msg));
     }
 
-    let db_row: Option<LogEntryDbRow> = response.take(0)
+    // Index 1 = CREATE log_entry result (index 0 = BEGIN)
+    let db_row: Option<LogEntryDbRow> = response.take(1)
         .map_err(|e| internal_error("Add log entry parse failed", e))?;
 
     let entry = db_row.map(|r| r.into_log_entry())
         .ok_or_else(|| ServerFnError::new("Failed to create log entry"))?;
 
-    // Update orchid care timestamps based on event type
-    match event_type.as_deref() {
-        Some("Watered") => {
-            let _ = db()
-                .query("UPDATE $orchid_id SET last_watered_at = time::now() WHERE owner = $owner")
-                .bind(("orchid_id", orchid_record.clone()))
-                .bind(("owner", owner.clone()))
-                .await;
-        }
-        Some("Fertilized") => {
-            let _ = db()
-                .query("UPDATE $orchid_id SET last_fertilized_at = time::now() WHERE owner = $owner")
-                .bind(("orchid_id", orchid_record.clone()))
-                .bind(("owner", owner.clone()))
-                .await;
-        }
-        Some("Repotted") => {
-            let _ = db()
-                .query("UPDATE $orchid_id SET last_repotted_at = time::now() WHERE owner = $owner")
-                .bind(("orchid_id", orchid_record.clone()))
-                .bind(("owner", owner.clone()))
-                .await;
-        }
-        _ => {}
-    }
-
-    // Check for first bloom
+    // Check for first bloom (separate query — reads data created in the transaction above)
     let mut is_first_bloom = false;
     if event_type.as_deref() == Some("Flowering") {
-        // Check if any prior flowering entries exist
         let mut bloom_resp = db()
             .query(
                 "SELECT count() AS cnt FROM log_entry \
@@ -693,7 +674,12 @@ pub async fn add_log_entry(
             .await
             .map_err(|e| internal_error("Check bloom query failed", e))?;
 
-        let _ = bloom_resp.take_errors();
+        let bloom_errors = bloom_resp.take_errors();
+        if !bloom_errors.is_empty() {
+            let err_msg = bloom_errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+            return Err(internal_error("Check bloom query error", err_msg));
+        }
+
         let bloom_count: Option<serde_json::Value> = bloom_resp.take(0)
             .unwrap_or(None);
 
@@ -704,14 +690,15 @@ pub async fn add_log_entry(
         // count == 1 means the entry we just created is the only one
         if count <= 1 {
             is_first_bloom = true;
-            let _ = db()
+            db()
                 .query(
                     "UPDATE $orchid_id SET first_bloom_at = time::now() \
                      WHERE owner = $owner"
                 )
                 .bind(("orchid_id", orchid_record))
                 .bind(("owner", owner))
-                .await;
+                .await
+                .map_err(|e| internal_error("Set first bloom query failed", e))?;
         }
     }
 
@@ -782,13 +769,16 @@ pub async fn mark_watered(
     let oid = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
 
-    // Update last_watered_at — targets exactly ONE record by $id
+    // Update orchid + create log entry atomically
     let mut response = db()
         .query(
-            "UPDATE $id SET last_watered_at = time::now() WHERE owner = $owner RETURN *"
+            "BEGIN TRANSACTION; \
+             UPDATE $id SET last_watered_at = time::now() WHERE owner = $owner RETURN *; \
+             CREATE log_entry SET orchid = $id, owner = $owner, note = 'Watered', event_type = 'Watered'; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("id", oid.clone()))
-        .bind(("owner", owner.clone()))
+        .bind(("id", oid))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Mark watered query failed", e))?;
 
@@ -798,20 +788,12 @@ pub async fn mark_watered(
         return Err(internal_error("Mark watered query error", err_msg));
     }
 
-    let db_row: Option<OrchidDbRow> = response.take(0)
+    // Index 1 = UPDATE result (index 0 = BEGIN)
+    let db_row: Option<OrchidDbRow> = response.take(1)
         .map_err(|e| internal_error("Mark watered parse failed", e))?;
 
     let orchid = db_row.map(|r| r.into_orchid())
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
-
-    // Also create a log entry with event_type
-    let _ = db()
-        .query(
-            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered', event_type = 'Watered'"
-        )
-        .bind(("orchid_id", oid))
-        .bind(("owner", owner))
-        .await;
 
     Ok(orchid)
 }
@@ -847,13 +829,18 @@ pub async fn mark_watered_batch(
         oids.push(parse_record_id(id)?);
     }
 
-    // Update last_watered_at — targets MULTIPLE records by $ids
+    // Update orchids + create log entries atomically
     let mut response = db()
         .query(
-            "UPDATE $ids SET last_watered_at = time::now() WHERE owner = $owner RETURN *"
+            "BEGIN TRANSACTION; \
+             UPDATE $ids SET last_watered_at = time::now() WHERE owner = $owner RETURN *; \
+             FOR $oid IN $ids { \
+                 CREATE log_entry SET orchid = $oid, owner = $owner, note = 'Watered', event_type = 'Watered'; \
+             }; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("ids", oids.clone()))
-        .bind(("owner", owner.clone()))
+        .bind(("ids", oids))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Mark watered batch query failed", e))?;
 
@@ -863,21 +850,11 @@ pub async fn mark_watered_batch(
         return Err(internal_error("Mark watered batch query error", err_msg));
     }
 
-    let db_rows: Vec<OrchidDbRow> = response.take(0)
+    // Index 1 = UPDATE result (index 0 = BEGIN)
+    let db_rows: Vec<OrchidDbRow> = response.take(1)
         .map_err(|e| internal_error("Mark watered batch parse failed", e))?;
 
     let orchids: Vec<Orchid> = db_rows.into_iter().map(|r| r.into_orchid()).collect();
-
-    // Create log entries for each
-    for oid in oids {
-        let _ = db()
-            .query(
-                "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Watered', event_type = 'Watered'"
-            )
-            .bind(("orchid_id", oid))
-            .bind(("owner", owner.clone()))
-            .await;
-    }
 
     Ok(orchids)
 }
@@ -904,12 +881,16 @@ pub async fn mark_fertilized(
     let oid = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
 
+    // Update orchid + create log entry atomically
     let mut response = db()
         .query(
-            "UPDATE $id SET last_fertilized_at = time::now() WHERE owner = $owner RETURN *"
+            "BEGIN TRANSACTION; \
+             UPDATE $id SET last_fertilized_at = time::now() WHERE owner = $owner RETURN *; \
+             CREATE log_entry SET orchid = $id, owner = $owner, note = 'Fertilized', event_type = 'Fertilized'; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("id", oid.clone()))
-        .bind(("owner", owner.clone()))
+        .bind(("id", oid))
+        .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Mark fertilized query failed", e))?;
 
@@ -919,19 +900,12 @@ pub async fn mark_fertilized(
         return Err(internal_error("Mark fertilized query error", err_msg));
     }
 
-    let db_row: Option<OrchidDbRow> = response.take(0)
+    // Index 1 = UPDATE result (index 0 = BEGIN)
+    let db_row: Option<OrchidDbRow> = response.take(1)
         .map_err(|e| internal_error("Mark fertilized parse failed", e))?;
 
     let orchid = db_row.map(|r| r.into_orchid())
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
-
-    let _ = db()
-        .query(
-            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Fertilized', event_type = 'Fertilized'"
-        )
-        .bind(("orchid_id", oid))
-        .bind(("owner", owner))
-        .await;
 
     Ok(orchid)
 }
@@ -962,12 +936,16 @@ pub async fn mark_repotted(
     let oid = parse_record_id(&orchid_id)?;
     let owner = parse_record_id(&user_id)?;
 
+    // Update orchid + create log entry atomically
     let mut response = db()
         .query(
-            "UPDATE $id SET last_repotted_at = time::now(), pot_medium = $pot_medium, pot_size = $pot_size WHERE owner = $owner RETURN *"
+            "BEGIN TRANSACTION; \
+             UPDATE $id SET last_repotted_at = time::now(), pot_medium = $pot_medium, pot_size = $pot_size WHERE owner = $owner RETURN *; \
+             CREATE log_entry SET orchid = $id, owner = $owner, note = 'Repotted', event_type = 'Repotted'; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("id", oid.clone()))
-        .bind(("owner", owner.clone()))
+        .bind(("id", oid))
+        .bind(("owner", owner))
         .bind(("pot_medium", pot_medium))
         .bind(("pot_size", pot_size))
         .await
@@ -979,19 +957,12 @@ pub async fn mark_repotted(
         return Err(internal_error("Mark repotted query error", err_msg));
     }
 
-    let db_row: Option<OrchidDbRow> = response.take(0)
+    // Index 1 = UPDATE result (index 0 = BEGIN)
+    let db_row: Option<OrchidDbRow> = response.take(1)
         .map_err(|e| internal_error("Mark repotted parse failed", e))?;
 
     let orchid = db_row.map(|r| r.into_orchid())
         .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))?;
-
-    let _ = db()
-        .query(
-            "CREATE log_entry SET orchid = $orchid_id, owner = $owner, note = 'Repotted', event_type = 'Repotted'"
-        )
-        .bind(("orchid_id", oid))
-        .bind(("owner", owner))
-        .await;
 
     Ok(orchid)
 }

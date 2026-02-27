@@ -10,6 +10,7 @@ use crate::server_fns::public::{
     get_public_climate_readings, get_public_hemisphere, get_public_orchids, get_public_temp_unit,
     get_public_zones,
 };
+use crate::server_fns::preferences::save_collection_public;
 use leptos::prelude::*;
 use leptos_router::hooks::use_params_map;
 
@@ -206,7 +207,27 @@ pub fn PublicCollectionPage() -> impl IntoView {
                         .map(|e| e.to_string())
                         .unwrap_or_else(|| "Something went wrong".to_string());
 
-                    let display_msg = if err_msg.contains("This collection is private") {
+                    let is_private = err_msg.contains("This collection is private");
+
+                    // Check if the logged-in user is viewing their own private collection
+                    let current_username = current_user.get()
+                        .and_then(|r| r.ok())
+                        .flatten()
+                        .map(|u| u.username);
+                    let viewing_username = username.get();
+                    let is_own_private = is_private
+                        && current_username.as_deref() == Some(viewing_username.as_str());
+
+                    if is_own_private {
+                        return view! {
+                            <div class="min-h-screen bg-cream">
+                                <PublicBackground />
+                                <OwnPrivateCollectionPrompt username=viewing_username />
+                            </div>
+                        }.into_any();
+                    }
+
+                    let display_msg = if is_private {
                         "This collection is private.".to_string()
                     } else if err_msg.contains("User not found") {
                         "User not found.".to_string()
@@ -354,5 +375,89 @@ pub fn PublicCollectionPage() -> impl IntoView {
                 }.into_any()
             }}
         </Suspense>
+    }
+}
+
+/// Prompt shown when a logged-in user visits their own private collection URL.
+/// Offers a one-click toggle to make the collection public.
+#[component]
+fn OwnPrivateCollectionPrompt(username: String) -> impl IntoView {
+    let (is_enabling, set_is_enabling) = signal(false);
+    let (enabled, set_enabled) = signal(false);
+    let (error, set_error) = signal(Option::<String>::None);
+    let collection_url = format!("/u/{}", username);
+
+    view! {
+        <div class="flex relative z-10 flex-col items-center py-20 px-6 text-center">
+            <div class="flex gap-2 justify-center items-center mb-8">
+                <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
+                <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Velamen"</span>
+            </div>
+
+            {move || if enabled.get() {
+                view! {
+                    <div>
+                        <div class="mb-4 text-4xl text-primary/60" aria-hidden="true">"\u{1F310}"</div>
+                        <h1 class="mb-2 text-xl font-semibold text-stone-700 dark:text-stone-200">"Your collection is now public!"</h1>
+                        <p class="mb-6 max-w-sm text-sm text-stone-500 dark:text-stone-400">
+                            "Anyone with the link can view your plants. You can change this anytime in Settings."
+                        </p>
+                        <a
+                            href=collection_url.clone()
+                            class="inline-flex gap-2 items-center py-2.5 px-6 text-sm font-semibold text-white rounded-xl transition-all cursor-pointer bg-primary hover:bg-primary-dark"
+                        >
+                            "View My Collection"
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    </div>
+                }.into_any()
+            } else {
+                view! {
+                    <div>
+                        <div class="mb-4 text-4xl text-stone-300 dark:text-stone-600" aria-hidden="true">"\u{1F512}"</div>
+                        <h1 class="mb-2 text-xl font-semibold text-stone-700 dark:text-stone-200">"Your collection is private"</h1>
+                        <p class="mb-6 max-w-sm text-sm text-stone-500 dark:text-stone-400">
+                            "This is how others would see your collection page. Enable sharing to let anyone with the link browse your plants."
+                        </p>
+
+                        {move || error.get().map(|err| view! {
+                            <p class="mb-4 text-sm text-danger">{err}</p>
+                        })}
+
+                        <div class="flex flex-col gap-3 justify-center items-center sm:flex-row">
+                            <button
+                                class="inline-flex gap-2 items-center py-2.5 px-6 text-sm font-semibold text-white rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-primary hover:bg-primary-dark"
+                                disabled=move || is_enabling.get()
+                                on:click=move |_| {
+                                    set_is_enabling.set(true);
+                                    set_error.set(None);
+                                    leptos::task::spawn_local(async move {
+                                        match save_collection_public(true).await {
+                                            Ok(()) => set_enabled.set(true),
+                                            Err(e) => {
+                                                set_error.set(Some(e.to_string()));
+                                                set_is_enabling.set(false);
+                                            }
+                                        }
+                                    });
+                                }
+                            >
+                                {move || if is_enabling.get() {
+                                    "Enabling..."
+                                } else {
+                                    "Enable Sharing"
+                                }}
+                            </button>
+                            <a
+                                href="/"
+                                class="py-2.5 px-6 text-sm font-medium transition-colors text-stone-500 dark:text-stone-400 dark:hover:text-stone-200 hover:text-stone-700"
+                            >"Back to Dashboard"</a>
+                        </div>
+                    </div>
+                }.into_any()
+            }}
+        </div>
     }
 }

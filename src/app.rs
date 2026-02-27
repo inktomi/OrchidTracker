@@ -9,7 +9,10 @@ use crate::pages::onboarding::OnboardingPage;
 use crate::pages::public_collection::PublicCollectionPage;
 use crate::pages::register::RegisterPage;
 use crate::pages::cookie_policy::CookiePolicyPage;
+use crate::pages::account_delete::AccountDeletePage;
+use crate::pages::terms_of_service::TermsOfServicePage;
 use crate::components::cookie_consent::CookieConsent;
+use crate::components::global_footer::GlobalFooter;
 
 /// SSR shell function — renders the outer HTML document
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -51,8 +54,11 @@ pub fn App() -> impl IntoView {
                 <Route path=path!("/onboarding") view=OnboardingPage />
                 <Route path=path!("/u/:username") view=PublicCollectionPage />
                 <Route path=path!("/cookie-policy") view=CookiePolicyPage />
+                <Route path=path!("/account/delete") view=AccountDeletePage />
+                <Route path=path!("/terms") view=TermsOfServicePage />
             </Routes>
         </Router>
+        <GlobalFooter />
         <CookieConsent />
     }
 }

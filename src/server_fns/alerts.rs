@@ -45,24 +45,14 @@ pub async fn subscribe_push(
     let owner = surrealdb::types::RecordId::parse_simple(&user_id)
         .map_err(|e| internal_error("Owner ID parse failed", e))?;
 
-    // Upsert: delete existing subscriptions for this user + endpoint, then create
-    let mut del_resp = db()
-        .query("DELETE push_subscription WHERE owner = $owner AND endpoint = $endpoint")
-        .bind(("owner", owner.clone()))
-        .bind(("endpoint", endpoint.clone()))
-        .await
-        .map_err(|e| internal_error("Delete push sub query failed", e))?;
-
-    let del_errors = del_resp.take_errors();
-    if !del_errors.is_empty() {
-        let msg = del_errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
-        return Err(internal_error("Delete push sub statement error", msg));
-    }
-
+    // Upsert atomically: delete existing subscriptions then create new one
     // Note: bind param is "sub_auth" not "auth" — $auth is a SurrealDB system variable
-    let mut create_resp = db()
+    let mut response = db()
         .query(
-            "CREATE push_subscription SET owner = $owner, endpoint = $endpoint, p256dh = $p256dh, auth = $sub_auth"
+            "BEGIN TRANSACTION; \
+             DELETE push_subscription WHERE owner = $owner AND endpoint = $endpoint; \
+             CREATE push_subscription SET owner = $owner, endpoint = $endpoint, p256dh = $p256dh, auth = $sub_auth; \
+             COMMIT TRANSACTION;"
         )
         .bind(("owner", owner))
         .bind(("endpoint", endpoint))
@@ -71,10 +61,10 @@ pub async fn subscribe_push(
         .await
         .map_err(|e| internal_error("Subscribe push query failed", e))?;
 
-    let create_errors = create_resp.take_errors();
-    if !create_errors.is_empty() {
-        let msg = create_errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
-        return Err(internal_error("Subscribe push statement error", msg));
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Subscribe push query error", msg));
     }
 
     tracing::info!(user = %user_id, "Push subscription stored successfully");

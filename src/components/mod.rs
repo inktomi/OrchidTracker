@@ -102,6 +102,10 @@ pub mod climate_strip;
 /// It exists to inform users about our essential session cookie per GDPR/CCPA.
 /// It is rendered globally in the App component and dismisses after acknowledgment.
 pub mod cookie_consent;
+/// Global footer with copyright, version, and links to legal pages.
+/// It exists to provide consistent site-wide navigation to Terms of Service and Cookie Policy.
+/// It is rendered globally in the App component below all page content.
+pub mod global_footer;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 

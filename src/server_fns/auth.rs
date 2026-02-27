@@ -267,9 +267,10 @@ pub async fn delete_account(
     let uid = surrealdb::types::RecordId::parse_simple(&user_id)
         .map_err(|e| internal_error("User ID parse failed", e))?;
 
-    // Delete all user-owned data (children first to respect FK references)
+    // Delete all user-owned data atomically (children first to respect FK references)
     let mut response = db()
         .query("
+            BEGIN TRANSACTION;
             DELETE FROM climate_reading WHERE zone IN (SELECT id FROM growing_zone WHERE owner = $uid);
             DELETE FROM log_entry WHERE owner = $uid;
             DELETE FROM alert WHERE owner = $uid;
@@ -279,6 +280,7 @@ pub async fn delete_account(
             DELETE FROM growing_zone WHERE owner = $uid;
             DELETE FROM user_preference WHERE owner = $uid;
             DELETE FROM user WHERE id = $uid;
+            COMMIT TRANSACTION;
         ")
         .bind(("uid", uid))
         .await

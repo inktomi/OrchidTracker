@@ -236,22 +236,25 @@ pub async fn delete_device(
     let dev_id = surrealdb::types::RecordId::parse_simple(&device_id)
         .map_err(|e| internal_error("Device ID parse failed", e))?;
 
-    // Unlink all zones referencing this device
-    let _ = db()
+    // Unlink zones and delete device atomically
+    let mut response = db()
         .query(
-            "UPDATE growing_zone SET hardware_device = NONE, hardware_port = NONE \
-             WHERE hardware_device = $dev"
+            "BEGIN TRANSACTION; \
+             UPDATE growing_zone SET hardware_device = NONE, hardware_port = NONE \
+                 WHERE hardware_device = $dev; \
+             DELETE $dev WHERE owner = $owner; \
+             COMMIT TRANSACTION;"
         )
-        .bind(("dev", dev_id.clone()))
-        .await;
-
-    // Delete the device itself
-    db()
-        .query("DELETE $id WHERE owner = $owner")
-        .bind(("id", dev_id))
+        .bind(("dev", dev_id))
         .bind(("owner", owner))
         .await
         .map_err(|e| internal_error("Delete device query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Delete device query error", err_msg));
+    }
 
     Ok(())
 }

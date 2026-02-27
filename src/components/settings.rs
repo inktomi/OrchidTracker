@@ -331,7 +331,10 @@ pub fn SettingsModal(
                                 class="py-2 px-4 mt-2 w-full text-sm font-semibold text-red-700 bg-red-50 rounded-lg border border-red-200 transition-colors cursor-pointer dark:text-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800/60 dark:hover:bg-red-950/70"
                                 on:click=move |_| set_delete_step.set(1)
                             >"Delete Account"</button>
-                            <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">"Permanently delete your account and all associated data"</p>
+                            <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                                "Permanently delete your account and all associated data. "
+                                <a href="/account/delete" class="underline transition-colors hover:text-red-600 text-red-500/80 dark:text-red-400/80 dark:hover:text-red-300">"Use the dedicated page"</a>
+                            </p>
                         </div>
                     </div>
 
