@@ -10,6 +10,15 @@ use crate::components::first_bloom::FirstBloomCelebration;
 use crate::components::photo_gallery::PhotoGallery;
 use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_SECONDARY, BTN_CLOSE};
 
+/// Serialize an enum to its serde variant name (e.g., PotType::Mounted → "Mounted").
+/// Used to populate edit form dropdowns whose option values match serde names.
+fn serde_variant_name<T: serde::Serialize>(val: &T) -> String {
+    serde_json::to_string(val)
+        .unwrap_or_default()
+        .trim_matches('"')
+        .to_string()
+}
+
 const EDIT_BTN: &str = "py-2 px-3 text-sm font-semibold text-white rounded-lg border-none cursor-pointer bg-accent hover:bg-accent-dark transition-colors";
 const TAB_ACTIVE: &str = "py-2 px-4 text-sm font-semibold border-b-2 cursor-pointer transition-colors text-primary border-primary bg-transparent";
 const TAB_INACTIVE: &str = "py-2 px-4 text-sm font-medium border-b-2 border-transparent cursor-pointer transition-colors text-stone-400 hover:text-stone-600 bg-transparent dark:hover:text-stone-300";
@@ -346,9 +355,9 @@ fn DetailsTab(
         set_edit_humidity_max.set(current.humidity_max.map(|v| v.to_string()).unwrap_or_default());
         set_edit_fert_freq.set(current.fertilize_frequency_days.map(|v| v.to_string()).unwrap_or_default());
         set_edit_fert_type.set(current.fertilizer_type.unwrap_or_default());
-        set_edit_pot_medium.set(current.pot_medium.map(|v| v.to_string()).unwrap_or_default());
-        set_edit_pot_size.set(current.pot_size.map(|v| v.to_string()).unwrap_or_default());
-        set_edit_pot_type.set(current.pot_type.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_pot_medium.set(current.pot_medium.map(|v| serde_variant_name(&v)).unwrap_or_default());
+        set_edit_pot_size.set(current.pot_size.map(|v| serde_variant_name(&v)).unwrap_or_default());
+        set_edit_pot_type.set(current.pot_type.map(|v| serde_variant_name(&v)).unwrap_or_default());
         set_edit_par_ppfd.set(current.par_ppfd.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_start.set(current.rest_start_month.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_end.set(current.rest_end_month.map(|v| v.to_string()).unwrap_or_default());
