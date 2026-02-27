@@ -569,3 +569,150 @@ mod tests {
         assert_eq!(HumidityBooster::PebbleTray.to_string(), "Pebble Tray");
     }
 }
+
+/// Rough volumetric estimate (in ml) for standard pot sizes.
+pub fn get_pot_volume_ml(size: &crate::orchid::PotSize) -> f64 {
+    use crate::orchid::PotSize;
+    match size {
+        PotSize::Small => 150.0,   // ~2 inch
+        PotSize::Medium => 500.0,  // ~4 inch
+        PotSize::Large => 1500.0,  // ~6 inch
+        PotSize::Unknown => 500.0, // default to medium
+    }
+}
+
+/// The percentage of total pot volume that the medium can hold as water.
+/// Represents the Water Holding Capacity (WHC).
+pub fn get_medium_whc(medium: &crate::orchid::PotMedium) -> f64 {
+    use crate::orchid::PotMedium;
+    match medium {
+        PotMedium::Bark => 0.25,         // Drains fast, holds ~25%
+        PotMedium::SphagnumMoss => 0.75, // Acts like a sponge, holds ~75%
+        PotMedium::Leca => 0.40,         // Semi-hydro, holds ~40%
+        PotMedium::Inorganic => 0.15,    // Lava rock/pumice, holds very little
+        PotMedium::Unknown => 0.30,      // Default to standard bark-like behavior
+    }
+}
+
+/// A multiplier representing the porosity and aeration of the pot.
+/// > 1.0 means it evaporates faster than a standard solid plastic pot.
+pub fn get_pot_type_porosity_modifier(pot_type: &crate::orchid::PotType) -> f64 {
+    use crate::orchid::PotType;
+    match pot_type {
+        PotType::Solid => 1.0,   // Standard plastic/glazed ceramic
+        PotType::Slotted => 1.4, // Net pots, air flow through sides
+        PotType::Clay => 1.9,    // Terra cotta wicks and evaporates heavily
+        PotType::Mounted => 5.0, // No pot, extreme evaporation
+        PotType::Unknown => 1.0,
+    }
+}
+
+/// A multiplier representing how fast the plant consumes water based on light levels.
+pub fn get_light_consumption_modifier(light: &crate::orchid::LightRequirement) -> f64 {
+    use crate::orchid::LightRequirement;
+    match light {
+        LightRequirement::Low => 0.8,
+        LightRequirement::Medium => 1.0,
+        LightRequirement::High => 1.3,
+    }
+}
+
+/// Basic physics constants for the estimation model.
+pub const VPD_BASELINE: f64 = 1.19; // 22C / 55% RH
+
+/// Algorithm B: Scientifically calculate the baseline watering days.
+///
+/// `Inputs:`
+/// - `pot_size`: Determines total maximum volume.
+/// - `pot_medium`: Determines how much of that volume is actually water (WHC).
+/// - `pot_type`: Determines the aeration/porosity multiplier.
+/// - `light_req`: Modifies plant consumption rate.
+/// - `home_vpd_kpa`: The evaporative demand of the environment.
+pub fn calculate_algorithmic_base_days(
+    pot_size: &crate::orchid::PotSize,
+    pot_medium: &crate::orchid::PotMedium,
+    pot_type: &crate::orchid::PotType,
+    light_req: &crate::orchid::LightRequirement,
+    home_vpd_kpa: f64,
+) -> u32 {
+    // Prevent division by zero or extreme outliers
+    let safe_vpd = home_vpd_kpa.clamp(0.2, 4.0);
+
+    // 1. Total Water Volume (ml)
+    let volume_ml = get_pot_volume_ml(pot_size);
+    let whc = get_medium_whc(pot_medium);
+    let total_water_ml = volume_ml * whc;
+
+    // 2. Base Evaporation Rate
+    // Through trial and error, 18ml/day at 1.19 kPa accurately produces ~7 days
+    // for a Medium pot with Bark (125ml WHC).
+    let baseline_evaporation_rate = 18.0 * (safe_vpd / VPD_BASELINE);
+
+    // 3. Apply Modifiers
+    let porosity_mod = get_pot_type_porosity_modifier(pot_type);
+    let consumption_mod = get_light_consumption_modifier(light_req);
+
+    let daily_water_loss = baseline_evaporation_rate * porosity_mod * consumption_mod;
+
+    // 4. Calculate Days
+    let raw_days = total_water_ml / daily_water_loss;
+
+    // We clamp the result between 1 and 30 days to keep things reasonable
+    (raw_days.round() as u32).clamp(1, 30)
+}
+
+/// A scientific recommendation about the potting setup.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SuitabilityRecommendation {
+    /// The medium determined to be the best fit.
+    pub suggested_medium: crate::orchid::PotMedium,
+    /// The pot type determined to be the best fit.
+    pub suggested_pot_type: crate::orchid::PotType,
+    /// Detailed text describing why this setup is recommended.
+    pub scientific_reasoning: String,
+}
+
+/// Algorithm A: "Suitability Fit" & Medium Recommendation.
+/// Compares the home environment's VPD to the plant's native VPD.
+pub fn recommend_potting_setup(native_vpd: f64, home_vpd: f64) -> SuitabilityRecommendation {
+    let gradient = home_vpd - native_vpd;
+    use crate::orchid::{PotMedium, PotType};
+
+    if gradient > 0.6 {
+        SuitabilityRecommendation {
+            suggested_medium: PotMedium::SphagnumMoss,
+            suggested_pot_type: PotType::Solid,
+            scientific_reasoning: format!(
+                "Your environment ({:.1} kPa) is significantly drier and evaporates water much faster than this plant's native habitat ({:.1} kPa). We highly recommend potting in Sphagnum Moss inside a Solid pot to artificially retain moisture.",
+                home_vpd, native_vpd
+            ),
+        }
+    } else if gradient > 0.2 {
+        SuitabilityRecommendation {
+            suggested_medium: PotMedium::Bark,
+            suggested_pot_type: PotType::Solid,
+            scientific_reasoning: format!(
+                "Your environment ({:.1} kPa) is slightly drier than the native habitat ({:.1} kPa). A standard Bark mix in a Solid plastic pot will provide a healthy balance of aeration and moisture retention.",
+                home_vpd, native_vpd
+            ),
+        }
+    } else if gradient < -0.2 {
+        SuitabilityRecommendation {
+            suggested_medium: PotMedium::Bark,
+            suggested_pot_type: PotType::Slotted,
+            scientific_reasoning: format!(
+                "Your environment ({:.1} kPa) is more humid and evaporates less water than the native habitat ({:.1} kPa). We recommend coarse Bark in a Slotted pot or Terra Cotta to increase aeration and prevent root rot.",
+                home_vpd, native_vpd
+            ),
+        }
+    } else {
+        SuitabilityRecommendation {
+            suggested_medium: PotMedium::Bark,
+            suggested_pot_type: PotType::Slotted,
+            scientific_reasoning: format!(
+                "Your environment ({:.1} kPa) perfectly matches the evaporative demand of the native habitat ({:.1} kPa). A standard Bark mix in a Slotted pot will mimic natural tree-branch conditions beautifully.",
+                home_vpd, native_vpd
+            ),
+        }
+    }
+}

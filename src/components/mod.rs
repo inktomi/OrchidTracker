@@ -186,3 +186,4 @@ pub fn format_time_ago(recorded_at: &chrono::DateTime<chrono::Utc>) -> String {
         format!("{} days ago", diff.num_days())
     }
 }
+pub mod suitability_card;

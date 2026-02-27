@@ -232,6 +232,121 @@ pub struct LogEntry {
     pub event_type: Option<String>,
 }
 
+/// What is it? A standardized enumeration of pot sizes based on volumetric capacity.
+/// Why does it exist? It allows the watering algorithm to mathematically determine the total water volume the container can hold.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
+#[derive(Default)]
+pub enum PotSize {
+    /// Plugs, seedlings, and compots. Very low volume.
+    #[serde(alias = "2 inch", alias = "2\"", alias = "Seedling")]
+    Small,
+    /// Standard 4-5 inch pots. Typical blooming size for many genera.
+    #[serde(alias = "4 inch", alias = "4\"", alias = "5\"", alias = "5 inch")]
+    Medium,
+    /// Large 6-8+ inch pots for specimen plants or terrestrials.
+    #[serde(
+        alias = "6 inch",
+        alias = "6\"",
+        alias = "8\"",
+        alias = "Large Specimen"
+    )]
+    Large,
+    /// Unknown or unmeasured size.
+    #[serde(other, alias = "Unknown")]
+    #[default]
+    Unknown,
+}
+
+
+impl fmt::Display for PotSize {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PotSize::Small => write!(f, "Small (2-3\")"),
+            PotSize::Medium => write!(f, "Medium (4-5\")"),
+            PotSize::Large => write!(f, "Large (6\"+)"),
+            PotSize::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+/// What is it? A standardized enumeration of potting substrate types.
+/// Why does it exist? It provides the Water Holding Capacity (WHC) percentage needed to calculate evaporation time.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
+#[derive(Default)]
+pub enum PotMedium {
+    /// Fast draining, low WHC (~20-30%). The most common orchid medium.
+    #[serde(alias = "Bark", alias = "Orchid Bark", alias = "Fir Bark")]
+    Bark,
+    /// Highly absorbent, high WHC (~70-80%). Used for moisture lovers.
+    #[serde(alias = "Sphagnum Moss", alias = "Sphagnum", alias = "Moss")]
+    SphagnumMoss,
+    /// Inorganic clay pellets used for semi-hydroponics, medium WHC (~40%).
+    #[serde(alias = "LECA", alias = "Semi-Hydro (LECA)", alias = "Semi-Hydro")]
+    Leca,
+    /// Inert rocky mix (pumice, perlite, lava rock). Dries extremely fast.
+    #[serde(alias = "Inorganic", alias = "Lava Rock", alias = "Pumice")]
+    Inorganic,
+    /// Unknown mixture or standard potting soil.
+    #[serde(other, alias = "Unknown")]
+    #[default]
+    Unknown,
+}
+
+
+impl fmt::Display for PotMedium {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PotMedium::Bark => write!(f, "Bark"),
+            PotMedium::SphagnumMoss => write!(f, "Sphagnum Moss"),
+            PotMedium::Leca => write!(f, "LECA (Semi-Hydro)"),
+            PotMedium::Inorganic => write!(f, "Inorganic (Lava/Pumice)"),
+            PotMedium::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+/// What is it? A standardized enumeration of the container material/design.
+/// Why does it exist? It provides the Porosity and Aeration modifier needed to calculate evaporation rate due to surface area exposure.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ssr", derive(surrealdb::types::SurrealValue))]
+#[cfg_attr(feature = "ssr", surreal(crate = "surrealdb::types", untagged))]
+#[derive(Default)]
+pub enum PotType {
+    /// Non-porous container (plastic, glazed ceramic). Baseline evaporation rate (1.0x).
+    #[serde(alias = "Solid", alias = "Plastic", alias = "Glazed Ceramic")]
+    Solid,
+    /// Non-porous container with significant side ventilation (net pots, slotted plastic). Faster evaporation (~1.3-1.5x).
+    #[serde(alias = "Slotted", alias = "Net Pot", alias = "Slotted Orchid Pot")]
+    Slotted,
+    /// Porous container (terra cotta, unglazed clay). Rapid wicking and evaporation across all surfaces (~1.8-2.0x).
+    #[serde(alias = "Clay", alias = "Terra Cotta", alias = "Unglazed Ceramic")]
+    Clay,
+    /// No pot. Plant is mounted on bark, cork, or tree fern. Extreme evaporation rate.
+    #[serde(alias = "Mounted", alias = "Slab", alias = "Cork")]
+    Mounted,
+    /// Unknown pot type.
+    #[serde(other, alias = "Unknown")]
+    #[default]
+    Unknown,
+}
+
+
+impl fmt::Display for PotType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PotType::Solid => write!(f, "Solid (Plastic/Glazed)"),
+            PotType::Slotted => write!(f, "Slotted (Net Pot)"),
+            PotType::Clay => write!(f, "Terra Cotta (Clay)"),
+            PotType::Mounted => write!(f, "Mounted (Slab/Cork)"),
+            PotType::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
 /// What is it? The primary data structure representing an individual orchid plant within the user's collection.
 /// Why does it exist? It centralizes all identifying metadata, care schedules, historical timestamps, and seasonal requirements for a single plant.
 /// How should it be used? Serialize/deserialize it to SurrealDB for persistence, pass it to UI components for rendering cards/details, and utilize its helper methods to compute due dates.
@@ -316,11 +431,15 @@ pub struct Orchid {
     /// The potting substrate used (e.g., 'Bark', 'Sphagnum Moss').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
-    pub pot_medium: Option<String>,
+    pub pot_medium: Option<PotMedium>,
     /// The size of the pot (e.g., '4 inch').
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
-    pub pot_size: Option<String>,
+    pub pot_size: Option<PotSize>,
+    /// The physical material and aeration structure of the pot (e.g. 'Solid', 'Clay', 'Slotted').
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub pot_type: Option<PotType>,
     // Seasonal care fields
     /// The starting month (1-12) of the plant's natural rest period.
     #[serde(default)]
@@ -403,7 +522,7 @@ impl Orchid {
         crate::watering::climate_adjusted_frequency(
             base,
             climate,
-            self.pot_medium.as_deref(),
+            self.pot_medium.as_ref(),
             &self.light_requirement,
         )
     }
@@ -817,6 +936,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -860,6 +980,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -902,6 +1023,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -944,6 +1066,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -1056,6 +1179,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -1140,6 +1264,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -1191,6 +1316,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: rest.map(|(s, _)| s),
             rest_end_month: rest.map(|(_, e)| e),
             bloom_start_month: bloom.map(|(s, _)| s),

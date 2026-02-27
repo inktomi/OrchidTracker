@@ -29,6 +29,7 @@ pub fn test_orchid() -> Orchid {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -45,8 +46,8 @@ pub fn test_orchid_with_care() -> Orchid {
     Orchid {
         fertilizer_type: Some("MSU".to_string()),
         fertilize_frequency_days: Some(14),
-        pot_medium: Some("Bark".to_string()),
-        pot_size: Some("4 inch".to_string()),
+        pot_medium: Some(crate::orchid::PotMedium::Bark),
+        pot_size: Some(crate::orchid::PotSize::Medium),
         ..test_orchid()
     }
 }

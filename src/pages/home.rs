@@ -170,6 +170,7 @@ pub fn HomePage() -> impl IntoView {
                 orchid.fertilizer_type,
                 orchid.pot_medium,
                 orchid.pot_size,
+                orchid.pot_type,
                 orchid.rest_start_month,
                 orchid.rest_end_month,
                 orchid.bloom_start_month,

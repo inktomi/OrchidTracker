@@ -75,9 +75,11 @@ pub(crate) mod ssr_types {
         #[surreal(default)]
         pub last_repotted_at: Option<chrono::DateTime<chrono::Utc>>,
         #[surreal(default)]
-        pub pot_medium: Option<String>,
+        pub pot_medium: Option<crate::orchid::PotMedium>,
         #[surreal(default)]
-        pub pot_size: Option<String>,
+        pub pot_size: Option<crate::orchid::PotSize>,
+        #[surreal(default)]
+        pub pot_type: Option<crate::orchid::PotType>,
         #[surreal(default)]
         pub rest_start_month: Option<u32>,
         #[surreal(default)]
@@ -141,6 +143,7 @@ pub(crate) mod ssr_types {
                 last_repotted_at: self.last_repotted_at,
                 pot_medium: self.pot_medium,
                 pot_size: self.pot_size,
+                pot_type: self.pot_type,
                 rest_start_month: self.rest_start_month,
                 rest_end_month: self.rest_end_month,
                 bloom_start_month: self.bloom_start_month,
@@ -330,9 +333,11 @@ pub async fn create_orchid(
     /// The type of fertilizer to use.
     fertilizer_type: Option<String>,
     /// The potting medium used for the orchid.
-    pot_medium: Option<String>,
+    pot_medium: Option<crate::orchid::PotMedium>,
     /// The size of the pot the orchid is in.
-    pot_size: Option<String>,
+    pot_size: Option<crate::orchid::PotSize>,
+    /// The type of pot the orchid is in.
+    pot_type: Option<crate::orchid::PotType>,
     /// The starting month of the resting period.
     rest_start_month: Option<u32>,
     /// The ending month of the resting period.
@@ -373,7 +378,7 @@ pub async fn create_orchid(
              temp_min = $temp_min, temp_max = $temp_max, \
              humidity_min = $humidity_min, humidity_max = $humidity_max, \
              fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
-             pot_medium = $pot_medium, pot_size = $pot_size, \
+             pot_medium = $pot_medium, pot_size = $pot_size, pot_type = $pot_type, \
              rest_start_month = $rest_start, rest_end_month = $rest_end, \
              bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
              rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
@@ -401,6 +406,7 @@ pub async fn create_orchid(
         .bind(("fert_type", fertilizer_type))
         .bind(("pot_medium", pot_medium))
         .bind(("pot_size", pot_size))
+        .bind(("pot_type", pot_type))
         .bind(("rest_start", rest_start_month.map(|v| v as i64)))
         .bind(("rest_end", rest_end_month.map(|v| v as i64)))
         .bind(("bloom_start", bloom_start_month.map(|v| v as i64)))
@@ -464,7 +470,7 @@ pub async fn update_orchid(
              temp_min = $temp_min, temp_max = $temp_max, \
              humidity_min = $humidity_min, humidity_max = $humidity_max, \
              fertilize_frequency_days = $fert_freq, fertilizer_type = $fert_type, \
-             pot_medium = $pot_medium, pot_size = $pot_size, \
+             pot_medium = $pot_medium, pot_size = $pot_size, pot_type = $pot_type, \
              rest_start_month = $rest_start, rest_end_month = $rest_end, \
              bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
              rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
@@ -495,6 +501,7 @@ pub async fn update_orchid(
         .bind(("fert_type", orchid.fertilizer_type))
         .bind(("pot_medium", orchid.pot_medium))
         .bind(("pot_size", orchid.pot_size))
+        .bind(("pot_type", orchid.pot_type))
         .bind(("rest_start", orchid.rest_start_month.map(|v| v as i64)))
         .bind(("rest_end", orchid.rest_end_month.map(|v| v as i64)))
         .bind(("bloom_start", orchid.bloom_start_month.map(|v| v as i64)))

@@ -1,7 +1,9 @@
-use orchid_tracker::orchid::{Orchid, LogEntry, LightRequirement};
-use orchid_tracker::server_fns::orchids::AddLogEntryResponse;
-use orchid_tracker::components::event_types::{get_event_info, EVENT_TYPES, ALLOWED_EVENT_TYPE_KEYS};
 use chrono::Utc;
+use orchid_tracker::components::event_types::{
+    get_event_info, ALLOWED_EVENT_TYPE_KEYS, EVENT_TYPES,
+};
+use orchid_tracker::orchid::{LightRequirement, LogEntry, Orchid};
+use orchid_tracker::server_fns::orchids::AddLogEntryResponse;
 
 // ── AddLogEntryResponse tests ────────────────────────────────────────
 
@@ -24,7 +26,10 @@ fn test_add_log_entry_response_serde_roundtrip() {
     assert_eq!(deserialized.entry.id, "log_entry:123");
     assert_eq!(deserialized.entry.note, "First flower!");
     assert_eq!(deserialized.entry.event_type, Some("Flowering".into()));
-    assert_eq!(deserialized.entry.image_filename, Some("user1/photo.jpg".into()));
+    assert_eq!(
+        deserialized.entry.image_filename,
+        Some("user1/photo.jpg".into())
+    );
     assert!(deserialized.is_first_bloom);
 }
 
@@ -112,6 +117,7 @@ fn test_orchid_first_bloom_at_roundtrip() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -183,8 +189,9 @@ fn test_orchid_care_tracking_roundtrip() {
         fertilize_frequency_days: Some(14),
         fertilizer_type: Some("MSU".into()),
         last_repotted_at: Some(now),
-        pot_medium: Some("Bark".into()),
-        pot_size: Some("4 inch".into()),
+        pot_medium: Some(orchid_tracker::orchid::PotMedium::Bark),
+        pot_size: Some(orchid_tracker::orchid::PotSize::Medium),
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -202,8 +209,14 @@ fn test_orchid_care_tracking_roundtrip() {
     assert_eq!(deserialized.fertilize_frequency_days, Some(14));
     assert_eq!(deserialized.fertilizer_type, Some("MSU".into()));
     assert!(deserialized.last_repotted_at.is_some());
-    assert_eq!(deserialized.pot_medium, Some("Bark".into()));
-    assert_eq!(deserialized.pot_size, Some("4 inch".into()));
+    assert_eq!(
+        deserialized.pot_medium,
+        Some(orchid_tracker::orchid::PotMedium::Bark)
+    );
+    assert_eq!(
+        deserialized.pot_size,
+        Some(orchid_tracker::orchid::PotSize::Medium)
+    );
 }
 
 #[test]
@@ -234,6 +247,7 @@ fn test_orchid_fertilize_helpers() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -274,8 +288,9 @@ fn test_orchid_repot_helper() {
         fertilize_frequency_days: None,
         fertilizer_type: None,
         last_repotted_at: Some(Utc::now() - chrono::Duration::days(90)),
-        pot_medium: Some("Sphagnum Moss".into()),
-        pot_size: Some("6 inch".into()),
+        pot_medium: Some(orchid_tracker::orchid::PotMedium::SphagnumMoss),
+        pot_size: Some(orchid_tracker::orchid::PotSize::Large),
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -287,7 +302,10 @@ fn test_orchid_repot_helper() {
     };
 
     assert_eq!(orchid.days_since_repotted(), Some(90));
-    assert_eq!(orchid.pot_medium, Some("Sphagnum Moss".into()));
+    assert_eq!(
+        orchid.pot_medium,
+        Some(orchid_tracker::orchid::PotMedium::SphagnumMoss)
+    );
 }
 
 #[test]
@@ -318,6 +336,7 @@ fn test_orchid_no_fert_schedule_returns_none() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,
@@ -376,7 +395,11 @@ fn test_milestone_event_types_have_info() {
     let milestones = ["Flowering", "Purchased", "Repotted"];
     for key in milestones {
         let info = get_event_info(key);
-        assert!(info.is_some(), "Milestone type '{}' missing from event types", key);
+        assert!(
+            info.is_some(),
+            "Milestone type '{}' missing from event types",
+            key
+        );
     }
 }
 

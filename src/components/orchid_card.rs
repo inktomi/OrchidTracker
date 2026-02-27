@@ -1,7 +1,7 @@
-use leptos::prelude::*;
-use crate::orchid::{Orchid, GrowingZone, Hemisphere, check_zone_compatibility};
-use crate::watering::ClimateSnapshot;
 use super::BTN_DANGER;
+use crate::orchid::{check_zone_compatibility, GrowingZone, Hemisphere, Orchid};
+use crate::watering::ClimateSnapshot;
+use leptos::prelude::*;
 
 const BTN_WATER: &str = "flex gap-1 items-center py-1.5 px-3 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors text-sky-700 bg-sky-100 hover:bg-sky-200 dark:text-sky-300 dark:bg-sky-900/30 dark:hover:bg-sky-900/50";
 
@@ -19,13 +19,19 @@ pub fn OrchidCard(
     let orchid_id = orchid.id.clone();
     let orchid_id_water = orchid.id.clone();
     let orchid_clone = orchid.clone();
-    let is_misplaced = !check_zone_compatibility(&orchid.placement, &orchid.light_requirement, &zones);
+    let is_misplaced =
+        !check_zone_compatibility(&orchid.placement, &orchid.light_requirement, &zones);
     let mismatch_reason = if is_misplaced {
-        let zone_light = zones.iter()
+        let zone_light = zones
+            .iter()
             .find(|z| z.name == orchid.placement)
             .map(|z| z.light_level.as_str())
             .unwrap_or("Unknown");
-        Some(format!("{} light zone \u{2014} needs {}", zone_light, orchid.light_requirement.as_str()))
+        Some(format!(
+            "{} light zone \u{2014} needs {}",
+            zone_light,
+            orchid.light_requirement.as_str()
+        ))
     } else {
         None
     };
@@ -106,7 +112,7 @@ pub fn OrchidCard(
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Pot"</div>
-                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.pot_medium.clone().unwrap_or_else(|| "\u{2014}".to_string())}</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.pot_medium.clone().map(|v| v.to_string()).unwrap_or_else(|| "\u{2014}".to_string())}</div>
                     </div>
                 </div>
 
@@ -147,8 +153,8 @@ pub fn OrchidCard(
 #[cfg(all(test, feature = "ssr"))]
 mod tests {
     use super::*;
-    use leptos::reactive::owner::Owner;
     use crate::test_helpers::{test_orchid, test_orchid_with_care};
+    use leptos::reactive::owner::Owner;
 
     fn noop_string(_: String) {}
     fn noop_orchid(_: Orchid) {}
@@ -166,9 +172,13 @@ mod tests {
                     on_select=noop_orchid
                     on_water=noop_string
                 />
-            }.to_html();
+            }
+            .to_html();
             assert!(html.contains("Test Orchid"), "Should render orchid name");
-            assert!(html.contains("Phalaenopsis"), "Should render orchid species");
+            assert!(
+                html.contains("Phalaenopsis"),
+                "Should render orchid species"
+            );
         });
     }
 
@@ -186,12 +196,17 @@ mod tests {
                     on_water=noop_string
                     read_only=true
                 />
-            }.to_html();
-            assert!(!html.contains("Delete"),
-                "Delete button should be hidden in read-only mode, got: {html}");
+            }
+            .to_html();
+            assert!(
+                !html.contains("Delete"),
+                "Delete button should be hidden in read-only mode, got: {html}"
+            );
             // "Water" appears as a stat label; check that the action bar is absent
-            assert!(!html.contains("border-t border-stone-100"),
-                "Action bar should be hidden in read-only mode");
+            assert!(
+                !html.contains("border-t border-stone-100"),
+                "Action bar should be hidden in read-only mode"
+            );
         });
     }
 
@@ -209,11 +224,16 @@ mod tests {
                     on_water=noop_string
                     read_only=false
                 />
-            }.to_html();
-            assert!(html.contains("Delete"),
-                "Delete button should be visible when read_only=false");
-            assert!(html.contains("Water"),
-                "Water button should be visible when read_only=false");
+            }
+            .to_html();
+            assert!(
+                html.contains("Delete"),
+                "Delete button should be visible when read_only=false"
+            );
+            assert!(
+                html.contains("Water"),
+                "Water button should be visible when read_only=false"
+            );
         });
     }
 
@@ -230,10 +250,13 @@ mod tests {
                     on_select=noop_orchid
                     on_water=noop_string
                 />
-            }.to_html();
+            }
+            .to_html();
             // Never-watered orchid shows "Every N days"
-            assert!(html.contains("Every 7 days"),
-                "Should show watering frequency for never-watered orchid");
+            assert!(
+                html.contains("Every 7 days"),
+                "Should show watering frequency for never-watered orchid"
+            );
         });
     }
 
@@ -250,8 +273,12 @@ mod tests {
                     on_select=noop_orchid
                     on_water=noop_string
                 />
-            }.to_html();
-            assert!(html.contains("Bark"), "Should show pot medium from care data");
+            }
+            .to_html();
+            assert!(
+                html.contains("Bark"),
+                "Should show pot medium from care data"
+            );
         });
     }
 }

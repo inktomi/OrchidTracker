@@ -1,7 +1,7 @@
-use leptos::prelude::*;
-use crate::orchid::{Orchid, LightRequirement, GrowingZone};
+use super::{BTN_CLOSE, BTN_PRIMARY, MODAL_CONTENT, MODAL_HEADER, MODAL_OVERLAY};
 use crate::components::scanner::AnalysisResult;
-use super::{MODAL_OVERLAY, MODAL_CONTENT, MODAL_HEADER, BTN_PRIMARY, BTN_CLOSE};
+use crate::orchid::{GrowingZone, LightRequirement, Orchid};
+use leptos::prelude::*;
 
 #[component]
 pub fn AddOrchidForm(
@@ -27,6 +27,10 @@ pub fn AddOrchidForm(
     let (temp_max, set_temp_max) = signal(String::new());
     let (humidity_min, set_humidity_min) = signal(String::new());
     let (humidity_max, set_humidity_max) = signal(String::new());
+    let (pot_medium, set_pot_medium) = signal(String::new());
+    let (pot_size, set_pot_size) = signal(String::new());
+    let (pot_type, set_pot_type) = signal(String::new());
+
     // Seasonal signals
     let (rest_start_month, set_rest_start_month) = signal::<Option<u32>>(None);
     let (rest_end_month, set_rest_end_month) = signal::<Option<u32>>(None);
@@ -54,9 +58,10 @@ pub fn AddOrchidForm(
 
             // Find best matching zone from scanner suggestion
             let suggestion = data.placement_suggestion.to_lowercase();
-            let best_zone = zones_for_prefill.iter().find(|z| {
-                z.name.to_lowercase().contains(&suggestion)
-            }).or_else(|| zones_for_prefill.first());
+            let best_zone = zones_for_prefill
+                .iter()
+                .find(|z| z.name.to_lowercase().contains(&suggestion))
+                .or_else(|| zones_for_prefill.first());
 
             if let Some(zone) = best_zone {
                 set_placement.set(zone.name.clone());
@@ -74,10 +79,18 @@ pub fn AddOrchidForm(
             set_native_latitude.set(data.native_latitude);
             set_native_longitude.set(data.native_longitude);
 
-            if let Some(v) = data.temp_min { set_temp_min.set(v.to_string()); }
-            if let Some(v) = data.temp_max { set_temp_max.set(v.to_string()); }
-            if let Some(v) = data.humidity_min { set_humidity_min.set(v.to_string()); }
-            if let Some(v) = data.humidity_max { set_humidity_max.set(v.to_string()); }
+            if let Some(v) = data.temp_min {
+                set_temp_min.set(v.to_string());
+            }
+            if let Some(v) = data.temp_max {
+                set_temp_max.set(v.to_string());
+            }
+            if let Some(v) = data.humidity_min {
+                set_humidity_min.set(v.to_string());
+            }
+            if let Some(v) = data.humidity_max {
+                set_humidity_max.set(v.to_string());
+            }
 
             // Seasonal prefill
             set_rest_start_month.set(data.rest_start_month);
@@ -91,6 +104,33 @@ pub fn AddOrchidForm(
         }
     });
 
+    let on_auto_calculate = move |_ev: leptos::ev::MouseEvent| {
+        let size =
+            serde_json::from_str::<crate::orchid::PotSize>(&format!("\"{}\"", pot_size.get()))
+                .unwrap_or_default();
+        let medium =
+            serde_json::from_str::<crate::orchid::PotMedium>(&format!("\"{}\"", pot_medium.get()))
+                .unwrap_or_default();
+        let p_type =
+            serde_json::from_str::<crate::orchid::PotType>(&format!("\"{}\"", pot_type.get()))
+                .unwrap_or_default();
+
+        let light_req = match light.get().as_str() {
+            "Low" => LightRequirement::Low,
+            "High" => LightRequirement::High,
+            _ => LightRequirement::Medium,
+        };
+
+        let days = crate::estimation::calculate_algorithmic_base_days(
+            &size,
+            &medium,
+            &p_type,
+            &light_req,
+            crate::estimation::VPD_BASELINE, // Use standard home VPD since zone isn't created yet or we might not have a reading
+        );
+        set_water_freq.set(days.to_string());
+    };
+
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
 
@@ -101,7 +141,11 @@ pub fn AddOrchidForm(
         };
 
         let cons_status = conservation.get();
-        let conservation_opt = if cons_status.is_empty() { None } else { Some(cons_status) };
+        let conservation_opt = if cons_status.is_empty() {
+            None
+        } else {
+            Some(cons_status)
+        };
 
         let new_orchid = Orchid {
             id: String::new(),
@@ -127,8 +171,21 @@ pub fn AddOrchidForm(
             fertilize_frequency_days: None,
             fertilizer_type: None,
             last_repotted_at: None,
-            pot_medium: None,
-            pot_size: None,
+            pot_medium: if pot_medium.get().is_empty() {
+                None
+            } else {
+                serde_json::from_str(&format!("\"{}\"", pot_medium.get())).ok()
+            },
+            pot_size: if pot_size.get().is_empty() {
+                None
+            } else {
+                serde_json::from_str(&format!("\"{}\"", pot_size.get())).ok()
+            },
+            pot_type: if pot_type.get().is_empty() {
+                None
+            } else {
+                serde_json::from_str(&format!("\"{}\"", pot_type.get())).ok()
+            },
             rest_start_month: rest_start_month.get(),
             rest_end_month: rest_end_month.get(),
             bloom_start_month: bloom_start_month.get(),
@@ -151,6 +208,9 @@ pub fn AddOrchidForm(
         set_lux.set(String::new());
         set_temp.set(String::new());
         set_conservation.set(String::new());
+        set_pot_medium.set(String::new());
+        set_pot_size.set(String::new());
+        set_pot_type.set(String::new());
     };
 
     view! {
@@ -187,7 +247,17 @@ pub fn AddOrchidForm(
                         </div>
                         <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                             <div class="flex-1">
-                                <label>"Water Freq (days):"</label>
+                                <div class="flex justify-between items-center">
+                                    <label>"Water Freq (days):"</label>
+                                    <button
+                                        type="button"
+                                        class="text-[10px] text-primary hover:text-primary-light transition-colors focus:outline-none"
+                                        on:click=on_auto_calculate
+                                        title="Auto-calculate based on pot size, medium, and type"
+                                    >
+                                        "\u{2728} Auto-Calc"
+                                    </button>
+                                </div>
                                 <input type="number"
                                     on:input=move |ev| set_water_freq.set(event_target_value(&ev))
                                     prop:value=water_freq
@@ -275,6 +345,64 @@ pub fn AddOrchidForm(
                                 />
                             </div>
                         </div>
+
+                        <div class="pt-4 mt-4 mb-4 border-t border-stone-200 dark:border-stone-700">
+                            <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Pot & Medium Setup"</h4>
+                            <p class="mb-4 text-xs text-stone-500">"Tracking your pot type and medium helps adjust watering schedules automatically based on evaporation rates."</p>
+
+                            <div class="flex flex-col gap-4 sm:flex-row">
+                                {move || (pot_type.get() != "Mounted").then(|| view! {
+                                    <div class="flex-1 animate-fade-in">
+                                        <label>"Pot Medium:"</label>
+                                        <select
+                                            on:change=move |ev| set_pot_medium.set(event_target_value(&ev))
+                                            prop:value=pot_medium
+                                        >
+                                            <option value="">"Unknown / Unset"</option>
+                                            <option value="Bark">"Bark"</option>
+                                            <option value="Sphagnum Moss">"Sphagnum Moss"</option>
+                                            <option value="LECA">"LECA (Semi-Hydro)"</option>
+                                            <option value="Inorganic">"Inorganic (Lava/Pumice)"</option>
+                                        </select>
+                                    </div>
+                                })}
+                                <div class="flex-1">
+                                    <label>"Pot Type (Airflow):"</label>
+                                    <select
+                                        on:change=move |ev| {
+                                            let val = event_target_value(&ev);
+                                            set_pot_type.set(val.clone());
+                                            if val == "Mounted" {
+                                                set_pot_medium.set(String::new());
+                                                set_pot_size.set(String::new());
+                                            }
+                                        }
+                                        prop:value=pot_type
+                                    >
+                                        <option value="">"Unknown / Unset"</option>
+                                        <option value="Solid">"Solid (Plastic/Glazed)"</option>
+                                        <option value="Slotted">"Slotted (Net Pot)"</option>
+                                        <option value="Clay">"Terra Cotta (Clay)"</option>
+                                        <option value="Mounted">"Mounted (Slab)"</option>
+                                    </select>
+                                </div>
+                                {move || (pot_type.get() != "Mounted").then(|| view! {
+                                    <div class="flex-1 animate-fade-in">
+                                        <label>"Pot Size:"</label>
+                                        <select
+                                            on:change=move |ev| set_pot_size.set(event_target_value(&ev))
+                                            prop:value=pot_size
+                                        >
+                                            <option value="">"Unknown / Unset"</option>
+                                            <option value="Small">"Small (2-3\")"</option>
+                                            <option value="Medium">"Medium (4-5\")"</option>
+                                            <option value="Large">"Large (6\"+)"</option>
+                                        </select>
+                                    </div>
+                                })}
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <label>"Notes:"</label>
                             <textarea

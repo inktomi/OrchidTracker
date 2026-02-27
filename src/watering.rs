@@ -110,14 +110,14 @@ pub fn cold_stress_factor(avg_temp_c: f64) -> f64 {
 }
 
 /// Medium factor: substrate water retention rates.
-pub fn medium_factor(pot_medium: Option<&str>) -> f64 {
+pub fn medium_factor(pot_medium: Option<&crate::orchid::PotMedium>) -> f64 {
     match pot_medium {
-        Some(m) => match m.to_lowercase().as_str() {
-            "mounted" => 0.5,
-            "bark" => 0.85,
-            "sphagnum" | "sphagnum moss" | "moss" => 1.3,
-            "semi-hydro" | "leca" | "semi-hydro (leca)" => 1.4,
-            _ => 1.0, // Unknown or generic
+        Some(m) => match m {
+            crate::orchid::PotMedium::Bark => 0.85,
+            crate::orchid::PotMedium::SphagnumMoss => 1.3,
+            crate::orchid::PotMedium::Leca => 1.4,
+            crate::orchid::PotMedium::Inorganic => 1.0, // Baseline for inorganic mix
+            crate::orchid::PotMedium::Unknown => 1.0,
         },
         None => 1.0,
     }
@@ -157,7 +157,7 @@ pub fn rain_factor(precipitation_48h_mm: Option<f64>, is_outdoor: bool) -> f64 {
 pub fn climate_adjusted_frequency(
     base_days: u32,
     climate: Option<&ClimateSnapshot>,
-    pot_medium: Option<&str>,
+    pot_medium: Option<&crate::orchid::PotMedium>,
     light_req: &LightRequirement,
 ) -> WateringEstimate {
     let Some(snapshot) = climate else {
@@ -402,32 +402,27 @@ mod tests {
 
     #[test]
     fn test_medium_factor_mounted() {
-        assert!((medium_factor(Some("Mounted")) - 0.5).abs() < 0.01);
-        assert!((medium_factor(Some("mounted")) - 0.5).abs() < 0.01);
+        assert!((medium_factor(Some(&crate::orchid::PotMedium::Unknown)) - 1.0).abs() < 0.01);
     }
 
     #[test]
     fn test_medium_factor_bark() {
-        assert!((medium_factor(Some("Bark")) - 0.85).abs() < 0.01);
+        assert!((medium_factor(Some(&crate::orchid::PotMedium::Bark)) - 0.85).abs() < 0.01);
     }
 
     #[test]
     fn test_medium_factor_sphagnum() {
-        assert!((medium_factor(Some("Sphagnum Moss")) - 1.3).abs() < 0.01);
-        assert!((medium_factor(Some("sphagnum")) - 1.3).abs() < 0.01);
-        assert!((medium_factor(Some("Moss")) - 1.3).abs() < 0.01);
+        assert!((medium_factor(Some(&crate::orchid::PotMedium::SphagnumMoss)) - 1.3).abs() < 0.01);
     }
 
     #[test]
     fn test_medium_factor_semi_hydro() {
-        assert!((medium_factor(Some("Semi-Hydro (LECA)")) - 1.4).abs() < 0.01);
-        assert!((medium_factor(Some("LECA")) - 1.4).abs() < 0.01);
-        assert!((medium_factor(Some("semi-hydro")) - 1.4).abs() < 0.01);
+        assert!((medium_factor(Some(&crate::orchid::PotMedium::Leca)) - 1.4).abs() < 0.01);
     }
 
     #[test]
     fn test_medium_factor_unknown() {
-        assert!((medium_factor(Some("Perlite Mix")) - 1.0).abs() < 0.01);
+        assert!((medium_factor(Some(&crate::orchid::PotMedium::Inorganic)) - 1.0).abs() < 0.01);
         assert!((medium_factor(None) - 1.0).abs() < 0.01);
     }
 
@@ -562,8 +557,12 @@ mod tests {
     fn test_adjusted_clamps_minimum_one() {
         // Extreme hot/dry: VPD = 4.0, high light, mounted (bark factor)
         let snap = test_snapshot(35.0, 20.0, 4.0);
-        let est =
-            climate_adjusted_frequency(2, Some(&snap), Some("Mounted"), &LightRequirement::High);
+        let est = climate_adjusted_frequency(
+            2,
+            Some(&snap),
+            Some(&crate::orchid::PotMedium::Bark),
+            &LightRequirement::High,
+        );
         assert!(est.adjusted_days >= 1, "Should never go below 1 day");
     }
 
@@ -574,7 +573,7 @@ mod tests {
         let est = climate_adjusted_frequency(
             7,
             Some(&snap),
-            Some("Sphagnum Moss"),
+            Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Low,
         );
         assert!(
@@ -612,8 +611,12 @@ mod tests {
     #[test]
     fn test_adjusted_bark_medium_dries_faster() {
         let snap = test_snapshot(REFERENCE_TEMP_C, REFERENCE_HUMIDITY_PCT, REFERENCE_VPD_KPA);
-        let est =
-            climate_adjusted_frequency(10, Some(&snap), Some("Bark"), &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(
+            10,
+            Some(&snap),
+            Some(&crate::orchid::PotMedium::Bark),
+            &LightRequirement::Medium,
+        );
         // bark factor = 0.85 → 10 * 0.85 = 8.5 → 9
         assert!(
             est.adjusted_days < 10,
@@ -628,7 +631,7 @@ mod tests {
         let est = climate_adjusted_frequency(
             10,
             Some(&snap),
-            Some("Sphagnum Moss"),
+            Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Medium,
         );
         // sphagnum factor = 1.3 → 10 * 1.3 = 13
@@ -658,7 +661,12 @@ mod tests {
     #[test]
     fn test_factor_breakdown_populated() {
         let snap = test_snapshot(20.0, 60.0, 0.8);
-        let est = climate_adjusted_frequency(7, Some(&snap), Some("Bark"), &LightRequirement::High);
+        let est = climate_adjusted_frequency(
+            7,
+            Some(&snap),
+            Some(&crate::orchid::PotMedium::Bark),
+            &LightRequirement::High,
+        );
         assert!(est.factors.is_some());
         let factors = est.factors.unwrap();
         assert!(factors.vpd_factor > 0.0);
@@ -814,7 +822,7 @@ mod tests {
         let est = climate_adjusted_frequency(
             7,
             Some(&snap),
-            Some("Sphagnum Moss"),
+            Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Medium,
         );
         // VPD factor = 1.19/0.94 ≈ 1.27, sphagnum (1.3) → 7 * 1.27 * 1.3 ≈ 11.5
@@ -840,7 +848,12 @@ mod tests {
             quality: DataQuality::Fresh,
             is_outdoor: false,
         };
-        let est = climate_adjusted_frequency(7, Some(&snap), Some("Bark"), &LightRequirement::High);
+        let est = climate_adjusted_frequency(
+            7,
+            Some(&snap),
+            Some(&crate::orchid::PotMedium::Bark),
+            &LightRequirement::High,
+        );
         // VPD factor = 1.19/1.64 ≈ 0.726, bark 0.85, high light 0.85
         // 7 * 0.726 * 0.85 * 0.85 ≈ 3.67 → 4
         assert!(
@@ -864,8 +877,12 @@ mod tests {
             quality: DataQuality::Fresh,
             is_outdoor: true,
         };
-        let est =
-            climate_adjusted_frequency(7, Some(&snap), Some("Bark"), &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(
+            7,
+            Some(&snap),
+            Some(&crate::orchid::PotMedium::Bark),
+            &LightRequirement::Medium,
+        );
         // VPD factor = 1.19/0.31 ≈ 2.5 (clamped), rain factor 2.0, bark 0.85
         // 7 * 2.5 * 1.0 * 0.85 * 1.0 * 2.0 = 29.75, clamped to 21 (3x base)
         assert_eq!(

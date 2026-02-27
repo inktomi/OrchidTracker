@@ -318,6 +318,7 @@ fn DetailsTab(
     let (edit_fert_type, set_edit_fert_type) = signal(String::new());
     let (edit_pot_medium, set_edit_pot_medium) = signal(String::new());
     let (edit_pot_size, set_edit_pot_size) = signal(String::new());
+    let (edit_pot_type, set_edit_pot_type) = signal(String::new());
     let (edit_rest_start, set_edit_rest_start) = signal(String::new());
     let (edit_rest_end, set_edit_rest_end) = signal(String::new());
     let (edit_bloom_start, set_edit_bloom_start) = signal(String::new());
@@ -344,8 +345,9 @@ fn DetailsTab(
         set_edit_humidity_max.set(current.humidity_max.map(|v| v.to_string()).unwrap_or_default());
         set_edit_fert_freq.set(current.fertilize_frequency_days.map(|v| v.to_string()).unwrap_or_default());
         set_edit_fert_type.set(current.fertilizer_type.unwrap_or_default());
-        set_edit_pot_medium.set(current.pot_medium.unwrap_or_default());
-        set_edit_pot_size.set(current.pot_size.unwrap_or_default());
+        set_edit_pot_medium.set(current.pot_medium.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_pot_size.set(current.pot_size.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_pot_type.set(current.pot_type.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_start.set(current.rest_start_month.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_end.set(current.rest_end_month.map(|v| v.to_string()).unwrap_or_default());
         set_edit_bloom_start.set(current.bloom_start_month.map(|v| v.to_string()).unwrap_or_default());
@@ -369,6 +371,7 @@ fn DetailsTab(
         let fert_type_val = edit_fert_type.get();
         let pot_medium_val = edit_pot_medium.get();
         let pot_size_val = edit_pot_size.get();
+        let pot_type_val = edit_pot_type.get();
         let updated = Orchid {
             id: current.id,
             name: edit_name.get(),
@@ -393,8 +396,9 @@ fn DetailsTab(
             fertilize_frequency_days: edit_fert_freq.get().parse().ok(),
             fertilizer_type: if fert_type_val.is_empty() { None } else { Some(fert_type_val) },
             last_repotted_at: current.last_repotted_at,
-            pot_medium: if pot_medium_val.is_empty() { None } else { Some(pot_medium_val) },
-            pot_size: if pot_size_val.is_empty() { None } else { Some(pot_size_val) },
+            pot_medium: if pot_medium_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_medium_val)).ok() },
+            pot_size: if pot_size_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_size_val)).ok() },
+            pot_type: if pot_type_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_type_val)).ok() },
             rest_start_month: edit_rest_start.get().parse().ok(),
             rest_end_month: edit_rest_end.get().parse().ok(),
             bloom_start_month: edit_bloom_start.get().parse().ok(),
@@ -438,6 +442,7 @@ fn DetailsTab(
                         edit_fert_type=edit_fert_type set_edit_fert_type=set_edit_fert_type
                         edit_pot_medium=edit_pot_medium set_edit_pot_medium=set_edit_pot_medium
                         edit_pot_size=edit_pot_size set_edit_pot_size=set_edit_pot_size
+                        edit_pot_type=edit_pot_type set_edit_pot_type=set_edit_pot_type
                         edit_rest_start=edit_rest_start set_edit_rest_start=set_edit_rest_start
                         edit_rest_end=edit_rest_end set_edit_rest_end=set_edit_rest_end
                         edit_bloom_start=edit_bloom_start set_edit_bloom_start=set_edit_bloom_start
@@ -507,6 +512,14 @@ fn DetailsTab(
 
         // Care Schedule: Fertilizer + Pot Info
         <CareScheduleCard orchid_signal=orchid_signal set_orchid_signal=set_orchid_signal read_only=read_only />
+        
+        // Suitability (Scientific Setup Check)
+        {move || {
+            let snap = climate_snapshot.get_value();
+            view! {
+                <crate::components::suitability_card::SuitabilityCard orchid_signal=orchid_signal climate_snapshot=snap />
+            }
+        }}
 
         // Seasonal care
         <SeasonalCareCard orchid_signal=orchid_signal hemisphere=hemisphere />
@@ -667,13 +680,19 @@ fn CareScheduleCard(
                 <div>
                     <div class=CARE_STAT_LABEL>"\u{1FAB4} Pot Medium"</div>
                     <div class=CARE_STAT_VALUE>
-                        {move || orchid_signal.get().pot_medium.unwrap_or_else(|| "Not set".to_string())}
+                        {move || orchid_signal.get().pot_medium.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
+                    </div>
+                </div>
+                <div>
+                    <div class=CARE_STAT_LABEL>"Pot Type"</div>
+                    <div class=CARE_STAT_VALUE>
+                        {move || orchid_signal.get().pot_type.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
                     </div>
                 </div>
                 <div>
                     <div class=CARE_STAT_LABEL>"Pot Size"</div>
                     <div class=CARE_STAT_VALUE>
-                        {move || orchid_signal.get().pot_size.unwrap_or_else(|| "Not set".to_string())}
+                        {move || orchid_signal.get().pot_size.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
                     </div>
                 </div>
                 <div>
@@ -840,6 +859,7 @@ fn EditForm(
     edit_fert_type: ReadSignal<String>, set_edit_fert_type: WriteSignal<String>,
     edit_pot_medium: ReadSignal<String>, set_edit_pot_medium: WriteSignal<String>,
     edit_pot_size: ReadSignal<String>, set_edit_pot_size: WriteSignal<String>,
+    edit_pot_type: ReadSignal<String>, set_edit_pot_type: WriteSignal<String>,
     edit_rest_start: ReadSignal<String>, set_edit_rest_start: WriteSignal<String>,
     edit_rest_end: ReadSignal<String>, set_edit_rest_end: WriteSignal<String>,
     edit_bloom_start: ReadSignal<String>, set_edit_bloom_start: WriteSignal<String>,
@@ -852,6 +872,27 @@ fn EditForm(
     on_save: impl Fn(leptos::ev::SubmitEvent) + 'static + Copy + Send + Sync,
     on_cancel: impl Fn(leptos::ev::MouseEvent) + 'static + Copy + Send + Sync,
 ) -> impl IntoView {
+    let on_auto_calculate = move |_ev: leptos::ev::MouseEvent| {
+        let size = serde_json::from_str::<crate::orchid::PotSize>(&format!("\"{}\"", edit_pot_size.get())).unwrap_or_default();
+        let medium = serde_json::from_str::<crate::orchid::PotMedium>(&format!("\"{}\"", edit_pot_medium.get())).unwrap_or_default();
+        let p_type = serde_json::from_str::<crate::orchid::PotType>(&format!("\"{}\"", edit_pot_type.get())).unwrap_or_default();
+        
+        let light_req = match edit_light_req.get().as_str() {
+            "Low" => LightRequirement::Low,
+            "High" => LightRequirement::High,
+            _ => LightRequirement::Medium,
+        };
+
+        let days = crate::estimation::calculate_algorithmic_base_days(
+            &size,
+            &medium,
+            &p_type,
+            &light_req,
+            crate::estimation::VPD_BASELINE // Using baseline indoors
+        );
+        set_edit_water_freq.set(days.to_string());
+    };
+
     view! {
         <div class="mb-6">
             <form on:submit=on_save>
@@ -869,7 +910,17 @@ fn EditForm(
                 </div>
                 <div class="flex flex-col gap-4 mb-4 sm:flex-row">
                     <div class="flex-1">
-                        <label>"Water Freq (days):"</label>
+                        <div class="flex justify-between items-center">
+                            <label>"Water Freq (days):"</label>
+                            <button 
+                                type="button" 
+                                class="text-[10px] text-primary hover:text-primary-light transition-colors focus:outline-none"
+                                on:click=on_auto_calculate
+                                title="Auto-calculate based on pot size, medium, and type"
+                            >
+                                "\u{2728} Auto-Calc"
+                            </button>
+                        </div>
                         <input type="number" prop:value=edit_water_freq on:input=move |ev| set_edit_water_freq.set(event_target_value(&ev)) required />
                     </div>
                     <div class="flex-1">
@@ -936,23 +987,46 @@ fn EditForm(
                         </div>
                     </div>
                     <div class="flex flex-col gap-4 mb-4 sm:flex-row">
+                        {move || (edit_pot_type.get() != "Mounted").then(|| view! {
+                            <div class="flex-1 animate-fade-in">
+                                <label>"Pot Medium:"</label>
+                                <select prop:value=edit_pot_medium on:change=move |ev| set_edit_pot_medium.set(event_target_value(&ev))>
+                                    <option value="">"Unknown / Unset"</option>
+                                    <option value="Bark">"Bark"</option>
+                                    <option value="Sphagnum Moss">"Sphagnum Moss"</option>
+                                    <option value="LECA">"LECA (Semi-Hydro)"</option>
+                                    <option value="Inorganic">"Inorganic (Lava/Pumice)"</option>
+                                </select>
+                            </div>
+                        })}
                         <div class="flex-1">
-                            <label>"Pot Medium:"</label>
-                            <select prop:value=edit_pot_medium on:change=move |ev| set_edit_pot_medium.set(event_target_value(&ev))>
-                                <option value="">"Select..."</option>
-                                <option value="Bark">"Bark"</option>
-                                <option value="Sphagnum Moss">"Sphagnum Moss"</option>
-                                <option value="Semi-Hydro (LECA)">"Semi-Hydro (LECA)"</option>
-                                <option value="Perlite Mix">"Perlite Mix"</option>
-                                <option value="Mounted">"Mounted"</option>
-                                <option value="Full Water Culture">"Full Water Culture"</option>
-                                <option value="Other">"Other"</option>
+                            <label>"Pot Type (Airflow):"</label>
+                            <select prop:value=edit_pot_type on:change=move |ev| {
+                                let val = event_target_value(&ev);
+                                set_edit_pot_type.set(val.clone());
+                                if val == "Mounted" {
+                                    set_edit_pot_medium.set(String::new());
+                                    set_edit_pot_size.set(String::new());
+                                }
+                            }>
+                                <option value="">"Unknown / Unset"</option>
+                                <option value="Solid">"Solid (Plastic/Glazed)"</option>
+                                <option value="Slotted">"Slotted (Net Pot)"</option>
+                                <option value="Clay">"Terra Cotta (Clay)"</option>
+                                <option value="Mounted">"Mounted (Slab)"</option>
                             </select>
                         </div>
-                        <div class="flex-1">
-                            <label>"Pot Size:"</label>
-                            <input type="text" prop:value=edit_pot_size on:input=move |ev| set_edit_pot_size.set(event_target_value(&ev)) placeholder="e.g. 4 inch, 10cm" />
-                        </div>
+                        {move || (edit_pot_type.get() != "Mounted").then(|| view! {
+                            <div class="flex-1 animate-fade-in">
+                                <label>"Pot Size:"</label>
+                                <select prop:value=edit_pot_size on:change=move |ev| set_edit_pot_size.set(event_target_value(&ev))>
+                                    <option value="">"Unknown / Unset"</option>
+                                    <option value="Small">"Small (2-3\")"</option>
+                                    <option value="Medium">"Medium (4-5\")"</option>
+                                    <option value="Large">"Large (6\"+)"</option>
+                                </select>
+                            </div>
+                        })}
                     </div>
                 </div>
 

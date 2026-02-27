@@ -1,4 +1,4 @@
-use orchid_tracker::orchid::{Orchid, LightRequirement, FitCategory};
+use orchid_tracker::orchid::{FitCategory, LightRequirement, Orchid};
 
 #[test]
 fn test_orchid_json_serialization() {
@@ -28,6 +28,7 @@ fn test_orchid_json_serialization() {
         last_repotted_at: None,
         pot_medium: None,
         pot_size: None,
+        pot_type: None,
         rest_start_month: None,
         rest_end_month: None,
         bloom_start_month: None,

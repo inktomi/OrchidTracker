@@ -112,6 +112,21 @@ pub enum Msg {
     // Home tab
     /// Change the active tab on the main dashboard.
     SetHomeTab(HomeTab),
+
+    // Algorithmic Estimation
+    /// Run the algorithmic math to recommend a base watering interval.
+    CalculateAlgorithmicWatering {
+        /// The volume of the container.
+        pot_size: crate::orchid::PotSize,
+        /// The water holding capacity of the substrate.
+        pot_medium: crate::orchid::PotMedium,
+        /// The porosity modifier of the pot.
+        pot_type: crate::orchid::PotType,
+        /// The light requirement for the orchid, affecting consumption.
+        light_req: crate::orchid::LightRequirement,
+        /// The baseline home VPD for the area.
+        home_vpd_kpa: f64,
+    },
 }
 
 /// What is it? An enumeration of side-effects that the application needs to perform after a state update.

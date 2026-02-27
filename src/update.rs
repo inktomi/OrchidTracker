@@ -49,6 +49,31 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
             model.home_tab = tab;
             vec![]
         }
+        Msg::CalculateAlgorithmicWatering {
+            pot_size,
+            pot_medium,
+            pot_type,
+            light_req,
+            home_vpd_kpa,
+        } => {
+            if let Some(mut orchid) = model.selected_orchid.take() {
+                let base_days = crate::estimation::calculate_algorithmic_base_days(
+                    &pot_size,
+                    &pot_medium,
+                    &pot_type,
+                    &light_req,
+                    home_vpd_kpa,
+                );
+
+                orchid.water_frequency_days = base_days;
+                orchid.pot_size = Some(pot_size);
+                orchid.pot_medium = Some(pot_medium);
+                orchid.pot_type = Some(pot_type);
+
+                model.selected_orchid = Some(orchid);
+            }
+            vec![]
+        }
     }
 }
 
@@ -118,6 +143,7 @@ mod tests {
             last_repotted_at: None,
             pot_medium: None,
             pot_size: None,
+            pot_type: None,
             rest_start_month: None,
             rest_end_month: None,
             bloom_start_month: None,
@@ -283,5 +309,33 @@ mod tests {
         let cmds = update(&mut model, Msg::ToggleDarkMode);
         assert!(!model.dark_mode);
         assert!(cmds.iter().any(|c| matches!(c, Cmd::ApplyDarkMode(false))));
+    }
+
+    #[test]
+    fn test_calculate_algorithmic_watering() {
+        let mut model = Model::default();
+        let orchid = test_orchid("1");
+        model.selected_orchid = Some(orchid.clone());
+
+        let cmds = update(
+            &mut model,
+            Msg::CalculateAlgorithmicWatering {
+                pot_size: crate::orchid::PotSize::Medium,
+                pot_medium: crate::orchid::PotMedium::Bark,
+                pot_type: crate::orchid::PotType::Solid,
+                light_req: crate::orchid::LightRequirement::Low,
+                home_vpd_kpa: crate::estimation::VPD_BASELINE,
+            },
+        );
+
+        assert!(cmds.is_empty());
+        let updated = model.selected_orchid.unwrap();
+        // Evap: 18 * 1 * 1 * 0.8 = 14.4
+        // WHC: 500 * 0.25 = 125
+        // Days: 125 / 14.4 = 8.68 -> 9
+        assert_eq!(updated.water_frequency_days, 9);
+        assert_eq!(updated.pot_size, Some(crate::orchid::PotSize::Medium));
+        assert_eq!(updated.pot_medium, Some(crate::orchid::PotMedium::Bark));
+        assert_eq!(updated.pot_type, Some(crate::orchid::PotType::Solid));
     }
 }
