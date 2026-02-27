@@ -96,6 +96,8 @@ pub(crate) mod ssr_types {
         pub active_water_multiplier: Option<f64>,
         #[surreal(default)]
         pub active_fertilizer_multiplier: Option<f64>,
+        #[surreal(default)]
+        pub par_ppfd: Option<f64>,
     }
 
     #[derive(serde::Deserialize, SurrealValue, Clone)]
@@ -152,6 +154,7 @@ pub(crate) mod ssr_types {
                 rest_fertilizer_multiplier: self.rest_fertilizer_multiplier,
                 active_water_multiplier: self.active_water_multiplier,
                 active_fertilizer_multiplier: self.active_fertilizer_multiplier,
+                par_ppfd: self.par_ppfd,
             }
         }
     }
@@ -354,6 +357,8 @@ pub async fn create_orchid(
     active_water_multiplier: Option<f64>,
     /// The fertilizer multiplier during active growth.
     active_fertilizer_multiplier: Option<f64>,
+    /// Measured PAR (PPFD) in µmol/m²/s.
+    par_ppfd: Option<f64>,
 ) -> Result<Orchid, ServerFnError> {
     use crate::auth::require_auth;
     use crate::db::db;
@@ -382,7 +387,8 @@ pub async fn create_orchid(
              rest_start_month = $rest_start, rest_end_month = $rest_end, \
              bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
              rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
-             active_water_multiplier = $active_water_mult, active_fertilizer_multiplier = $active_fert_mult \
+             active_water_multiplier = $active_water_mult, active_fertilizer_multiplier = $active_fert_mult, \
+             par_ppfd = $par_ppfd \
              RETURN *"
         )
         .bind(("owner", owner))
@@ -415,6 +421,7 @@ pub async fn create_orchid(
         .bind(("rest_fert_mult", rest_fertilizer_multiplier))
         .bind(("active_water_mult", active_water_multiplier))
         .bind(("active_fert_mult", active_fertilizer_multiplier))
+        .bind(("par_ppfd", par_ppfd))
         .await
         .map_err(|e| internal_error("Create orchid query failed", e))?;
 
@@ -475,6 +482,7 @@ pub async fn update_orchid(
              bloom_start_month = $bloom_start, bloom_end_month = $bloom_end, \
              rest_water_multiplier = $rest_water_mult, rest_fertilizer_multiplier = $rest_fert_mult, \
              active_water_multiplier = $active_water_mult, active_fertilizer_multiplier = $active_fert_mult, \
+             par_ppfd = $par_ppfd, \
              updated_at = time::now() \
              WHERE owner = $owner \
              RETURN *"
@@ -510,6 +518,7 @@ pub async fn update_orchid(
         .bind(("rest_fert_mult", orchid.rest_fertilizer_multiplier))
         .bind(("active_water_mult", orchid.active_water_multiplier))
         .bind(("active_fert_mult", orchid.active_fertilizer_multiplier))
+        .bind(("par_ppfd", orchid.par_ppfd))
         .await
         .map_err(|e| internal_error("Update orchid query failed", e))?;
 

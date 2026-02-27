@@ -126,6 +126,8 @@ pub enum Msg {
         light_req: crate::orchid::LightRequirement,
         /// The baseline home VPD for the area.
         home_vpd_kpa: f64,
+        /// Optional measured PAR reading for the orchid's location.
+        par_ppfd: Option<f64>,
     },
 }
 

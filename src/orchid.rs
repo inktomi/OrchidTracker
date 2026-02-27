@@ -473,6 +473,12 @@ pub struct Orchid {
     #[serde(default)]
     #[cfg_attr(feature = "ssr", surreal(default))]
     pub active_fertilizer_multiplier: Option<f64>,
+    /// Measured PAR (Photosynthetically Active Radiation) in µmol/m²/s (PPFD).
+    /// When present, continuous light functions replace the 3-tier LightRequirement
+    /// enum in watering, estimation, and suitability algorithms.
+    #[serde(default)]
+    #[cfg_attr(feature = "ssr", surreal(default))]
+    pub par_ppfd: Option<f64>,
 }
 
 impl Orchid {
@@ -524,6 +530,7 @@ impl Orchid {
             climate,
             self.pot_medium.as_ref(),
             &self.light_requirement,
+            self.par_ppfd,
         )
     }
 
@@ -945,6 +952,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
 
         assert_eq!(orchid.name, "Test Orchid");
@@ -989,6 +997,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
         assert_eq!(orchid.days_since_watered(), None);
         assert!(!orchid.is_overdue());
@@ -1032,6 +1041,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(2));
         assert!(!orchid.is_overdue());
@@ -1075,6 +1085,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
         assert_eq!(orchid.days_since_watered(), Some(10));
         assert!(orchid.is_overdue());
@@ -1188,6 +1199,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
 
         let json = serde_json::to_string(&orchid).unwrap();
@@ -1273,6 +1285,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         };
         assert!(!orchid.has_seasonal_data());
         orchid.rest_start_month = Some(11);
@@ -1325,6 +1338,7 @@ mod tests {
             rest_fertilizer_multiplier: rest_fert_mult,
             active_water_multiplier: active_water_mult,
             active_fertilizer_multiplier: active_fert_mult,
+            par_ppfd: None,
         }
     }
 

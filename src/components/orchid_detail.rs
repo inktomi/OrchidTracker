@@ -319,6 +319,7 @@ fn DetailsTab(
     let (edit_pot_medium, set_edit_pot_medium) = signal(String::new());
     let (edit_pot_size, set_edit_pot_size) = signal(String::new());
     let (edit_pot_type, set_edit_pot_type) = signal(String::new());
+    let (edit_par_ppfd, set_edit_par_ppfd) = signal(String::new());
     let (edit_rest_start, set_edit_rest_start) = signal(String::new());
     let (edit_rest_end, set_edit_rest_end) = signal(String::new());
     let (edit_bloom_start, set_edit_bloom_start) = signal(String::new());
@@ -348,6 +349,7 @@ fn DetailsTab(
         set_edit_pot_medium.set(current.pot_medium.map(|v| v.to_string()).unwrap_or_default());
         set_edit_pot_size.set(current.pot_size.map(|v| v.to_string()).unwrap_or_default());
         set_edit_pot_type.set(current.pot_type.map(|v| v.to_string()).unwrap_or_default());
+        set_edit_par_ppfd.set(current.par_ppfd.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_start.set(current.rest_start_month.map(|v| v.to_string()).unwrap_or_default());
         set_edit_rest_end.set(current.rest_end_month.map(|v| v.to_string()).unwrap_or_default());
         set_edit_bloom_start.set(current.bloom_start_month.map(|v| v.to_string()).unwrap_or_default());
@@ -399,6 +401,7 @@ fn DetailsTab(
             pot_medium: if pot_medium_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_medium_val)).ok() },
             pot_size: if pot_size_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_size_val)).ok() },
             pot_type: if pot_type_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_type_val)).ok() },
+            par_ppfd: edit_par_ppfd.get().parse().ok(),
             rest_start_month: edit_rest_start.get().parse().ok(),
             rest_end_month: edit_rest_end.get().parse().ok(),
             bloom_start_month: edit_bloom_start.get().parse().ok(),
@@ -443,6 +446,7 @@ fn DetailsTab(
                         edit_pot_medium=edit_pot_medium set_edit_pot_medium=set_edit_pot_medium
                         edit_pot_size=edit_pot_size set_edit_pot_size=set_edit_pot_size
                         edit_pot_type=edit_pot_type set_edit_pot_type=set_edit_pot_type
+                        edit_par_ppfd=edit_par_ppfd set_edit_par_ppfd=set_edit_par_ppfd
                         edit_rest_start=edit_rest_start set_edit_rest_start=set_edit_rest_start
                         edit_rest_end=edit_rest_end set_edit_rest_end=set_edit_rest_end
                         edit_bloom_start=edit_bloom_start set_edit_bloom_start=set_edit_bloom_start
@@ -480,6 +484,16 @@ fn DetailsTab(
                                 <div class="text-xs text-stone-400">"Zone"</div>
                                 <div class="font-medium text-stone-700 dark:text-stone-300">{move || orchid_signal.get().placement.clone()}</div>
                             </div>
+                            {move || orchid_signal.get().par_ppfd.map(|ppfd| {
+                                view! {
+                                    <div>
+                                        <div class="text-xs text-stone-400">"PAR (PPFD)"</div>
+                                        <div class="font-medium text-stone-700 dark:text-stone-300">
+                                            {format!("{} \u{00B5}mol/m\u{00B2}/s", ppfd as u32)}
+                                        </div>
+                                    </div>
+                                }
+                            })}
                             <div>
                                 <div class="text-xs text-stone-400">"Water Every"</div>
                                 <div class="font-medium text-stone-700 dark:text-stone-300">{move || {
@@ -860,6 +874,7 @@ fn EditForm(
     edit_pot_medium: ReadSignal<String>, set_edit_pot_medium: WriteSignal<String>,
     edit_pot_size: ReadSignal<String>, set_edit_pot_size: WriteSignal<String>,
     edit_pot_type: ReadSignal<String>, set_edit_pot_type: WriteSignal<String>,
+    edit_par_ppfd: ReadSignal<String>, set_edit_par_ppfd: WriteSignal<String>,
     edit_rest_start: ReadSignal<String>, set_edit_rest_start: WriteSignal<String>,
     edit_rest_end: ReadSignal<String>, set_edit_rest_end: WriteSignal<String>,
     edit_bloom_start: ReadSignal<String>, set_edit_bloom_start: WriteSignal<String>,
@@ -883,12 +898,15 @@ fn EditForm(
             _ => LightRequirement::Medium,
         };
 
+        let par: Option<f64> = edit_par_ppfd.get().parse().ok();
+
         let days = crate::estimation::calculate_algorithmic_base_days(
             &size,
             &medium,
             &p_type,
             &light_req,
-            crate::estimation::VPD_BASELINE // Using baseline indoors
+            crate::estimation::VPD_BASELINE, // Using baseline indoors
+            par,
         );
         set_edit_water_freq.set(days.to_string());
     };
@@ -914,7 +932,7 @@ fn EditForm(
                             <label>"Water Freq (days):"</label>
                             <button 
                                 type="button" 
-                                class="text-[10px] text-primary hover:text-primary-light transition-colors focus:outline-none"
+                                class="transition-colors focus:outline-none text-[10px] text-primary hover:text-primary-light"
                                 on:click=on_auto_calculate
                                 title="Auto-calculate based on pot size, medium, and type"
                             >
@@ -946,6 +964,10 @@ fn EditForm(
                     <div class="flex-1">
                         <label>"Light (Lux):"</label>
                         <input type="text" prop:value=edit_light_lux on:input=move |ev| set_edit_light_lux.set(event_target_value(&ev)) placeholder="e.g. 5000" />
+                    </div>
+                    <div class="flex-1">
+                        <label>"PAR (PPFD):"</label>
+                        <input type="number" step="1" min="0" max="2500" prop:value=edit_par_ppfd on:input=move |ev| set_edit_par_ppfd.set(event_target_value(&ev)) placeholder="\u{00B5}mol/m\u{00B2}/s" />
                     </div>
                 </div>
                 <div class="mb-4">
@@ -1171,7 +1193,7 @@ mod tests {
             assert!(html.contains("MSU"), "Should show fertilizer type");
             assert!(html.contains("14 days"), "Should show fertilize frequency");
             assert!(html.contains("Bark"), "Should show pot medium");
-            assert!(html.contains("4 inch"), "Should show pot size");
+            assert!(html.contains("Medium (4-5"), "Should show pot size");
         });
     }
 

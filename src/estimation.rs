@@ -568,6 +568,33 @@ mod tests {
         assert_eq!(HumidityBooster::Humidifier.to_string(), "Humidifier");
         assert_eq!(HumidityBooster::PebbleTray.to_string(), "Pebble Tray");
     }
+
+    // ── PAR consumption modifier tests ──────────────────────────────
+
+    #[test]
+    fn test_consumption_modifier_par_at_200_is_baseline() {
+        assert!((get_light_consumption_modifier_par(200.0) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_consumption_modifier_par_low_light() {
+        // Below 50 should clamp to 0.65
+        assert!((get_light_consumption_modifier_par(10.0) - 0.65).abs() < 1e-9);
+        assert!((get_light_consumption_modifier_par(50.0) - 0.65).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_consumption_modifier_par_high_light() {
+        // Above 800 should clamp to 1.70
+        assert!((get_light_consumption_modifier_par(800.0) - 1.70).abs() < 1e-9);
+        assert!((get_light_consumption_modifier_par(1500.0) - 1.70).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_consumption_modifier_par_interpolation() {
+        // Between 200 and 400: midpoint at 300 → (1.0 + 1.3) / 2 = 1.15
+        assert!((get_light_consumption_modifier_par(300.0) - 1.15).abs() < 1e-9);
+    }
 }
 
 /// Rough volumetric estimate (in ml) for standard pot sizes.
@@ -617,6 +644,19 @@ pub fn get_light_consumption_modifier(light: &crate::orchid::LightRequirement) -
     }
 }
 
+/// Water consumption modifier from measured PAR (PPFD, µmol/m²/s).
+/// More light → higher consumption.
+pub fn get_light_consumption_modifier_par(ppfd: f64) -> f64 {
+    const POINTS: &[(f64, f64)] = &[
+        (50.0, 0.65),
+        (100.0, 0.80),
+        (200.0, 1.00),
+        (400.0, 1.30),
+        (800.0, 1.70),
+    ];
+    crate::watering::piecewise_linear(ppfd, POINTS)
+}
+
 /// Basic physics constants for the estimation model.
 pub const VPD_BASELINE: f64 = 1.19; // 22C / 55% RH
 
@@ -628,12 +668,14 @@ pub const VPD_BASELINE: f64 = 1.19; // 22C / 55% RH
 /// - `pot_type`: Determines the aeration/porosity multiplier.
 /// - `light_req`: Modifies plant consumption rate.
 /// - `home_vpd_kpa`: The evaporative demand of the environment.
+/// - `par_ppfd`: Optional measured PAR reading; when present overrides `light_req`.
 pub fn calculate_algorithmic_base_days(
     pot_size: &crate::orchid::PotSize,
     pot_medium: &crate::orchid::PotMedium,
     pot_type: &crate::orchid::PotType,
     light_req: &crate::orchid::LightRequirement,
     home_vpd_kpa: f64,
+    par_ppfd: Option<f64>,
 ) -> u32 {
     // Prevent division by zero or extreme outliers
     let safe_vpd = home_vpd_kpa.clamp(0.2, 4.0);
@@ -650,7 +692,10 @@ pub fn calculate_algorithmic_base_days(
 
     // 3. Apply Modifiers
     let porosity_mod = get_pot_type_porosity_modifier(pot_type);
-    let consumption_mod = get_light_consumption_modifier(light_req);
+    let consumption_mod = match par_ppfd {
+        Some(ppfd) => get_light_consumption_modifier_par(ppfd),
+        None => get_light_consumption_modifier(light_req),
+    };
 
     let daily_water_loss = baseline_evaporation_rate * porosity_mod * consumption_mod;
 

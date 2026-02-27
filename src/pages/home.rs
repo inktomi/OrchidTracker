@@ -179,6 +179,7 @@ pub fn HomePage() -> impl IntoView {
                 orchid.rest_fertilizer_multiplier,
                 orchid.active_water_multiplier,
                 orchid.active_fertilizer_multiplier,
+                orchid.par_ppfd,
             ).await {
                 Ok(_) => {},
                 Err(e) => set_toast_msg.set(Some(format!("Failed to add plant: {}", e))),

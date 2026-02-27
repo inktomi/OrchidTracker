@@ -141,7 +141,10 @@ mod tests {
     use tower_sessions::session::{Id, Record};
 
     #[tokio::test]
-    async fn test_create_syntax_bug_reproduction() {
+    async fn test_create_via_type_record_is_valid_in_v3() {
+        // In SurrealDB v2, `CREATE type::record(...)` was syntactically invalid.
+        // In v3, this syntax is accepted. This test verifies it works correctly
+        // now that we've migrated to SurrealDB v3.
         let db = Surreal::new::<Mem>(()).await.unwrap();
         db.use_ns("test").use_db("test").await.unwrap();
 
@@ -149,8 +152,6 @@ mod tests {
         let data = "{}".to_string();
         let expiry = 12345;
 
-        // This is the EXACT query string that was failing and being masked!
-        // In SurrealDB, CREATE type::record(...) is syntactically invalid for the CREATE statement target.
         let mut response = db
             .query("CREATE type::record('session', $id) SET data = $data, expiry = $expiry")
             .bind(("id", id))
@@ -160,9 +161,7 @@ mod tests {
             .unwrap();
 
         let errors = response.take_errors();
-        // This assertion verifies that the query indeed causes an error. 
-        // Before our fix, this error was incorrectly swallowed and assumed to be a collision.
-        assert!(!errors.is_empty(), "Expected CREATE to fail due to syntax/target errors");
+        assert!(errors.is_empty(), "SurrealDB v3 should accept type::record() in CREATE: {:?}", errors);
     }
 
     #[tokio::test]
@@ -170,7 +169,7 @@ mod tests {
         let db = Surreal::new::<Mem>(()).await.unwrap();
         db.use_ns("test").use_db("test").await.unwrap();
 
-        let mut record = Record {
+        let record = Record {
             id: Id::default(),
             data: HashMap::new(),
             expiry_date: time::OffsetDateTime::now_utc() + time::Duration::days(1),
@@ -183,11 +182,12 @@ mod tests {
         };
 
         // Create
-        let result: Option<SessionRow> = db.create(("session", id.clone())).content(&row).await.unwrap();
+        let expected_expiry = row.expiry;
+        let result: Option<SessionRow> = db.create(("session", id.clone())).content(row).await.unwrap();
         assert!(result.is_some());
 
         // Select
         let loaded: Option<SessionRow> = db.select(("session", id.clone())).await.unwrap();
-        assert_eq!(loaded.unwrap().expiry, row.expiry);
+        assert_eq!(loaded.unwrap().expiry, expected_expiry);
     }
 }

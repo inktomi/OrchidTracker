@@ -126,6 +126,7 @@ fn test_orchid_first_bloom_at_roundtrip() {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     };
 
     let json = serde_json::to_string(&orchid).unwrap();
@@ -200,6 +201,7 @@ fn test_orchid_care_tracking_roundtrip() {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     };
 
     let json = serde_json::to_string(&orchid).unwrap();
@@ -256,6 +258,7 @@ fn test_orchid_fertilize_helpers() {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     };
 
     assert_eq!(orchid.days_since_fertilized(), Some(5));
@@ -299,6 +302,7 @@ fn test_orchid_repot_helper() {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     };
 
     assert_eq!(orchid.days_since_repotted(), Some(90));
@@ -345,6 +349,7 @@ fn test_orchid_no_fert_schedule_returns_none() {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     };
 
     assert_eq!(orchid.days_since_fertilized(), None);

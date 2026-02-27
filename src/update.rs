@@ -55,6 +55,7 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
             pot_type,
             light_req,
             home_vpd_kpa,
+            par_ppfd,
         } => {
             if let Some(mut orchid) = model.selected_orchid.take() {
                 let base_days = crate::estimation::calculate_algorithmic_base_days(
@@ -63,6 +64,7 @@ pub fn update(model: &mut Model, msg: Msg) -> Vec<Cmd> {
                     &pot_type,
                     &light_req,
                     home_vpd_kpa,
+                    par_ppfd,
                 );
 
                 orchid.water_frequency_days = base_days;
@@ -152,6 +154,7 @@ mod tests {
             rest_fertilizer_multiplier: None,
             active_water_multiplier: None,
             active_fertilizer_multiplier: None,
+            par_ppfd: None,
         }
     }
 
@@ -325,6 +328,7 @@ mod tests {
                 pot_type: crate::orchid::PotType::Solid,
                 light_req: crate::orchid::LightRequirement::Low,
                 home_vpd_kpa: crate::estimation::VPD_BASELINE,
+                par_ppfd: None,
             },
         );
 

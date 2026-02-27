@@ -132,6 +132,40 @@ pub fn light_factor(light_req: &LightRequirement) -> f64 {
     }
 }
 
+/// Piecewise linear interpolation with clamping at extremes.
+/// `points` must be sorted by x in ascending order with at least 2 entries.
+pub fn piecewise_linear(x: f64, points: &[(f64, f64)]) -> f64 {
+    if x <= points[0].0 {
+        return points[0].1;
+    }
+    let last = points.len() - 1;
+    if x >= points[last].0 {
+        return points[last].1;
+    }
+    for window in points.windows(2) {
+        let (x0, y0) = window[0];
+        let (x1, y1) = window[1];
+        if x >= x0 && x <= x1 {
+            let t = (x - x0) / (x1 - x0);
+            return y0 + t * (y1 - y0);
+        }
+    }
+    points[last].1
+}
+
+/// Light factor from measured PAR (PPFD, µmol/m²/s).
+/// More light → lower factor → water sooner (inverse relationship).
+pub fn light_factor_par(ppfd: f64) -> f64 {
+    const POINTS: &[(f64, f64)] = &[
+        (50.0, 1.20),
+        (100.0, 1.10),
+        (200.0, 1.00),
+        (400.0, 0.85),
+        (800.0, 0.70),
+    ];
+    piecewise_linear(ppfd, POINTS)
+}
+
 /// Rain factor: recent precipitation reduces watering need (outdoor only).
 /// For indoor zones, always returns 1.0.
 pub fn rain_factor(precipitation_48h_mm: Option<f64>, is_outdoor: bool) -> f64 {
@@ -159,6 +193,7 @@ pub fn climate_adjusted_frequency(
     climate: Option<&ClimateSnapshot>,
     pot_medium: Option<&crate::orchid::PotMedium>,
     light_req: &LightRequirement,
+    par_ppfd: Option<f64>,
 ) -> WateringEstimate {
     let Some(snapshot) = climate else {
         return WateringEstimate {
@@ -183,7 +218,10 @@ pub fn climate_adjusted_frequency(
     let vf = vpd_factor(snapshot.avg_vpd_kpa);
     let csf = cold_stress_factor(snapshot.avg_temp_c);
     let mf = medium_factor(pot_medium);
-    let lf = light_factor(light_req);
+    let lf = match par_ppfd {
+        Some(ppfd) => light_factor_par(ppfd),
+        None => light_factor(light_req),
+    };
     let rf = rain_factor(snapshot.precipitation_48h_mm, snapshot.is_outdoor);
 
     let combined = base_days as f64 * vf * csf * mf * lf * rf;
@@ -499,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_adjusted_no_climate_data() {
-        let est = climate_adjusted_frequency(7, None, None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, None, None, &LightRequirement::Medium, None);
         assert_eq!(est.adjusted_days, 7);
         assert!(!est.climate_active);
         assert_eq!(est.quality, DataQuality::Unavailable);
@@ -510,7 +548,7 @@ mod tests {
     fn test_adjusted_unavailable_quality() {
         let mut snap = test_snapshot(22.0, 55.0, REFERENCE_VPD_KPA);
         snap.quality = DataQuality::Unavailable;
-        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium, None);
         assert_eq!(est.adjusted_days, 7);
         assert!(!est.climate_active);
     }
@@ -519,7 +557,7 @@ mod tests {
     fn test_adjusted_at_reference_conditions() {
         // Reference conditions: all factors ~1.0 → adjusted ≈ base
         let snap = test_snapshot(REFERENCE_TEMP_C, REFERENCE_HUMIDITY_PCT, REFERENCE_VPD_KPA);
-        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium, None);
         assert!(est.climate_active);
         assert_eq!(
             est.adjusted_days, 7,
@@ -531,7 +569,7 @@ mod tests {
     fn test_adjusted_hot_dry_waters_sooner() {
         // Hot dry: VPD = 2.0 → vpd_factor ≈ 0.475
         let snap = test_snapshot(30.0, 30.0, 2.0);
-        let est = climate_adjusted_frequency(10, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(10, Some(&snap), None, &LightRequirement::Medium, None);
         assert!(est.climate_active);
         assert!(
             est.adjusted_days < 10,
@@ -544,7 +582,7 @@ mod tests {
     fn test_adjusted_cool_humid_waters_later() {
         // Cool humid: VPD = 0.3, temp = 15°C
         let snap = test_snapshot(15.0, 80.0, 0.3);
-        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium, None);
         assert!(est.climate_active);
         assert!(
             est.adjusted_days > 7,
@@ -562,6 +600,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::Bark),
             &LightRequirement::High,
+            None,
         );
         assert!(est.adjusted_days >= 1, "Should never go below 1 day");
     }
@@ -575,6 +614,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Low,
+            None,
         );
         assert!(
             est.adjusted_days <= 21,
@@ -588,7 +628,7 @@ mod tests {
         let mut snap = test_snapshot(22.0, 55.0, REFERENCE_VPD_KPA);
         snap.is_outdoor = true;
         snap.precipitation_48h_mm = Some(25.0);
-        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium, None);
         assert!(
             est.adjusted_days > 7,
             "Rain should extend outdoor watering, got {}",
@@ -603,7 +643,7 @@ mod tests {
         let mut snap = test_snapshot(22.0, 55.0, REFERENCE_VPD_KPA);
         snap.is_outdoor = false;
         snap.precipitation_48h_mm = Some(50.0);
-        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(7, Some(&snap), None, &LightRequirement::Medium, None);
         // Indoor: rain factor is 1.0, so adjusted should be near base
         assert_eq!(est.adjusted_days, 7);
     }
@@ -616,6 +656,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::Bark),
             &LightRequirement::Medium,
+            None,
         );
         // bark factor = 0.85 → 10 * 0.85 = 8.5 → 9
         assert!(
@@ -633,6 +674,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Medium,
+            None,
         );
         // sphagnum factor = 1.3 → 10 * 1.3 = 13
         assert!(
@@ -646,7 +688,7 @@ mod tests {
     fn test_adjusted_stale_data_still_adjusts() {
         let mut snap = test_snapshot(30.0, 30.0, 2.0);
         snap.quality = DataQuality::Stale;
-        let est = climate_adjusted_frequency(10, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(10, Some(&snap), None, &LightRequirement::Medium, None);
         assert!(est.climate_active);
         assert_eq!(est.quality, DataQuality::Stale);
     }
@@ -654,7 +696,7 @@ mod tests {
     #[test]
     fn test_adjusted_very_low_base_frequency() {
         let snap = test_snapshot(REFERENCE_TEMP_C, REFERENCE_HUMIDITY_PCT, REFERENCE_VPD_KPA);
-        let est = climate_adjusted_frequency(1, Some(&snap), None, &LightRequirement::Medium);
+        let est = climate_adjusted_frequency(1, Some(&snap), None, &LightRequirement::Medium, None);
         assert_eq!(est.adjusted_days, 1);
     }
 
@@ -666,6 +708,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::Bark),
             &LightRequirement::High,
+            None,
         );
         assert!(est.factors.is_some());
         let factors = est.factors.unwrap();
@@ -824,6 +867,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::SphagnumMoss),
             &LightRequirement::Medium,
+            None,
         );
         // VPD factor = 1.19/0.94 ≈ 1.27, sphagnum (1.3) → 7 * 1.27 * 1.3 ≈ 11.5
         assert!(
@@ -853,6 +897,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::Bark),
             &LightRequirement::High,
+            None,
         );
         // VPD factor = 1.19/1.64 ≈ 0.726, bark 0.85, high light 0.85
         // 7 * 0.726 * 0.85 * 0.85 ≈ 3.67 → 4
@@ -882,6 +927,7 @@ mod tests {
             Some(&snap),
             Some(&crate::orchid::PotMedium::Bark),
             &LightRequirement::Medium,
+            None,
         );
         // VPD factor = 1.19/0.31 ≈ 2.5 (clamped), rain factor 2.0, bark 0.85
         // 7 * 2.5 * 1.0 * 0.85 * 1.0 * 2.0 = 29.75, clamped to 21 (3x base)
@@ -889,6 +935,128 @@ mod tests {
             est.adjusted_days, 21,
             "Outdoor after heavy rain should hit 3x cap, got {}",
             est.adjusted_days
+        );
+    }
+
+    // ── piecewise_linear tests ──────────────────────────────────────
+
+    #[test]
+    fn test_piecewise_linear_below_range_clamps() {
+        let points = &[(100.0, 2.0), (200.0, 4.0), (300.0, 6.0)];
+        assert!((piecewise_linear(0.0, points) - 2.0).abs() < 1e-9);
+        assert!((piecewise_linear(50.0, points) - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_piecewise_linear_above_range_clamps() {
+        let points = &[(100.0, 2.0), (200.0, 4.0), (300.0, 6.0)];
+        assert!((piecewise_linear(500.0, points) - 6.0).abs() < 1e-9);
+        assert!((piecewise_linear(300.0, points) - 6.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_piecewise_linear_at_control_points() {
+        let points = &[(100.0, 2.0), (200.0, 4.0), (300.0, 6.0)];
+        assert!((piecewise_linear(100.0, points) - 2.0).abs() < 1e-9);
+        assert!((piecewise_linear(200.0, points) - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_piecewise_linear_midpoint_interpolation() {
+        let points = &[(100.0, 2.0), (200.0, 4.0)];
+        // Midpoint: x=150 → y=3.0
+        assert!((piecewise_linear(150.0, points) - 3.0).abs() < 1e-9);
+        // Quarter point: x=125 → y=2.5
+        assert!((piecewise_linear(125.0, points) - 2.5).abs() < 1e-9);
+    }
+
+    // ── light_factor_par tests ──────────────────────────────────────
+
+    #[test]
+    fn test_light_factor_par_at_200_is_baseline() {
+        assert!((light_factor_par(200.0) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_light_factor_par_very_low_clamps() {
+        // Below 50 should clamp to 1.20
+        assert!((light_factor_par(10.0) - 1.20).abs() < 1e-9);
+        assert!((light_factor_par(0.0) - 1.20).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_light_factor_par_very_high_clamps() {
+        // Above 800 should clamp to 0.70
+        assert!((light_factor_par(1000.0) - 0.70).abs() < 1e-9);
+        assert!((light_factor_par(2500.0) - 0.70).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_light_factor_par_matches_enum_at_reference_points() {
+        // PAR 100 ≈ Low light → enum Low = 1.15, PAR = 1.10 (close)
+        assert!((light_factor_par(100.0) - 1.10).abs() < 1e-9);
+        // PAR 200 ≈ Medium → enum Medium = 1.0, PAR = 1.0 (exact)
+        assert!((light_factor_par(200.0) - light_factor(&LightRequirement::Medium)).abs() < 1e-9);
+        // PAR 400 ≈ High → enum High = 0.85, PAR = 0.85 (exact)
+        assert!((light_factor_par(400.0) - light_factor(&LightRequirement::High)).abs() < 1e-9);
+    }
+
+    // ── climate_adjusted_frequency with PAR ─────────────────────────
+
+    #[test]
+    fn test_climate_adjusted_frequency_par_overrides_enum() {
+        let snap = ClimateSnapshot {
+            zone_name: "Test".into(),
+            avg_temp_c: 22.0,
+            avg_humidity_pct: 55.0,
+            avg_vpd_kpa: REFERENCE_VPD_KPA,
+            precipitation_48h_mm: None,
+            newest_reading_at: Utc::now(),
+            reading_count: 10,
+            quality: DataQuality::Fresh,
+            is_outdoor: false,
+        };
+        // Without PAR: uses enum Low (factor 1.15)
+        let est_enum = climate_adjusted_frequency(
+            7, Some(&snap), None, &LightRequirement::Low, None,
+        );
+        // With PAR 400: factor 0.85 (overrides Low's 1.15)
+        let est_par = climate_adjusted_frequency(
+            7, Some(&snap), None, &LightRequirement::Low, Some(400.0),
+        );
+        // PAR 400 → High light → should water sooner (fewer days)
+        assert!(
+            est_par.adjusted_days < est_enum.adjusted_days,
+            "PAR 400 should override Low enum: PAR got {} days, enum got {}",
+            est_par.adjusted_days, est_enum.adjusted_days,
+        );
+    }
+
+    #[test]
+    fn test_climate_adjusted_frequency_none_par_uses_enum() {
+        let snap = ClimateSnapshot {
+            zone_name: "Test".into(),
+            avg_temp_c: 22.0,
+            avg_humidity_pct: 55.0,
+            avg_vpd_kpa: REFERENCE_VPD_KPA,
+            precipitation_48h_mm: None,
+            newest_reading_at: Utc::now(),
+            reading_count: 10,
+            quality: DataQuality::Fresh,
+            is_outdoor: false,
+        };
+        // None PAR with Medium should behave identically to the explicit enum path
+        let est_none = climate_adjusted_frequency(
+            7, Some(&snap), None, &LightRequirement::Medium, None,
+        );
+        // PAR 200 matches Medium exactly (factor 1.0)
+        let est_par = climate_adjusted_frequency(
+            7, Some(&snap), None, &LightRequirement::Medium, Some(200.0),
+        );
+        assert_eq!(
+            est_none.adjusted_days, est_par.adjusted_days,
+            "PAR 200 should match Medium enum: None={}, PAR={}",
+            est_none.adjusted_days, est_par.adjusted_days,
         );
     }
 }

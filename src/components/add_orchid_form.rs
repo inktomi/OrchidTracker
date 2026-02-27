@@ -30,6 +30,7 @@ pub fn AddOrchidForm(
     let (pot_medium, set_pot_medium) = signal(String::new());
     let (pot_size, set_pot_size) = signal(String::new());
     let (pot_type, set_pot_type) = signal(String::new());
+    let (par_ppfd, set_par_ppfd) = signal(String::new());
 
     // Seasonal signals
     let (rest_start_month, set_rest_start_month) = signal::<Option<u32>>(None);
@@ -121,12 +122,15 @@ pub fn AddOrchidForm(
             _ => LightRequirement::Medium,
         };
 
+        let par: Option<f64> = par_ppfd.get().parse().ok();
+
         let days = crate::estimation::calculate_algorithmic_base_days(
             &size,
             &medium,
             &p_type,
             &light_req,
             crate::estimation::VPD_BASELINE, // Use standard home VPD since zone isn't created yet or we might not have a reading
+            par,
         );
         set_water_freq.set(days.to_string());
     };
@@ -194,6 +198,7 @@ pub fn AddOrchidForm(
             rest_fertilizer_multiplier: rest_fert_mult.get(),
             active_water_multiplier: active_water_mult.get(),
             active_fertilizer_multiplier: active_fert_mult.get(),
+            par_ppfd: par_ppfd.get().parse().ok(),
         };
 
         on_add(new_orchid);
@@ -211,6 +216,7 @@ pub fn AddOrchidForm(
         set_pot_medium.set(String::new());
         set_pot_size.set(String::new());
         set_pot_type.set(String::new());
+        set_par_ppfd.set(String::new());
     };
 
     view! {
@@ -251,7 +257,7 @@ pub fn AddOrchidForm(
                                     <label>"Water Freq (days):"</label>
                                     <button
                                         type="button"
-                                        class="text-[10px] text-primary hover:text-primary-light transition-colors focus:outline-none"
+                                        class="transition-colors focus:outline-none text-[10px] text-primary hover:text-primary-light"
                                         on:click=on_auto_calculate
                                         title="Auto-calculate based on pot size, medium, and type"
                                     >
@@ -300,6 +306,14 @@ pub fn AddOrchidForm(
                                     placeholder="e.g. 5000"
                                 />
                             </div>
+                            <div class="flex-1">
+                                <label>"PAR (PPFD):"</label>
+                                <input type="number" step="1" min="0" max="2500"
+                                    on:input=move |ev| set_par_ppfd.set(event_target_value(&ev))
+                                    prop:value=par_ppfd
+                                    placeholder="\u{00B5}mol/m\u{00B2}/s"
+                                />
+                            </div>
                         </div>
                          <div class="mb-4">
                             <label>"Temp Range (Optional):"</label>
@@ -346,62 +360,11 @@ pub fn AddOrchidForm(
                             </div>
                         </div>
 
-                        <div class="pt-4 mt-4 mb-4 border-t border-stone-200 dark:border-stone-700">
-                            <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Pot & Medium Setup"</h4>
-                            <p class="mb-4 text-xs text-stone-500">"Tracking your pot type and medium helps adjust watering schedules automatically based on evaporation rates."</p>
-
-                            <div class="flex flex-col gap-4 sm:flex-row">
-                                {move || (pot_type.get() != "Mounted").then(|| view! {
-                                    <div class="flex-1 animate-fade-in">
-                                        <label>"Pot Medium:"</label>
-                                        <select
-                                            on:change=move |ev| set_pot_medium.set(event_target_value(&ev))
-                                            prop:value=pot_medium
-                                        >
-                                            <option value="">"Unknown / Unset"</option>
-                                            <option value="Bark">"Bark"</option>
-                                            <option value="Sphagnum Moss">"Sphagnum Moss"</option>
-                                            <option value="LECA">"LECA (Semi-Hydro)"</option>
-                                            <option value="Inorganic">"Inorganic (Lava/Pumice)"</option>
-                                        </select>
-                                    </div>
-                                })}
-                                <div class="flex-1">
-                                    <label>"Pot Type (Airflow):"</label>
-                                    <select
-                                        on:change=move |ev| {
-                                            let val = event_target_value(&ev);
-                                            set_pot_type.set(val.clone());
-                                            if val == "Mounted" {
-                                                set_pot_medium.set(String::new());
-                                                set_pot_size.set(String::new());
-                                            }
-                                        }
-                                        prop:value=pot_type
-                                    >
-                                        <option value="">"Unknown / Unset"</option>
-                                        <option value="Solid">"Solid (Plastic/Glazed)"</option>
-                                        <option value="Slotted">"Slotted (Net Pot)"</option>
-                                        <option value="Clay">"Terra Cotta (Clay)"</option>
-                                        <option value="Mounted">"Mounted (Slab)"</option>
-                                    </select>
-                                </div>
-                                {move || (pot_type.get() != "Mounted").then(|| view! {
-                                    <div class="flex-1 animate-fade-in">
-                                        <label>"Pot Size:"</label>
-                                        <select
-                                            on:change=move |ev| set_pot_size.set(event_target_value(&ev))
-                                            prop:value=pot_size
-                                        >
-                                            <option value="">"Unknown / Unset"</option>
-                                            <option value="Small">"Small (2-3\")"</option>
-                                            <option value="Medium">"Medium (4-5\")"</option>
-                                            <option value="Large">"Large (6\"+)"</option>
-                                        </select>
-                                    </div>
-                                })}
-                            </div>
-                        </div>
+                        <PotMediumSection
+                            pot_medium=pot_medium set_pot_medium=set_pot_medium
+                            pot_size=pot_size set_pot_size=set_pot_size
+                            pot_type=pot_type set_pot_type=set_pot_type
+                        />
 
                         <div class="mb-4">
                             <label>"Notes:"</label>
@@ -416,5 +379,70 @@ pub fn AddOrchidForm(
                 </div>
             </div>
         </div>
-    }
+    }.into_any()
+}
+
+#[component]
+fn PotMediumSection(
+    pot_medium: ReadSignal<String>, set_pot_medium: WriteSignal<String>,
+    pot_size: ReadSignal<String>, set_pot_size: WriteSignal<String>,
+    pot_type: ReadSignal<String>, set_pot_type: WriteSignal<String>,
+) -> impl IntoView {
+    view! {
+        <div class="pt-4 mt-4 mb-4 border-t border-stone-200 dark:border-stone-700">
+            <h4 class="mt-0 mb-3 text-xs font-semibold tracking-widest uppercase text-stone-500 dark:text-stone-400">"Pot & Medium Setup"</h4>
+            <p class="mb-4 text-xs text-stone-500">"Tracking your pot type and medium helps adjust watering schedules automatically based on evaporation rates."</p>
+            <div class="flex flex-col gap-4 sm:flex-row">
+                {move || (pot_type.get() != "Mounted").then(|| view! {
+                    <div class="flex-1 animate-fade-in">
+                        <label>"Pot Medium:"</label>
+                        <select
+                            on:change=move |ev| set_pot_medium.set(event_target_value(&ev))
+                            prop:value=pot_medium
+                        >
+                            <option value="">"Unknown / Unset"</option>
+                            <option value="Bark">"Bark"</option>
+                            <option value="Sphagnum Moss">"Sphagnum Moss"</option>
+                            <option value="LECA">"LECA (Semi-Hydro)"</option>
+                            <option value="Inorganic">"Inorganic (Lava/Pumice)"</option>
+                        </select>
+                    </div>
+                })}
+                <div class="flex-1">
+                    <label>"Pot Type (Airflow):"</label>
+                    <select
+                        on:change=move |ev| {
+                            let val = event_target_value(&ev);
+                            set_pot_type.set(val.clone());
+                            if val == "Mounted" {
+                                set_pot_medium.set(String::new());
+                                set_pot_size.set(String::new());
+                            }
+                        }
+                        prop:value=pot_type
+                    >
+                        <option value="">"Unknown / Unset"</option>
+                        <option value="Solid">"Solid (Plastic/Glazed)"</option>
+                        <option value="Slotted">"Slotted (Net Pot)"</option>
+                        <option value="Clay">"Terra Cotta (Clay)"</option>
+                        <option value="Mounted">"Mounted (Slab)"</option>
+                    </select>
+                </div>
+                {move || (pot_type.get() != "Mounted").then(|| view! {
+                    <div class="flex-1 animate-fade-in">
+                        <label>"Pot Size:"</label>
+                        <select
+                            on:change=move |ev| set_pot_size.set(event_target_value(&ev))
+                            prop:value=pot_size
+                        >
+                            <option value="">"Unknown / Unset"</option>
+                            <option value="Small">"Small (2-3\")"</option>
+                            <option value="Medium">"Medium (4-5\")"</option>
+                            <option value="Large">"Large (6\"+)"</option>
+                        </select>
+                    </div>
+                })}
+            </div>
+        </div>
+    }.into_any()
 }

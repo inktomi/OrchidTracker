@@ -38,6 +38,7 @@ pub fn test_orchid() -> Orchid {
         rest_fertilizer_multiplier: None,
         active_water_multiplier: None,
         active_fertilizer_multiplier: None,
+        par_ppfd: None,
     }
 }
 
