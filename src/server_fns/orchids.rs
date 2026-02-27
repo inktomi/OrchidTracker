@@ -75,11 +75,11 @@ pub(crate) mod ssr_types {
         #[surreal(default)]
         pub last_repotted_at: Option<chrono::DateTime<chrono::Utc>>,
         #[surreal(default)]
-        pub pot_medium: Option<crate::orchid::PotMedium>,
+        pub pot_medium: Option<String>,
         #[surreal(default)]
-        pub pot_size: Option<crate::orchid::PotSize>,
+        pub pot_size: Option<String>,
         #[surreal(default)]
-        pub pot_type: Option<crate::orchid::PotType>,
+        pub pot_type: Option<String>,
         #[surreal(default)]
         pub rest_start_month: Option<u32>,
         #[surreal(default)]
@@ -143,9 +143,9 @@ pub(crate) mod ssr_types {
                 fertilize_frequency_days: self.fertilize_frequency_days,
                 fertilizer_type: self.fertilizer_type,
                 last_repotted_at: self.last_repotted_at,
-                pot_medium: self.pot_medium,
-                pot_size: self.pot_size,
-                pot_type: self.pot_type,
+                pot_medium: self.pot_medium.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
+                pot_size: self.pot_size.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
+                pot_type: self.pot_type.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
                 rest_start_month: self.rest_start_month,
                 rest_end_month: self.rest_end_month,
                 bloom_start_month: self.bloom_start_month,
@@ -174,6 +174,16 @@ pub(crate) mod ssr_types {
 
 #[cfg(feature = "ssr")]
 use ssr_types::*;
+
+/// Serialize an enum to its serde variant name for DB storage as a plain string.
+/// Uses serde_json serialization to get the canonical name (e.g., "SphagnumMoss" not "Sphagnum Moss").
+#[cfg(feature = "ssr")]
+fn enum_to_db_string<T: serde::Serialize>(val: &T) -> String {
+    serde_json::to_string(val)
+        .unwrap_or_default()
+        .trim_matches('"')
+        .to_string()
+}
 
 /// Normalize light requirement strings to DB-compatible values.
 /// Handles aliases like "Medium Light" -> "Medium", "low" -> "Low", etc.
@@ -410,9 +420,9 @@ pub async fn create_orchid(
         .bind(("humidity_max", humidity_max))
         .bind(("fert_freq", fertilize_frequency_days.map(|v| v as i64)))
         .bind(("fert_type", fertilizer_type))
-        .bind(("pot_medium", pot_medium))
-        .bind(("pot_size", pot_size))
-        .bind(("pot_type", pot_type))
+        .bind(("pot_medium", pot_medium.map(|v| enum_to_db_string(&v))))
+        .bind(("pot_size", pot_size.map(|v| enum_to_db_string(&v))))
+        .bind(("pot_type", pot_type.map(|v| enum_to_db_string(&v))))
         .bind(("rest_start", rest_start_month.map(|v| v as i64)))
         .bind(("rest_end", rest_end_month.map(|v| v as i64)))
         .bind(("bloom_start", bloom_start_month.map(|v| v as i64)))
@@ -507,9 +517,9 @@ pub async fn update_orchid(
         .bind(("humidity_max", orchid.humidity_max))
         .bind(("fert_freq", orchid.fertilize_frequency_days.map(|v| v as i64)))
         .bind(("fert_type", orchid.fertilizer_type))
-        .bind(("pot_medium", orchid.pot_medium))
-        .bind(("pot_size", orchid.pot_size))
-        .bind(("pot_type", orchid.pot_type))
+        .bind(("pot_medium", orchid.pot_medium.map(|v| enum_to_db_string(&v))))
+        .bind(("pot_size", orchid.pot_size.map(|v| enum_to_db_string(&v))))
+        .bind(("pot_type", orchid.pot_type.map(|v| enum_to_db_string(&v))))
         .bind(("rest_start", orchid.rest_start_month.map(|v| v as i64)))
         .bind(("rest_end", orchid.rest_end_month.map(|v| v as i64)))
         .bind(("bloom_start", orchid.bloom_start_month.map(|v| v as i64)))
