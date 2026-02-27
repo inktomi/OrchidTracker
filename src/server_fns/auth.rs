@@ -235,6 +235,77 @@ pub async fn get_current_user() -> Result<Option<UserInfo>, ServerFnError> {
     crate::auth::get_session_user().await
 }
 
+/// **What is it?**
+/// A server function that permanently deletes the current user's account and all associated data.
+///
+/// **Why does it exist?**
+/// GDPR and CCPA regulations require users to be able to delete their accounts and all personal data.
+///
+/// **How should it be used?**
+/// Call this from the settings modal after the user has confirmed the deletion by typing their username.
+#[server]
+#[tracing::instrument(level = "info", skip_all)]
+pub async fn delete_account(
+    /// The user's username, typed as confirmation of the irreversible action.
+    confirmation_username: String,
+) -> Result<(), ServerFnError> {
+    use crate::auth::{require_auth, destroy_session, get_session_user};
+    use crate::config::config;
+    use crate::db::db;
+    use crate::error::internal_error;
+    use std::path::PathBuf;
+
+    let user_id = require_auth().await?;
+
+    // Verify the confirmation username matches the current user
+    let current_user = get_session_user().await?
+        .ok_or_else(|| ServerFnError::new("Not authenticated"))?;
+    if current_user.username != confirmation_username {
+        return Err(ServerFnError::new("Username does not match"));
+    }
+
+    let uid = surrealdb::types::RecordId::parse_simple(&user_id)
+        .map_err(|e| internal_error("User ID parse failed", e))?;
+
+    // Delete all user-owned data (children first to respect FK references)
+    let mut response = db()
+        .query("
+            DELETE FROM climate_reading WHERE zone IN (SELECT id FROM growing_zone WHERE owner = $uid);
+            DELETE FROM log_entry WHERE owner = $uid;
+            DELETE FROM alert WHERE owner = $uid;
+            DELETE FROM push_subscription WHERE owner = $uid;
+            DELETE FROM hardware_device WHERE owner = $uid;
+            DELETE FROM orchid WHERE owner = $uid;
+            DELETE FROM growing_zone WHERE owner = $uid;
+            DELETE FROM user_preference WHERE owner = $uid;
+            DELETE FROM user WHERE id = $uid;
+        ")
+        .bind(("uid", uid))
+        .await
+        .map_err(|e| internal_error("Account deletion query failed", e))?;
+
+    let errors = response.take_errors();
+    if !errors.is_empty() {
+        let err_msg = errors.into_values().map(|e: surrealdb::Error| e.to_string()).collect::<Vec<_>>().join("; ");
+        return Err(internal_error("Account deletion query error", err_msg));
+    }
+
+    // Delete user's image directory
+    let safe_user_dir = user_id.replace(':', "_");
+    let image_dir = PathBuf::from(&config().image_storage_path).join(&safe_user_dir);
+    if image_dir.exists() {
+        if let Err(e) = tokio::fs::remove_dir_all(&image_dir).await {
+            tracing::error!("Failed to delete image directory {:?}: {}", image_dir, e);
+            // Continue — DB data is already gone, don't fail the whole operation
+        }
+    }
+
+    // Destroy the session so the user is logged out
+    destroy_session().await?;
+
+    Ok(())
+}
+
 #[cfg(all(test, feature = "ssr"))]
 mod tests {
     use super::*;

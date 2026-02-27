@@ -25,6 +25,12 @@ pub fn SettingsModal(
     let username_stored = StoredValue::new(username);
     let (local_devices, set_local_devices) = signal(devices);
 
+    // Delete account state
+    let (delete_step, set_delete_step) = signal(0u8); // 0=hidden, 1=warning, 2=confirm
+    let (confirm_username, set_confirm_username) = signal(String::new());
+    let (is_deleting, set_is_deleting) = signal(false);
+    let (delete_error, set_delete_error) = signal(String::new());
+
     // Zone management state
     let (show_add_zone, set_show_add_zone) = signal(false);
     let (add_name, set_add_name) = signal(String::new());
@@ -317,7 +323,123 @@ pub fn SettingsModal(
                                 });
                             }
                         >"Log Out"</button>
+
+                        // Danger Zone
+                        <div class="pt-4 mt-6 border-t border-red-200/60 dark:border-red-900/40">
+                            <p class="mb-1 text-xs font-semibold tracking-wider text-red-600 uppercase dark:text-red-400">"Danger Zone"</p>
+                            <button
+                                class="py-2 px-4 mt-2 w-full text-sm font-semibold text-red-700 bg-red-50 rounded-lg border border-red-200 transition-colors cursor-pointer dark:text-red-300 hover:bg-red-100 dark:bg-red-950/40 dark:border-red-800/60 dark:hover:bg-red-950/70"
+                                on:click=move |_| set_delete_step.set(1)
+                            >"Delete Account"</button>
+                            <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">"Permanently delete your account and all associated data"</p>
+                        </div>
                     </div>
+
+                    // Delete Account Confirmation Modal
+                    {move || {
+                        let step = delete_step.get();
+                        if step == 0 {
+                            return None;
+                        }
+                        let uname = username_stored.get_value();
+                        Some(view! {
+                            <div class=MODAL_OVERLAY>
+                                <div class="bg-surface p-5 sm:p-8 rounded-2xl w-[95%] sm:w-[90%] max-w-[480px] shadow-2xl animate-modal-in border border-red-200/60 dark:border-red-800/60">
+                                    {if step == 1 {
+                                        // Step 1: Warning
+                                        view! {
+                                            <div>
+                                                <h2 class="m-0 mb-4 text-lg font-bold text-red-700 dark:text-red-400">"Delete Your Account"</h2>
+                                                <p class="mb-3 text-sm text-stone-600 dark:text-stone-300">"This will permanently delete:"</p>
+                                                <ul class="mb-4 ml-4 space-y-1 text-sm list-disc text-stone-600 dark:text-stone-300">
+                                                    <li>"All your plants and care history"</li>
+                                                    <li>"Growing zones and climate readings"</li>
+                                                    <li>"Uploaded photos"</li>
+                                                    <li>"Hardware device credentials (Tempest, AC Infinity)"</li>
+                                                    <li>"Notification subscriptions"</li>
+                                                    <li>"All account settings and data"</li>
+                                                </ul>
+                                                <p class="mb-5 text-sm font-semibold text-red-600 dark:text-red-400">"This action is permanent and cannot be undone."</p>
+                                                <div class="flex gap-3 justify-end">
+                                                    <button class=BTN_SECONDARY on:click=move |_| set_delete_step.set(0)>"Cancel"</button>
+                                                    <button
+                                                        class="py-2.5 px-5 text-sm font-semibold text-white bg-red-600 rounded-lg border-none transition-colors cursor-pointer hover:bg-red-700"
+                                                        on:click=move |_| set_delete_step.set(2)
+                                                    >"Continue"</button>
+                                                </div>
+                                            </div>
+                                        }.into_any()
+                                    } else {
+                                        // Step 2: Type username to confirm
+                                        let uname_clone = uname.clone();
+                                        let uname_display = uname.clone();
+                                        view! {
+                                            <div>
+                                                <h2 class="m-0 mb-4 text-lg font-bold text-red-700 dark:text-red-400">"This is irreversible"</h2>
+                                                <p class="mb-4 text-sm text-stone-600 dark:text-stone-300">
+                                                    "To confirm, type your username "
+                                                    <strong class="text-stone-800 dark:text-stone-100">{uname_display}</strong>
+                                                    " below:"
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    class=INPUT_SM
+                                                    placeholder="Type your username"
+                                                    prop:value=move || confirm_username.get()
+                                                    on:input=move |ev| set_confirm_username.set(event_target_value(&ev))
+                                                />
+                                                {move || {
+                                                    let err = delete_error.get();
+                                                    if err.is_empty() {
+                                                        None
+                                                    } else {
+                                                        Some(view! {
+                                                            <p class="mt-2 text-xs text-red-600 dark:text-red-400">{err}</p>
+                                                        })
+                                                    }
+                                                }}
+                                                <button
+                                                    class="py-2.5 mt-4 w-full text-sm font-semibold text-white bg-red-600 rounded-lg border-none transition-colors hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-600"
+                                                    disabled=move || confirm_username.get() != uname_clone || is_deleting.get()
+                                                    on:click=move |_| {
+                                                        let typed = confirm_username.get();
+                                                        set_is_deleting.set(true);
+                                                        set_delete_error.set(String::new());
+                                                        leptos::task::spawn_local(async move {
+                                                            match crate::server_fns::auth::delete_account(typed).await {
+                                                                Ok(()) => {
+                                                                    #[cfg(feature = "hydrate")]
+                                                                    {
+                                                                        if let Some(window) = web_sys::window() {
+                                                                            let _ = window.location().set_href("/login");
+                                                                        }
+                                                                    }
+                                                                }
+                                                                Err(e) => {
+                                                                    set_delete_error.set(e.to_string());
+                                                                    set_is_deleting.set(false);
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                >
+                                                    {move || if is_deleting.get() { "Deleting..." } else { "Delete My Account" }}
+                                                </button>
+                                                <button
+                                                    class="py-2 mt-2 w-full text-sm font-medium bg-transparent border-none cursor-pointer text-stone-500 dark:text-stone-400 dark:hover:text-stone-200 hover:text-stone-700"
+                                                    on:click=move |_| {
+                                                        set_delete_step.set(0);
+                                                        set_confirm_username.set(String::new());
+                                                        set_delete_error.set(String::new());
+                                                    }
+                                                >"Cancel"</button>
+                                            </div>
+                                        }.into_any()
+                                    }}
+                                </div>
+                            </div>
+                        })
+                    }}
 
                 </div>
             </div>
