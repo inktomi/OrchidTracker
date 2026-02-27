@@ -54,7 +54,7 @@ web-sys = { version = "0.3", features = [
     "Element", "DragEvent", "DataTransfer",
     "MediaStreamTrack", "Clipboard", "console",
     "UrlSearchParams", "Blob", "Url", "File", "FileList",
-    "HtmlElement",
+    "HtmlElement", "Storage",
     "Notification", "NotificationPermission", "NotificationOptions",
     "ServiceWorkerContainer", "ServiceWorkerRegistration",
     "PushManager", "PushSubscription", "PushSubscriptionOptionsInit",

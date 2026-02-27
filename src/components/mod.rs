@@ -98,6 +98,10 @@ pub mod manual_reading;
 /// It exists to surface critical environmental issues without occupying much screen space.
 /// It is used at the top of the home page or specific zone views.
 pub mod climate_strip;
+/// Cookie consent banner shown on first visit.
+/// It exists to inform users about our essential session cookie per GDPR/CCPA.
+/// It is rendered globally in the App component and dismisses after acknowledgment.
+pub mod cookie_consent;
 
 // ── Shared UI Constants ──────────────────────────────────────────────
 

@@ -18,3 +18,7 @@ pub mod public_collection;
 /// It exists to securely collect a new username, email, and password.
 /// It is used by the router for the `/register` path.
 pub mod register;
+/// The cookie policy page explaining what cookies the Service uses.
+/// It exists for GDPR/CCPA transparency about our essential session cookie.
+/// It is used by the router for the `/cookie-policy` path.
+pub mod cookie_policy;
