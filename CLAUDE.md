@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OrchidTracker is a **full-stack Rust web app** (Leptos SSR + hydrated WASM client) for managing an orchid collection with multi-user authentication. It uses SurrealDB for data storage, Axum for the HTTP server, and server-side Gemini AI proxying.
 
-**Deployment target:** Self-hosted Linux server at orchids.reef.fish via OPNsense firewall.
+**Deployment target:** Self-hosted Linux server at velamen.app via OPNsense firewall.
 
 ## Build & Development Commands
 

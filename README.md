@@ -1,8 +1,8 @@
-# Orchid Tracker
+# Velamen
 
 A full-stack Rust web application for managing an orchid collection with multi-user authentication, AI-powered plant identification, climate monitoring, and seasonal care tracking.
 
-**Live at:** [orchids.reef.fish](https://orchids.reef.fish)
+**Live at:** [velamen.app](https://velamen.app)
 
 ## Features
 

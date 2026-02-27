@@ -85,7 +85,7 @@ jobs:
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
             "${{ env.tarball }}" \
-            --title "OrchidTracker ${{ steps.version.outputs.tag }}" \
+            --title "Velamen ${{ steps.version.outputs.tag }}" \
             --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

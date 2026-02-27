@@ -1,7 +1,7 @@
 {
   "name": "orchidtracker",
   "version": "1.0.0",
-  "description": "A simple web application to track your orchids and their care requirements, built with Rust and Leptos.",
+  "description": "Velamen — Root to Bloom. A full-stack Rust web application for orchid collection management, built with Leptos.",
   "main": "parse_data.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

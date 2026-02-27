@@ -1,4 +1,4 @@
-// Service Worker for OrchidTracker push notifications
+// Service Worker for Velamen push notifications
 
 // Activate immediately — don't wait for existing tabs to close
 self.addEventListener('install', function(event) {
@@ -15,7 +15,7 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('push', function(event) {
     console.log('[SW] Push received:', event.data ? event.data.text() : 'no data');
 
-    let data = { title: 'OrchidTracker', body: 'You have a new alert', url: '/' };
+    let data = { title: 'Velamen', body: 'You have a new alert', url: '/' };
 
     if (event.data) {
         try {
@@ -34,7 +34,7 @@ self.addEventListener('push', function(event) {
     };
 
     event.waitUntil(
-        self.registration.showNotification(data.title || 'OrchidTracker', options)
+        self.registration.showNotification(data.title || 'Velamen', options)
     );
 });
 

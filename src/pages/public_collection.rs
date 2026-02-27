@@ -61,7 +61,7 @@ fn PublicHero(display_name: String, plant_count: usize) -> impl IntoView {
             // Brand badge
             <div class="flex gap-2 justify-center items-center mb-5">
                 <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Orchid Tracker"</span>
+                <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Velamen"</span>
             </div>
 
             // Main heading
@@ -220,7 +220,7 @@ pub fn PublicCollectionPage() -> impl IntoView {
                             <div class="flex relative z-10 flex-col items-center py-20 px-6 text-center">
                                 <div class="flex gap-2 justify-center items-center mb-8">
                                     <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                                    <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Orchid Tracker"</span>
+                                    <span class="text-xs font-semibold tracking-widest uppercase text-primary/80">"Velamen"</span>
                                 </div>
                                 <div class="mb-4 text-4xl text-stone-300" aria-hidden="true">"\u{1F512}"</div>
                                 <h1 class="mb-2 text-xl font-semibold text-stone-700">{display_msg}</h1>

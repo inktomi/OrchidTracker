@@ -49,7 +49,10 @@ pub fn LoginPage() -> impl IntoView {
                     <div>
                         <div class="flex gap-3 items-center mb-2">
                             <div class="flex justify-center items-center w-10 h-10 text-lg rounded-xl border bg-white/10 border-white/20 [&>svg]:w-5 [&>svg]:h-5" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                            <span class="text-sm font-semibold tracking-widest uppercase text-white/70">"Orchid Tracker"</span>
+                            <div>
+                                <span class="text-sm font-semibold tracking-widest uppercase text-white/70">"Velamen"</span>
+                                <div class="text-xs italic tracking-wide text-white/40">"Root to Bloom"</div>
+                            </div>
                         </div>
                     </div>
 
@@ -87,7 +90,7 @@ pub fn LoginPage() -> impl IntoView {
                     // Mobile brand (visible only on small screens)
                     <div class="flex gap-2 justify-center items-center mb-8 lg:hidden">
                         <div class="flex justify-center items-center w-8 h-8 text-sm rounded-lg bg-primary [&>svg]:w-4 [&>svg]:h-4" inner_html=include_str!("../../public/svg/app_logo.svg")></div>
-                        <span class="text-sm font-semibold tracking-widest uppercase text-primary">"Orchid Tracker"</span>
+                        <span class="text-sm font-semibold tracking-widest uppercase text-primary">"Velamen"</span>
                     </div>
 
                     <div class="mb-2">
@@ -149,7 +152,7 @@ pub fn LoginPage() -> impl IntoView {
                     </form>
 
                     <div class="flex gap-1 justify-center items-center mt-8 text-sm">
-                        <span class="text-stone-500 dark:text-stone-400">"New to Orchid Tracker?"</span>
+                        <span class="text-stone-500 dark:text-stone-400">"New to Velamen?"</span>
                         <a href="/register" class="font-medium transition-colors text-primary dark:text-primary-light dark:hover:text-accent-light hover:text-primary-light">"Create account"</a>
                     </div>
                 </div>

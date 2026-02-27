@@ -16,7 +16,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
-                <title>"Orchid Tracker"</title>
+                <title>"Velamen \u{2014} Root to Bloom"</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="theme-color" content="#1b4332" />
                 <AutoReload options=options.clone() />
