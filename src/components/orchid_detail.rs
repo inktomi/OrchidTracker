@@ -700,24 +700,34 @@ fn CareScheduleCard(
 
             // Pot info
             <div class="grid grid-cols-2 gap-3 pt-3 mt-3 text-sm border-t border-stone-100 dark:border-stone-700/50">
-                <div>
-                    <div class=CARE_STAT_LABEL>"\u{1FAB4} Pot Medium"</div>
-                    <div class=CARE_STAT_VALUE>
-                        {move || orchid_signal.get().pot_medium.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
-                    </div>
-                </div>
+                {move || {
+                    let is_mounted = orchid_signal.get().pot_type.as_ref() == Some(&crate::orchid::PotType::Mounted);
+                    (!is_mounted).then(|| view! {
+                        <div>
+                            <div class=CARE_STAT_LABEL>"\u{1FAB4} Pot Medium"</div>
+                            <div class=CARE_STAT_VALUE>
+                                {orchid_signal.get().pot_medium.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
+                            </div>
+                        </div>
+                    })
+                }}
                 <div>
                     <div class=CARE_STAT_LABEL>"Pot Type"</div>
                     <div class=CARE_STAT_VALUE>
                         {move || orchid_signal.get().pot_type.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
                     </div>
                 </div>
-                <div>
-                    <div class=CARE_STAT_LABEL>"Pot Size"</div>
-                    <div class=CARE_STAT_VALUE>
-                        {move || orchid_signal.get().pot_size.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
-                    </div>
-                </div>
+                {move || {
+                    let is_mounted = orchid_signal.get().pot_type.as_ref() == Some(&crate::orchid::PotType::Mounted);
+                    (!is_mounted).then(|| view! {
+                        <div>
+                            <div class=CARE_STAT_LABEL>"Pot Size"</div>
+                            <div class=CARE_STAT_VALUE>
+                                {orchid_signal.get().pot_size.map(|v| v.to_string()).unwrap_or_else(|| "Not set".to_string())}
+                            </div>
+                        </div>
+                    })
+                }}
                 <div>
                     <div class=CARE_STAT_LABEL>"Last Repotted"</div>
                     <div class=CARE_STAT_VALUE>
@@ -1125,7 +1135,7 @@ fn EditForm(
 mod tests {
     use super::*;
     use leptos::reactive::owner::Owner;
-    use crate::test_helpers::{test_orchid, test_orchid_with_care};
+    use crate::test_helpers::{test_orchid, test_orchid_mounted, test_orchid_with_care};
 
     // ── CareScheduleCard ────────────────────────────────────────────
 
@@ -1219,6 +1229,48 @@ mod tests {
             }.to_html();
             assert!(html.contains("Not set"), "Should show 'Not set' for missing care data");
             assert!(html.contains("No schedule"), "Should show 'No schedule' for missing frequency");
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_hides_pot_medium_and_size_for_mounted() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid_mounted());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                />
+            }.to_html();
+            assert!(html.contains("Mounted"),
+                "Should show 'Mounted' pot type. Got: {html}");
+            assert!(!html.contains("Pot Medium"),
+                "Pot Medium should be hidden for mounted orchids. Got: {html}");
+            assert!(!html.contains("Pot Size"),
+                "Pot Size should be hidden for mounted orchids. Got: {html}");
+            assert!(html.contains("Last Repotted"),
+                "Last Repotted should still be visible for mounted orchids");
+        });
+    }
+
+    #[test]
+    fn test_care_schedule_card_shows_pot_medium_and_size_for_potted() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let (orchid_signal, set_orchid_signal) = signal(test_orchid_with_care());
+            let html = view! {
+                <CareScheduleCard
+                    orchid_signal=orchid_signal
+                    set_orchid_signal=set_orchid_signal
+                />
+            }.to_html();
+            assert!(html.contains("Pot Medium"),
+                "Pot Medium should be visible for potted orchids");
+            assert!(html.contains("Pot Size"),
+                "Pot Size should be visible for potted orchids");
+            assert!(html.contains("Pot Type"),
+                "Pot Type should be visible for potted orchids");
         });
     }
 

@@ -112,7 +112,7 @@ pub fn OrchidCard(
                     </div>
                     <div>
                         <div class="text-xs tracking-wide text-stone-400">"Pot"</div>
-                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.pot_medium.clone().map(|v| v.to_string()).unwrap_or_else(|| "\u{2014}".to_string())}</div>
+                        <div class="font-medium text-stone-700 dark:text-stone-300">{orchid.pot_type.clone().map(|v| v.to_string()).unwrap_or_else(|| "\u{2014}".to_string())}</div>
                     </div>
                 </div>
 
@@ -153,7 +153,7 @@ pub fn OrchidCard(
 #[cfg(all(test, feature = "ssr"))]
 mod tests {
     use super::*;
-    use crate::test_helpers::{test_orchid, test_orchid_with_care};
+    use crate::test_helpers::{test_orchid, test_orchid_mounted, test_orchid_with_care};
     use leptos::reactive::owner::Owner;
 
     fn noop_string(_: String) {}
@@ -261,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn test_orchid_card_shows_pot_medium() {
+    fn test_orchid_card_shows_pot_type() {
         let owner = Owner::new();
         owner.with(|| {
             let orchid = test_orchid_with_care();
@@ -276,8 +276,30 @@ mod tests {
             }
             .to_html();
             assert!(
-                html.contains("Bark"),
-                "Should show pot medium from care data"
+                html.contains("Solid (Plastic/Glazed)"),
+                "Card 'Pot' field should show pot_type, not pot_medium. Got: {html}"
+            );
+        });
+    }
+
+    #[test]
+    fn test_orchid_card_shows_mounted_pot_type() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let orchid = test_orchid_mounted();
+            let html = view! {
+                <OrchidCard
+                    orchid=orchid
+                    zones=vec![]
+                    on_delete=noop_string
+                    on_select=noop_orchid
+                    on_water=noop_string
+                />
+            }
+            .to_html();
+            assert!(
+                html.contains("Mounted"),
+                "Card should show 'Mounted' for mounted pot type, not '—'. Got: {html}"
             );
         });
     }

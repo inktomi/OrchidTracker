@@ -49,6 +49,17 @@ pub fn test_orchid_with_care() -> Orchid {
         fertilize_frequency_days: Some(14),
         pot_medium: Some(crate::orchid::PotMedium::Bark),
         pot_size: Some(crate::orchid::PotSize::Medium),
+        pot_type: Some(crate::orchid::PotType::Solid),
+        ..test_orchid()
+    }
+}
+
+/// Orchid mounted on slab/cork — no pot medium or pot size.
+pub fn test_orchid_mounted() -> Orchid {
+    Orchid {
+        pot_type: Some(crate::orchid::PotType::Mounted),
+        pot_medium: None,
+        pot_size: None,
         ..test_orchid()
     }
 }
