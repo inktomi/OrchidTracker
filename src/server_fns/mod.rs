@@ -90,6 +90,16 @@ pub mod scanner;
 /// Call these functions from landing pages or public gallery views where no user session is required.
 pub mod public;
 /// **What is it?**
+/// A module providing a client-side telemetry proxy to Axiom.
+///
+/// **Why does it exist?**
+/// It exists to forward structured log events from the WASM client to Axiom via a server function,
+/// since the browser cannot send traces to Axiom directly without exposing the API token.
+///
+/// **How should it be used?**
+/// Call `telemetry::emit_info/emit_warn/emit_error` from client-side code to send structured events to Axiom.
+pub mod telemetry;
+/// **What is it?**
 /// A module containing server functions for managing physical zones.
 ///
 /// **Why does it exist?**

@@ -383,6 +383,76 @@ fn DetailsTab(
         let pot_medium_val = edit_pot_medium.get();
         let pot_size_val = edit_pot_size.get();
         let pot_type_val = edit_pot_type.get();
+
+        // Telemetry: log the raw form values before deserialization
+        #[cfg(feature = "hydrate")]
+        crate::server_fns::telemetry::emit_info(
+            "orchid_detail.on_edit_save",
+            "Edit save: raw form values",
+            &[
+                ("orchid_id", &current.id),
+                ("pot_type_val", &pot_type_val),
+                ("pot_medium_val", &pot_medium_val),
+                ("pot_size_val", &pot_size_val),
+            ],
+        );
+
+        let pot_medium_parsed = if pot_medium_val.is_empty() { None } else {
+            match serde_json::from_str::<crate::orchid::PotMedium>(&format!("\"{}\"", pot_medium_val)) {
+                Ok(v) => Some(v),
+                Err(_e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_warn(
+                        "orchid_detail.on_edit_save",
+                        &format!("Failed to parse pot_medium '{}': {}", pot_medium_val, _e),
+                        &[("orchid_id", &current.id), ("raw_value", &pot_medium_val)],
+                    );
+                    None
+                }
+            }
+        };
+        let pot_size_parsed = if pot_size_val.is_empty() { None } else {
+            match serde_json::from_str::<crate::orchid::PotSize>(&format!("\"{}\"", pot_size_val)) {
+                Ok(v) => Some(v),
+                Err(_e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_warn(
+                        "orchid_detail.on_edit_save",
+                        &format!("Failed to parse pot_size '{}': {}", pot_size_val, _e),
+                        &[("orchid_id", &current.id), ("raw_value", &pot_size_val)],
+                    );
+                    None
+                }
+            }
+        };
+        let pot_type_parsed = if pot_type_val.is_empty() { None } else {
+            match serde_json::from_str::<crate::orchid::PotType>(&format!("\"{}\"", pot_type_val)) {
+                Ok(v) => Some(v),
+                Err(_e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_warn(
+                        "orchid_detail.on_edit_save",
+                        &format!("Failed to parse pot_type '{}': {}", pot_type_val, _e),
+                        &[("orchid_id", &current.id), ("raw_value", &pot_type_val)],
+                    );
+                    None
+                }
+            }
+        };
+
+        // Telemetry: log the parsed values after deserialization
+        #[cfg(feature = "hydrate")]
+        crate::server_fns::telemetry::emit_info(
+            "orchid_detail.on_edit_save",
+            "Edit save: parsed pot values",
+            &[
+                ("orchid_id", &current.id),
+                ("pot_type", &format!("{:?}", pot_type_parsed)),
+                ("pot_medium", &format!("{:?}", pot_medium_parsed)),
+                ("pot_size", &format!("{:?}", pot_size_parsed)),
+            ],
+        );
+
         let updated = Orchid {
             id: current.id,
             name: edit_name.get(),
@@ -407,21 +477,9 @@ fn DetailsTab(
             fertilize_frequency_days: edit_fert_freq.get().parse().ok(),
             fertilizer_type: if fert_type_val.is_empty() { None } else { Some(fert_type_val) },
             last_repotted_at: current.last_repotted_at,
-            pot_medium: if pot_medium_val.is_empty() { None } else {
-                serde_json::from_str(&format!("\"{}\"", pot_medium_val)).map_err(|e| {
-                    tracing::warn!("Failed to parse pot_medium '{}': {}", pot_medium_val, e);
-                }).ok()
-            },
-            pot_size: if pot_size_val.is_empty() { None } else {
-                serde_json::from_str(&format!("\"{}\"", pot_size_val)).map_err(|e| {
-                    tracing::warn!("Failed to parse pot_size '{}': {}", pot_size_val, e);
-                }).ok()
-            },
-            pot_type: if pot_type_val.is_empty() { None } else {
-                serde_json::from_str(&format!("\"{}\"", pot_type_val)).map_err(|e| {
-                    tracing::warn!("Failed to parse pot_type '{}': {}", pot_type_val, e);
-                }).ok()
-            },
+            pot_medium: pot_medium_parsed,
+            pot_size: pot_size_parsed,
+            pot_type: pot_type_parsed,
             par_ppfd: edit_par_ppfd.get().parse().ok(),
             rest_start_month: edit_rest_start.get().parse().ok(),
             rest_end_month: edit_rest_end.get().parse().ok(),
