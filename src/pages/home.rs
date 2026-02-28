@@ -207,10 +207,14 @@ pub fn HomePage() -> impl IntoView {
                 Ok(updated) => {
                     #[cfg(feature = "hydrate")]
                     crate::server_fns::telemetry::emit_info("home.update_orchid", "Orchid updated", &[("orchid_id", &_orchid_id)]);
-                    send(Msg::SelectOrchid(Some(updated)));
+                    // Patch the local orchid list in-place — no refetch, no scroll reset.
+                    orchids_local.update(|list| {
+                        if let Some(o) = list.iter_mut().find(|o| o.id == updated.id) {
+                            *o = updated;
+                        }
+                    });
                 }
             }
-            orchids_resource.refetch();
         });
     };
 
@@ -521,10 +525,10 @@ pub fn HomePage() -> impl IntoView {
                             })}
 
                             {move || selected_orchid.get().map(|orchid| {
-                                let current_zones = zones_memo.get();
-                                let current_readings = climate_readings.get();
-                                let current_snapshots = climate_snapshots.get();
-                                let current_hemi = hemisphere.get();
+                                let current_zones = zones_memo.get_untracked();
+                                let current_readings = climate_readings.get_untracked();
+                                let current_snapshots = climate_snapshots.get_untracked();
+                                let current_hemi = hemisphere.get_untracked();
                                 view! {
                                     <OrchidDetail
                                         orchid=orchid

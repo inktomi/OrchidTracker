@@ -115,11 +115,7 @@ fn OrchidGrid(
         <div class="grid gap-5 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
             <For
                 each=move || orchids.get()
-                key=|orchid| format!(
-                    "{}-{}",
-                    orchid.id,
-                    orchid.last_watered_at.map(|d| d.timestamp_millis()).unwrap_or(0)
-                )
+                key=|orchid| serde_json::to_string(orchid).unwrap_or_default()
                 children=move |orchid| {
                     let zones_clone = zones.get();
                     let snaps = climate_snapshots.map(|m| m.get()).unwrap_or_default();
