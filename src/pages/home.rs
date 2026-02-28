@@ -198,13 +198,17 @@ pub fn HomePage() -> impl IntoView {
     let on_update = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
             let _orchid_id = orchid.id.clone();
-            if let Err(e) = update_orchid(orchid).await {
-                #[cfg(feature = "hydrate")]
-                crate::server_fns::telemetry::emit_error("home.update_orchid", &format!("Failed to update plant: {}", e), &[("orchid_id", &_orchid_id)]);
-                set_toast_msg.set(Some(format!("Failed to update plant: {}", e)));
-            } else {
-                #[cfg(feature = "hydrate")]
-                crate::server_fns::telemetry::emit_info("home.update_orchid", "Orchid updated", &[("orchid_id", &_orchid_id)]);
+            match update_orchid(orchid).await {
+                Err(_e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("home.update_orchid", &format!("Failed to update plant: {}", _e), &[("orchid_id", &_orchid_id)]);
+                    set_toast_msg.set(Some(format!("Failed to update plant: {}", _e)));
+                }
+                Ok(updated) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("home.update_orchid", "Orchid updated", &[("orchid_id", &_orchid_id)]);
+                    send(Msg::SelectOrchid(Some(updated)));
+                }
             }
             orchids_resource.refetch();
         });
