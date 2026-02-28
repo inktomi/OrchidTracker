@@ -67,8 +67,9 @@ pub fn OnboardingPage() -> impl IntoView {
         let current_zones = zones.get_untracked();
 
         leptos::task::spawn_local(async move {
+            let _zone_count = current_zones.len();
             for (i, zone) in current_zones.iter().enumerate() {
-                let _ = create_zone(
+                if let Err(_e) = create_zone(
                     zone.name.clone(),
                     zone.light_level.clone(),
                     zone.location_type.clone(),
@@ -76,10 +77,15 @@ pub fn OnboardingPage() -> impl IntoView {
                     zone.humidity.clone(),
                     zone.description.clone(),
                     i as i32,
-                ).await;
+                ).await {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("onboarding.create_zone", &format!("Failed to create zone during onboarding: {}", _e), &[("zone_name", &zone.name)]);
+                }
             }
             #[cfg(feature = "hydrate")]
             {
+                let count_str = _zone_count.to_string();
+                crate::server_fns::telemetry::emit_info("onboarding.complete", "Onboarding completed", &[("zone_count", &count_str)]);
                 if let Some(window) = web_sys::window() {
                     let _ = window.location().set_href("/");
                 }

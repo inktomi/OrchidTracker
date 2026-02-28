@@ -150,8 +150,8 @@ pub fn HomePage() -> impl IntoView {
     let on_add = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
             match create_orchid(
-                orchid.name,
-                orchid.species,
+                orchid.name.clone(),
+                orchid.species.clone(),
                 orchid.water_frequency_days,
                 orchid.light_requirement.as_str().to_string(),
                 orchid.notes,
@@ -181,8 +181,15 @@ pub fn HomePage() -> impl IntoView {
                 orchid.active_fertilizer_multiplier,
                 orchid.par_ppfd,
             ).await {
-                Ok(_) => {},
-                Err(e) => set_toast_msg.set(Some(format!("Failed to add plant: {}", e))),
+                Ok(_) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("home.create_orchid", "Orchid created", &[("species", &orchid.species)]);
+                },
+                Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("home.create_orchid", &format!("Failed to add plant: {}", e), &[("species", &orchid.species)]);
+                    set_toast_msg.set(Some(format!("Failed to add plant: {}", e)));
+                },
             }
             orchids_resource.refetch();
         });
@@ -190,8 +197,14 @@ pub fn HomePage() -> impl IntoView {
 
     let on_update = move |orchid: Orchid| {
         leptos::task::spawn_local(async move {
-            if let Err(e) = update_orchid(orchid.clone()).await {
+            let _orchid_id = orchid.id.clone();
+            if let Err(e) = update_orchid(orchid).await {
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_error("home.update_orchid", &format!("Failed to update plant: {}", e), &[("orchid_id", &_orchid_id)]);
                 set_toast_msg.set(Some(format!("Failed to update plant: {}", e)));
+            } else {
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_info("home.update_orchid", "Orchid updated", &[("orchid_id", &_orchid_id)]);
             }
             orchids_resource.refetch();
         });
@@ -206,8 +219,13 @@ pub fn HomePage() -> impl IntoView {
                 }
         }
         leptos::task::spawn_local(async move {
-            if let Err(e) = delete_orchid(id).await {
+            if let Err(e) = delete_orchid(id.clone()).await {
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_error("home.delete_orchid", &format!("Failed to delete plant: {}", e), &[("orchid_id", &id)]);
                 set_toast_msg.set(Some(format!("Failed to delete plant: {}", e)));
+            } else {
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_info("home.delete_orchid", "Orchid deleted", &[("orchid_id", &id)]);
             }
             orchids_resource.refetch();
         });
@@ -233,7 +251,11 @@ pub fn HomePage() -> impl IntoView {
                         }
                     });
                 }
-                Err(e) => set_toast_msg.set(Some(format!("Failed to mark watered: {}", e))),
+                Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("home.mark_watered", &format!("Failed to mark watered: {}", e), &[("orchid_id", &id)]);
+                    set_toast_msg.set(Some(format!("Failed to mark watered: {}", e)));
+                }
             }
             watering_in_flight.update(|set| { set.remove(&id); });
         });
@@ -265,7 +287,12 @@ pub fn HomePage() -> impl IntoView {
                         }
                     });
                 }
-                Err(e) => set_toast_msg.set(Some(format!("Failed to mark all watered: {}", e))),
+                Err(e) => {
+                    let _count = to_water.len().to_string();
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("home.mark_watered_batch", &format!("Failed to mark all watered: {}", e), &[("count", &_count)]);
+                    set_toast_msg.set(Some(format!("Failed to mark all watered: {}", e)));
+                }
             }
             watering_in_flight.update(|set| {
                 for id in &to_water {
@@ -411,7 +438,10 @@ pub fn HomePage() -> impl IntoView {
                                                             } else {
                                                                 view! { <AlertBanner alerts=alerts on_dismiss=move |id: String| {
                                                                     leptos::task::spawn_local(async move {
-                                                                        let _ = crate::server_fns::alerts::acknowledge_alert(id).await;
+                                                                        if let Err(_e) = crate::server_fns::alerts::acknowledge_alert(id.clone()).await {
+                                                                            #[cfg(feature = "hydrate")]
+                                                                            crate::server_fns::telemetry::emit_warn("home.acknowledge_alert", &format!("Failed to acknowledge alert: {}", _e), &[("alert_id", &id)]);
+                                                                        }
                                                                         alerts_resource.refetch();
                                                                     });
                                                                 } /> }.into_any()

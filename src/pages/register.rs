@@ -20,6 +20,8 @@ pub fn RegisterPage() -> impl IntoView {
         ev.prevent_default();
 
         if password.get() != confirm.get() {
+            #[cfg(feature = "hydrate")]
+            crate::server_fns::telemetry::emit_warn("register.validation", "Password mismatch", &[]);
             set_error.set(Some("Passwords do not match".into()));
             return;
         }
@@ -29,11 +31,16 @@ pub fn RegisterPage() -> impl IntoView {
 
         let nav = navigate.clone();
         leptos::task::spawn_local(async move {
-            match register(username.get(), email.get(), password.get()).await {
+            let uname = username.get();
+            match register(uname.clone(), email.get(), password.get()).await {
                 Ok(_) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("register.success", "User registered", &[("username", &uname)]);
                     nav("/", Default::default());
                 }
                 Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("register.submit", "Registration failed", &[("username", &uname)]);
                     set_error.set(Some(e.to_string()));
                     set_is_loading.set(false);
                 }

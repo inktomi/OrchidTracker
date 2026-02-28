@@ -435,8 +435,14 @@ fn OwnPrivateCollectionPrompt(username: String) -> impl IntoView {
                                     set_error.set(None);
                                     leptos::task::spawn_local(async move {
                                         match save_collection_public(true).await {
-                                            Ok(()) => set_enabled.set(true),
+                                            Ok(()) => {
+                                                #[cfg(feature = "hydrate")]
+                                                crate::server_fns::telemetry::emit_info("public_collection.enable_sharing", "Collection sharing enabled", &[]);
+                                                set_enabled.set(true);
+                                            }
                                             Err(e) => {
+                                                #[cfg(feature = "hydrate")]
+                                                crate::server_fns::telemetry::emit_error("public_collection.enable_sharing", &format!("Failed to enable sharing: {}", e), &[]);
                                                 set_error.set(Some(e.to_string()));
                                                 set_is_enabling.set(false);
                                             }

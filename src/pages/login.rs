@@ -21,11 +21,16 @@ pub fn LoginPage() -> impl IntoView {
 
         let nav = navigate.clone();
         leptos::task::spawn_local(async move {
-            match login(username.get(), password.get()).await {
+            let uname = username.get();
+            match login(uname.clone(), password.get()).await {
                 Ok(_) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("login.success", "User logged in", &[("username", &uname)]);
                     nav("/", Default::default());
                 }
                 Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("login.submit", "Login failed", &[("username", &uname)]);
                     set_error.set(Some(e.to_string()));
                     set_is_loading.set(false);
                 }

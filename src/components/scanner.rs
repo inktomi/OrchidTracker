@@ -203,6 +203,8 @@ fn ScanTab(
                             }
                             Err(e) => {
                                 tracing::error!("Camera Error: {:?}", e);
+                                #[cfg(feature = "hydrate")]
+                                crate::server_fns::telemetry::emit_error("scanner.camera_start", &format!("Camera access denied: {:?}", e), &[]);
                                 set_error_msg.set(Some("Camera access denied or not available.".into()));
                             }
                         }
@@ -238,6 +240,8 @@ fn ScanTab(
 
             if let Err(e) = context.draw_image_with_html_video_element(&video, 0.0, 0.0) {
                 tracing::error!("Draw Error: {:?}", e);
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_error("scanner.capture_frame", &format!("Failed to capture frame: {:?}", e), &[]);
                 set_error_msg.set(Some("Failed to capture image".into()));
                 set_is_scanning.set(false);
                 return;
@@ -265,6 +269,9 @@ fn ScanTab(
                 }
             });
 
+            #[cfg(feature = "hydrate")]
+            crate::server_fns::telemetry::emit_info("scanner.analyze_start", "Image analysis started", &[("mode", "scan")]);
+
             leptos::task::spawn_local(async move {
                 match crate::server_fns::scanner::analyze_orchid_image(
                     base64_image,
@@ -272,8 +279,16 @@ fn ScanTab(
                     summary,
                     Some(zone_names),
                 ).await {
-                    Ok(result) => set_analysis_result.set(Some(result)),
-                    Err(e) => set_error_msg.set(Some(format!("Analysis failed: {}", e))),
+                    Ok(result) => {
+                        #[cfg(feature = "hydrate")]
+                        crate::server_fns::telemetry::emit_info("scanner.analyze_complete", "Image analysis complete", &[("species", &result.species_name)]);
+                        set_analysis_result.set(Some(result));
+                    }
+                    Err(e) => {
+                        #[cfg(feature = "hydrate")]
+                        crate::server_fns::telemetry::emit_error("scanner.analyze_image", &format!("Analysis failed: {}", e), &[]);
+                        set_error_msg.set(Some(format!("Analysis failed: {}", e)));
+                    }
                 }
                 set_is_scanning.set(false);
             });
@@ -422,6 +437,9 @@ fn SearchTab(
                 }
             });
 
+            #[cfg(feature = "hydrate")]
+            crate::server_fns::telemetry::emit_info("scanner.search_start", "Name search started", &[("query", &name)]);
+
             leptos::task::spawn_local(async move {
                 match crate::server_fns::scanner::analyze_orchid_by_name(
                     name,
@@ -429,8 +447,16 @@ fn SearchTab(
                     summary,
                     Some(zone_names),
                 ).await {
-                    Ok(result) => set_analysis_result.set(Some(result)),
-                    Err(e) => set_error_msg.set(Some(format!("Lookup failed: {}", e))),
+                    Ok(result) => {
+                        #[cfg(feature = "hydrate")]
+                        crate::server_fns::telemetry::emit_info("scanner.search_complete", "Name search complete", &[("species", &result.species_name)]);
+                        set_analysis_result.set(Some(result));
+                    }
+                    Err(e) => {
+                        #[cfg(feature = "hydrate")]
+                        crate::server_fns::telemetry::emit_error("scanner.search_by_name", &format!("Lookup failed: {}", e), &[]);
+                        set_error_msg.set(Some(format!("Lookup failed: {}", e)));
+                    }
                 }
                 set_is_searching.set(false);
             });

@@ -169,6 +169,7 @@ async fn register_and_subscribe() -> Result<(), String> {
 pub(crate) async fn register_and_subscribe_silent() {
     if let Err(e) = register_and_subscribe().await {
         tracing::error!("Push subscribe failed: {}", e);
+        crate::server_fns::telemetry::emit_error("notification_setup.push_subscribe", &format!("Push subscribe failed: {}", e), &[]);
     }
 }
 
@@ -185,6 +186,7 @@ async fn ensure_sw_registered() {
     let promise = sw_container.register("/sw.js");
     if let Err(e) = JsFuture::from(promise).await {
         tracing::error!("SW registration failed: {:?}", e);
+        crate::server_fns::telemetry::emit_error("notification_setup.sw_register", &format!("SW registration failed: {:?}", e), &[]);
     }
 }
 

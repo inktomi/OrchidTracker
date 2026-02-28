@@ -89,3 +89,9 @@ pub fn emit_warn(source: &str, message: &str, context: &[(&str, &str)]) {
 pub fn emit_error(source: &str, message: &str, context: &[(&str, &str)]) {
     emit("error", source, message, context);
 }
+
+/// Convenience: emit a debug-level telemetry event from the client.
+#[cfg(feature = "hydrate")]
+pub fn emit_debug(source: &str, message: &str, context: &[(&str, &str)]) {
+    emit("debug", source, message, context);
+}

@@ -63,7 +63,11 @@ pub fn OrchidDetail(
             };
             match result {
                 Ok(entries) => set_log_entries.set(entries),
-                Err(e) => tracing::error!("Failed to load log entries: {}", e),
+                Err(e) => {
+                    tracing::error!("Failed to load log entries: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("orchid_detail.load_log_entries", &format!("Failed to load log entries: {}", e), &[]);
+                }
             }
         });
     }
@@ -207,6 +211,8 @@ fn JournalTab(
                         Ok(fname) => Some(fname),
                         Err(e) => {
                             tracing::error!("Photo upload failed: {}", e);
+                            #[cfg(feature = "hydrate")]
+                            crate::server_fns::telemetry::emit_error("orchid_detail.upload_photo", &format!("Photo upload failed: {}", e), &[]);
                             set_is_syncing.set(false);
                             return;
                         }
@@ -230,7 +236,11 @@ fn JournalTab(
                     }
                     set_log_entries.update(|entries| entries.insert(0, response.entry));
                 }
-                Err(e) => tracing::error!("Failed to add note: {}", e),
+                Err(e) => {
+                    tracing::error!("Failed to add note: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("orchid_detail.add_log_entry", &format!("Failed to add log entry: {}", e), &[]);
+                }
             }
             set_is_syncing.set(false);
             set_note.set(String::new());
@@ -670,7 +680,11 @@ fn DetailsTab(
                                         set_log_entries.set(entries);
                                     }
                                 }
-                                Err(e) => tracing::error!("Failed to mark watered: {}", e),
+                                Err(e) => {
+                                    tracing::error!("Failed to mark watered: {}", e);
+                                    #[cfg(feature = "hydrate")]
+                                    crate::server_fns::telemetry::emit_error("orchid_detail.mark_watered", &format!("Failed to mark watered: {}", e), &[]);
+                                }
                             }
                             set_is_watering.set(false);
                         });
@@ -756,7 +770,11 @@ fn CareScheduleCard(
                                 leptos::task::spawn_local(async move {
                                     match crate::server_fns::orchids::mark_fertilized(orchid_id).await {
                                         Ok(updated) => set_orchid_signal.set(updated),
-                                        Err(e) => tracing::error!("Failed to mark fertilized: {}", e),
+                                        Err(e) => {
+                                            tracing::error!("Failed to mark fertilized: {}", e);
+                                            #[cfg(feature = "hydrate")]
+                                            crate::server_fns::telemetry::emit_error("orchid_detail.mark_fertilized", &format!("Failed to mark fertilized: {}", e), &[]);
+                                        }
                                     }
                                     set_is_fertilizing.set(false);
                                 });

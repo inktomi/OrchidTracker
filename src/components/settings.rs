@@ -75,6 +75,8 @@ pub fn SettingsModal(
                 }
                 Err(e) => {
                     tracing::error!("Failed to create zone: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("settings.create_zone", &format!("Failed to create zone: {}", e), &[]);
                 }
             }
             set_is_zone_saving.set(false);
@@ -93,6 +95,8 @@ pub fn SettingsModal(
                 }
                 Err(e) => {
                     tracing::error!("Failed to delete zone: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("settings.delete_zone", &format!("Failed to delete zone: {}", e), &[("zone_id", &zone_id)]);
                 }
             }
             set_is_zone_saving.set(false);
@@ -114,7 +118,13 @@ pub fn SettingsModal(
                                 let val = event_target_value(&ev);
                                 set_hemisphere.set(val.clone());
                                 leptos::task::spawn_local(async move {
-                                    let _ = crate::server_fns::preferences::save_hemisphere(val).await;
+                                    if let Err(_e) = crate::server_fns::preferences::save_hemisphere(val.clone()).await {
+                                        #[cfg(feature = "hydrate")]
+                                        crate::server_fns::telemetry::emit_error("settings.save_hemisphere", &format!("Failed to save hemisphere: {}", _e), &[("value", &val)]);
+                                    } else {
+                                        #[cfg(feature = "hydrate")]
+                                        crate::server_fns::telemetry::emit_info("settings.save_hemisphere", "Hemisphere saved", &[("value", &val)]);
+                                    }
                                 });
                             }
                             prop:value=hemisphere
@@ -130,7 +140,13 @@ pub fn SettingsModal(
                                 let val = event_target_value(&ev);
                                 set_temp_unit.set(val.clone());
                                 leptos::task::spawn_local(async move {
-                                    let _ = crate::server_fns::preferences::save_temp_unit(val).await;
+                                    if let Err(_e) = crate::server_fns::preferences::save_temp_unit(val.clone()).await {
+                                        #[cfg(feature = "hydrate")]
+                                        crate::server_fns::telemetry::emit_error("settings.save_temp_unit", &format!("Failed to save temp unit: {}", _e), &[("value", &val)]);
+                                    } else {
+                                        #[cfg(feature = "hydrate")]
+                                        crate::server_fns::telemetry::emit_info("settings.save_temp_unit", "Temperature unit saved", &[("value", &val)]);
+                                    }
                                 });
                             }
                             prop:value=temp_unit
@@ -161,7 +177,14 @@ pub fn SettingsModal(
                                         let new_val = !collection_public.get();
                                         set_collection_public.set(new_val);
                                         leptos::task::spawn_local(async move {
-                                            let _ = crate::server_fns::preferences::save_collection_public(new_val).await;
+                                            let _val_str = new_val.to_string();
+                                            if let Err(_e) = crate::server_fns::preferences::save_collection_public(new_val).await {
+                                                #[cfg(feature = "hydrate")]
+                                                crate::server_fns::telemetry::emit_error("settings.save_collection_public", &format!("Failed to save collection visibility: {}", _e), &[("public", &_val_str)]);
+                                            } else {
+                                                #[cfg(feature = "hydrate")]
+                                                crate::server_fns::telemetry::emit_info("settings.save_collection_public", "Collection visibility saved", &[("public", &_val_str)]);
+                                            }
                                         });
                                     }
                                 >
@@ -313,7 +336,12 @@ pub fn SettingsModal(
                             class=BTN_DANGER
                             on:click=move |_| {
                                 leptos::task::spawn_local(async move {
-                                    let _ = crate::server_fns::auth::logout().await;
+                                    #[cfg(feature = "hydrate")]
+                                    crate::server_fns::telemetry::emit_info("settings.logout", "User logged out", &[]);
+                                    if let Err(_e) = crate::server_fns::auth::logout().await {
+                                        #[cfg(feature = "hydrate")]
+                                        crate::server_fns::telemetry::emit_error("settings.logout", &format!("Logout failed: {}", _e), &[]);
+                                    }
                                     #[cfg(feature = "hydrate")]
                                     {
                                         if let Some(window) = web_sys::window() {
@@ -722,10 +750,16 @@ fn DataSourceConfig(
         if prov.is_empty() {
             // Remove: unlink device + clear legacy config
             leptos::task::spawn_local(async move {
-                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
-                let _ = crate::server_fns::climate::configure_zone_data_source(
+                if let Err(_e) = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_warn("settings.unlink_zone", &format!("Failed to unlink zone from device: {}", _e), &[("zone_id", zid.as_str())]);
+                }
+                if let Err(_e) = crate::server_fns::climate::configure_zone_data_source(
                     zid.clone(), None, String::new()
-                ).await;
+                ).await {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("settings.clear_data_source", &format!("Failed to clear data source: {}", _e), &[("zone_id", zid.as_str())]);
+                }
                 set_local_zones.update(|zones| {
                     if let Some(z) = zones.iter_mut().find(|z| z.id == zid) {
                         z.data_source_type = None;
@@ -777,7 +811,10 @@ fn DataSourceConfig(
 
             leptos::task::spawn_local(async move {
                 // Unlink any existing device first
-                let _ = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await;
+                if let Err(_e) = crate::server_fns::devices::unlink_zone_from_device(zid.clone()).await {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_warn("settings.unlink_zone", &format!("Failed to unlink zone from device: {}", _e), &[("zone_id", zid.as_str())]);
+                }
 
                 match crate::server_fns::climate::configure_zone_data_source(
                     zid.clone(), provider_opt.clone(), config,
@@ -1090,7 +1127,10 @@ fn NotificationSettings() -> impl IntoView {
             leptos::task::spawn_local(async move {
                 #[cfg(feature = "hydrate")]
                 { unsubscribe_browser_push().await; }
-                let _ = crate::server_fns::alerts::unsubscribe_push().await;
+                if let Err(_e) = crate::server_fns::alerts::unsubscribe_push().await {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("settings.unsubscribe_push", &format!("Failed to unsubscribe push: {}", _e), &[]);
+                }
                 set_is_enabled.set(false);
                 set_permission_status.set("Disabled".into());
             });

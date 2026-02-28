@@ -178,11 +178,15 @@ fn IndoorWizard(
                 z.id.clone(), z.name.clone(), temp, hum,
             ).await {
                 Ok(()) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("zone_wizard.save_indoor", "Indoor estimation saved", &[("zone_id", z.id.as_str())]);
                     on_saved();
                     on_close();
                 }
                 Err(e) => {
                     tracing::error!("Failed to save wizard estimation: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("zone_wizard.save_indoor", &format!("Failed to save estimation: {}", e), &[("zone_id", z.id.as_str())]);
                     set_is_saving.set(false);
                 }
             }
@@ -594,6 +598,8 @@ fn OutdoorWizard(
             let error = Closure::once(move |_: JsValue| {
                 set_is_locating.set(false);
                 tracing::warn!("Geolocation failed");
+                #[cfg(feature = "hydrate")]
+                crate::server_fns::telemetry::emit_warn("zone_wizard.geolocation", "Geolocation request failed", &[]);
             });
 
             if let Some(window) = web_sys::window() {
@@ -655,11 +661,15 @@ fn OutdoorWizard(
                 z.id.clone(), Some("weather_api".to_string()), config,
             ).await {
                 Ok(()) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_info("zone_wizard.save_outdoor", "Outdoor weather config saved", &[("zone_id", z.id.as_str())]);
                     on_saved();
                     on_close();
                 }
                 Err(e) => {
                     tracing::error!("Failed to configure weather API: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("zone_wizard.save_outdoor", &format!("Failed to configure weather API: {}", e), &[("zone_id", z.id.as_str())]);
                     set_is_saving.set(false);
                 }
             }

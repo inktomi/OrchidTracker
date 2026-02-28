@@ -72,6 +72,8 @@ pub fn QuickActions(
                     }
                     Err(e) => {
                         tracing::error!("Quick action '{}' failed: {}", key, e);
+                        #[cfg(feature = "hydrate")]
+                        crate::server_fns::telemetry::emit_error("quick_actions.log_event", &format!("Quick action '{}' failed: {}", key, e), &[("action", key)]);
                         btn_states.update(|m| { m.insert(key, BtnState::Idle); });
                     }
                 }

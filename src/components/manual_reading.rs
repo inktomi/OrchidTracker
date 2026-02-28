@@ -51,6 +51,8 @@ pub fn ManualReadingForm(
                 Ok(()) => on_saved(),
                 Err(e) => {
                     tracing::error!("Failed to log manual reading: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("manual_reading.save", &format!("Failed to log manual reading: {}", e), &[("zone_id", z.id.as_str())]);
                     set_error_msg.set(Some("Failed to save reading".into()));
                 }
             }

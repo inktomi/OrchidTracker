@@ -126,6 +126,8 @@ pub fn PhotoCapture(
                 Err(e) => {
                     let _ = web_sys::Url::revoke_object_url(&blob_url);
                     tracing::warn!("Image resize failed: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("photo_capture.resize", &format!("Image resize failed: {}", e), &[]);
                     set_error_msg.set(Some("Failed to process image".into()));
                 }
             }

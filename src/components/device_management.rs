@@ -33,6 +33,8 @@ pub fn DeviceList(
                 }
                 Err(e) => {
                     tracing::error!("Failed to delete device: {}", e);
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("device_management.delete", &format!("Failed to delete device: {}", e), &[("device_id", &device_id)]);
                 }
             }
         });
@@ -129,7 +131,11 @@ fn DeviceCard(
         leptos::task::spawn_local(async move {
             match crate::server_fns::devices::test_device(dt, cfg).await {
                 Ok(msg) => set_test_result.set(Some(Ok(msg))),
-                Err(e) => set_test_result.set(Some(Err(e.to_string()))),
+                Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("device_management.test_connection", &format!("Device test failed: {}", e), &[]);
+                    set_test_result.set(Some(Err(e.to_string())));
+                }
             }
             set_is_testing.set(false);
         });
@@ -251,7 +257,11 @@ fn DeviceForm(
 
             match result {
                 Ok(device) => on_saved(device),
-                Err(e) => set_error_msg.set(Some(format!("Save failed: {}", e))),
+                Err(e) => {
+                    #[cfg(feature = "hydrate")]
+                    crate::server_fns::telemetry::emit_error("device_management.save", &format!("Device save failed: {}", e), &[]);
+                    set_error_msg.set(Some(format!("Save failed: {}", e)));
+                }
             }
             set_is_saving.set(false);
         });

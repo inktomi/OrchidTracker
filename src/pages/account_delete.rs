@@ -191,12 +191,15 @@ fn AccountDeleteInner(username: String) -> impl IntoView {
                                                     Ok(()) => {
                                                         #[cfg(feature = "hydrate")]
                                                         {
+                                                            crate::server_fns::telemetry::emit_info("account_delete.success", "Account deleted", &[]);
                                                             if let Some(window) = web_sys::window() {
                                                                 let _ = window.location().set_href("/login");
                                                             }
                                                         }
                                                     }
                                                     Err(e) => {
+                                                        #[cfg(feature = "hydrate")]
+                                                        crate::server_fns::telemetry::emit_error("account_delete.submit", &format!("Account deletion failed: {}", e), &[]);
                                                         set_delete_error.set(e.to_string());
                                                         set_is_deleting.set(false);
                                                     }
