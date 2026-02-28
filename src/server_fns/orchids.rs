@@ -1218,7 +1218,7 @@ mod tests {
     /// This simulates the Leptos server function boundary (client serializes → server deserializes).
     #[test]
     fn test_orchid_struct_json_roundtrip_mounted() {
-        use crate::orchid::{Orchid, LightRequirement, PotType, PotMedium, PotSize};
+        use crate::orchid::{Orchid, LightRequirement, PotType};
 
         let orchid = Orchid {
             id: "orchid:test1".to_string(),
