@@ -143,9 +143,21 @@ pub(crate) mod ssr_types {
                 fertilize_frequency_days: self.fertilize_frequency_days,
                 fertilizer_type: self.fertilizer_type,
                 last_repotted_at: self.last_repotted_at,
-                pot_medium: self.pot_medium.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
-                pot_size: self.pot_size.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
-                pot_type: self.pot_type.and_then(|s| serde_json::from_str(&format!("\"{}\"", s)).ok()),
+                pot_medium: self.pot_medium.and_then(|s| {
+                    serde_json::from_str(&format!("\"{}\"", s)).map_err(|e| {
+                        tracing::warn!(value = %s, error = %e, "Failed to parse pot_medium from DB");
+                    }).ok()
+                }),
+                pot_size: self.pot_size.and_then(|s| {
+                    serde_json::from_str(&format!("\"{}\"", s)).map_err(|e| {
+                        tracing::warn!(value = %s, error = %e, "Failed to parse pot_size from DB");
+                    }).ok()
+                }),
+                pot_type: self.pot_type.and_then(|s| {
+                    serde_json::from_str(&format!("\"{}\"", s)).map_err(|e| {
+                        tracing::warn!(value = %s, error = %e, "Failed to parse pot_type from DB");
+                    }).ok()
+                }),
                 rest_start_month: self.rest_start_month,
                 rest_end_month: self.rest_end_month,
                 bloom_start_month: self.bloom_start_month,
@@ -295,6 +307,7 @@ pub async fn get_orchids() -> Result<Vec<Orchid>, ServerFnError> {
     let db_rows: Vec<OrchidDbRow> = response.take(0)
         .map_err(|e| internal_error("Get orchids parse failed", e))?;
 
+    tracing::debug!(count = db_rows.len(), "get_orchids: loaded orchids from DB");
     Ok(db_rows.into_iter().map(|r| r.into_orchid()).collect())
 }
 
@@ -469,6 +482,15 @@ pub async fn update_orchid(
     let light_req_str = orchid.light_requirement.as_str();
     let placement_str = orchid.placement.clone();
 
+    // Log pot fields for debugging silent save failures
+    tracing::info!(
+        orchid_id = %orchid.id,
+        pot_type = ?orchid.pot_type,
+        pot_medium = ?orchid.pot_medium,
+        pot_size = ?orchid.pot_size,
+        "update_orchid called"
+    );
+
     validate_orchid_fields(&orchid.name, &orchid.species, &orchid.notes, orchid.water_frequency_days, light_req_str, &placement_str, &orchid.light_lux, &orchid.temperature_range, &orchid.conservation_status)?;
 
     let user_id = require_auth().await?;
@@ -541,8 +563,17 @@ pub async fn update_orchid(
     let updated: Option<OrchidDbRow> = response.take(0)
         .map_err(|e| internal_error("Update orchid parse failed", e))?;
 
-    updated.map(|r| r.into_orchid())
-        .ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
+    let result = updated.map(|r| {
+        tracing::info!(
+            db_pot_type = ?r.pot_type,
+            db_pot_medium = ?r.pot_medium,
+            db_pot_size = ?r.pot_size,
+            "update_orchid DB returned"
+        );
+        r.into_orchid()
+    });
+
+    result.ok_or_else(|| ServerFnError::new("Orchid not found or not owned by you"))
 }
 
 /// **What is it?**
@@ -1181,5 +1212,72 @@ mod tests {
             let orchid = row.into_orchid();
             assert_eq!(orchid.pot_type, Some(pot_type.clone()), "PotType roundtrip failed for {:?}", pot_type);
         }
+    }
+
+    /// Verify the full Orchid struct JSON serialization roundtrip for PotType::Mounted.
+    /// This simulates the Leptos server function boundary (client serializes → server deserializes).
+    #[test]
+    fn test_orchid_struct_json_roundtrip_mounted() {
+        use crate::orchid::{Orchid, LightRequirement, PotType, PotMedium, PotSize};
+
+        let orchid = Orchid {
+            id: "orchid:test1".to_string(),
+            name: "Test Mounted".to_string(),
+            species: "Cattleya".to_string(),
+            water_frequency_days: 5,
+            light_requirement: LightRequirement::High,
+            notes: String::new(),
+            placement: "Greenhouse".to_string(),
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
+            last_watered_at: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
+            first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: None, // Mounted orchids have no medium
+            pot_size: None,   // Mounted orchids have no pot size
+            pot_type: Some(PotType::Mounted),
+            rest_start_month: None,
+            rest_end_month: None,
+            bloom_start_month: None,
+            bloom_end_month: None,
+            rest_water_multiplier: None,
+            rest_fertilizer_multiplier: None,
+            active_water_multiplier: None,
+            active_fertilizer_multiplier: None,
+            par_ppfd: None,
+        };
+
+        // JSON roundtrip (simulates server function boundary)
+        let json = serde_json::to_string(&orchid).expect("Orchid should serialize to JSON");
+        let deserialized: Orchid = serde_json::from_str(&json).expect("Orchid should deserialize from JSON");
+        assert_eq!(deserialized.pot_type, Some(PotType::Mounted), "pot_type=Mounted must survive JSON roundtrip");
+        assert_eq!(deserialized.pot_medium, None, "pot_medium should be None for mounted");
+        assert_eq!(deserialized.pot_size, None, "pot_size should be None for mounted");
+
+        // Also test all PotType variants survive JSON roundtrip inside the full Orchid struct
+        for variant in [PotType::Solid, PotType::Slotted, PotType::Clay, PotType::Mounted, PotType::Unknown] {
+            let mut o = orchid.clone();
+            o.pot_type = Some(variant.clone());
+            let j = serde_json::to_string(&o).expect("serialize");
+            let d: Orchid = serde_json::from_str(&j).expect("deserialize");
+            assert_eq!(d.pot_type, Some(variant.clone()), "PotType::{:?} should survive JSON roundtrip", variant);
+        }
+
+        // Test client-side form deserialization pattern (used in orchid_detail.rs line 412)
+        let form_val = "Mounted";
+        let result: Result<PotType, _> = serde_json::from_str(&format!("\"{}\"", form_val));
+        assert!(result.is_ok(), "Form value '{}' should deserialize: {:?}", form_val, result.err());
+        assert_eq!(result.unwrap(), PotType::Mounted);
     }
 }

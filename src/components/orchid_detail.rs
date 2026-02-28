@@ -407,9 +407,21 @@ fn DetailsTab(
             fertilize_frequency_days: edit_fert_freq.get().parse().ok(),
             fertilizer_type: if fert_type_val.is_empty() { None } else { Some(fert_type_val) },
             last_repotted_at: current.last_repotted_at,
-            pot_medium: if pot_medium_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_medium_val)).ok() },
-            pot_size: if pot_size_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_size_val)).ok() },
-            pot_type: if pot_type_val.is_empty() { None } else { serde_json::from_str(&format!("\"{}\"", pot_type_val)).ok() },
+            pot_medium: if pot_medium_val.is_empty() { None } else {
+                serde_json::from_str(&format!("\"{}\"", pot_medium_val)).map_err(|e| {
+                    tracing::warn!("Failed to parse pot_medium '{}': {}", pot_medium_val, e);
+                }).ok()
+            },
+            pot_size: if pot_size_val.is_empty() { None } else {
+                serde_json::from_str(&format!("\"{}\"", pot_size_val)).map_err(|e| {
+                    tracing::warn!("Failed to parse pot_size '{}': {}", pot_size_val, e);
+                }).ok()
+            },
+            pot_type: if pot_type_val.is_empty() { None } else {
+                serde_json::from_str(&format!("\"{}\"", pot_type_val)).map_err(|e| {
+                    tracing::warn!("Failed to parse pot_type '{}': {}", pot_type_val, e);
+                }).ok()
+            },
             par_ppfd: edit_par_ppfd.get().parse().ok(),
             rest_start_month: edit_rest_start.get().parse().ok(),
             rest_end_month: edit_rest_end.get().parse().ok(),
