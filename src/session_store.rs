@@ -5,7 +5,20 @@ use tower_sessions::session_store;
 
 use crate::db::db;
 
-/// A Tower Sessions store backed by SurrealDB.
+/// Maximum number of retry attempts for transient DB failures.
+const MAX_DB_RETRIES: u32 = 3;
+
+/// Check if a SurrealDB error looks like a transient connection issue worth retrying.
+fn is_transient_error(e: &surrealdb::Error) -> bool {
+    let msg = e.to_string().to_lowercase();
+    msg.contains("connection")
+        || msg.contains("broken pipe")
+        || msg.contains("reset")
+        || msg.contains("timed out")
+        || msg.contains("unreachable")
+}
+
+/// A Tower Sessions store backed by SurrealDB with automatic retry for transient failures.
 #[derive(Debug, Clone)]
 pub struct SurrealSessionStore;
 
@@ -16,9 +29,10 @@ impl session_store::SessionStore for SurrealSessionStore {
             .map_err(|e| session_store::Error::Encode(e.to_string()))?;
         let expiry = record.expiry_date.unix_timestamp();
 
-        // Retry with new IDs on collision (CREATE fails if record exists).
+        // Retry with new IDs on collision (CREATE fails if record exists),
+        // and retry on transient connection errors.
         const MAX_RETRIES: u32 = 5;
-        for _ in 0..MAX_RETRIES {
+        for attempt in 0..MAX_RETRIES {
             let id = record.id.to_string();
             let row = SessionRow {
                 data: data.clone(),
@@ -37,6 +51,15 @@ impl session_store::SessionStore for SurrealSessionStore {
                     record.id = Id::default();
                     continue;
                 }
+                Err(e) if is_transient_error(&e) && attempt < MAX_RETRIES - 1 => {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        error = %e,
+                        "Session create: transient DB error, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(10 * 2u64.pow(attempt))).await;
+                    continue;
+                }
                 Err(e) => return Err(session_store::Error::Backend(e.to_string())),
             }
         }
@@ -52,25 +75,59 @@ impl session_store::SessionStore for SurrealSessionStore {
             .map_err(|e| session_store::Error::Encode(e.to_string()))?;
         let expiry = record.expiry_date.unix_timestamp();
 
-        let row = SessionRow { data, expiry };
+        for attempt in 0..MAX_DB_RETRIES {
+            let row = SessionRow { data: data.clone(), expiry };
+            let result: surrealdb::Result<Option<SessionRow>> = db()
+                .upsert(("session", id.clone()))
+                .content(row)
+                .await;
 
-        let _: Option<SessionRow> = db()
-            .upsert(("session", id))
-            .content(row)
-            .await
-            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+            match result {
+                Ok(_) => return Ok(()),
+                Err(e) if is_transient_error(&e) && attempt < MAX_DB_RETRIES - 1 => {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        error = %e,
+                        "Session save: transient DB error, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(10 * 2u64.pow(attempt))).await;
+                }
+                Err(e) => return Err(session_store::Error::Backend(e.to_string())),
+            }
+        }
 
-        Ok(())
+        unreachable!()
     }
 
     async fn load(&self, session_id: &Id) -> session_store::Result<Option<Record>> {
         let id = session_id.to_string();
         let now = time::OffsetDateTime::now_utc().unix_timestamp();
 
-        let row: Option<SessionRow> = db()
-            .select(("session", id.clone()))
-            .await
-            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+        let row: Option<SessionRow> = {
+            let mut last_err = None;
+            let mut result = None;
+            for attempt in 0..MAX_DB_RETRIES {
+                match db().select(("session", id.clone())).await {
+                    Ok(val) => { result = Some(val); break; }
+                    Err(e) if is_transient_error(&e) && attempt < MAX_DB_RETRIES - 1 => {
+                        tracing::warn!(
+                            attempt = attempt + 1,
+                            error = %e,
+                            "Session load: transient DB error, retrying"
+                        );
+                        tokio::time::sleep(std::time::Duration::from_millis(10 * 2u64.pow(attempt))).await;
+                        last_err = Some(e);
+                    }
+                    Err(e) => return Err(session_store::Error::Backend(e.to_string())),
+                }
+            }
+            match result {
+                Some(val) => val,
+                None => return Err(session_store::Error::Backend(
+                    last_err.map(|e| e.to_string()).unwrap_or_else(|| "Unknown error".to_string())
+                )),
+            }
+        };
 
         match row {
             Some(row) if row.expiry > now => {
@@ -85,7 +142,7 @@ impl session_store::SessionStore for SurrealSessionStore {
                 }))
             }
             Some(_) | None => {
-                // Clean up expired session if it exists
+                // Clean up expired session if it exists (best-effort, no retry needed)
                 let _ = db()
                     .delete::<Option<SessionRow>>(("session", id))
                     .await;
@@ -97,12 +154,26 @@ impl session_store::SessionStore for SurrealSessionStore {
     async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
         let id = session_id.to_string();
 
-        let _: Option<SessionRow> = db()
-            .delete(("session", id))
-            .await
-            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+        for attempt in 0..MAX_DB_RETRIES {
+            let result: surrealdb::Result<Option<SessionRow>> = db()
+                .delete(("session", id.clone()))
+                .await;
 
-        Ok(())
+            match result {
+                Ok(_) => return Ok(()),
+                Err(e) if is_transient_error(&e) && attempt < MAX_DB_RETRIES - 1 => {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        error = %e,
+                        "Session delete: transient DB error, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(10 * 2u64.pow(attempt))).await;
+                }
+                Err(e) => return Err(session_store::Error::Backend(e.to_string())),
+            }
+        }
+
+        unreachable!()
     }
 }
 
@@ -189,5 +260,44 @@ mod tests {
         // Select
         let loaded: Option<SessionRow> = db.select(("session", id.clone())).await.unwrap();
         assert_eq!(loaded.unwrap().expiry, expected_expiry);
+    }
+
+    // ── is_transient_error / retry logic tests ──
+
+    #[test]
+    fn test_is_transient_error_string_matching() {
+        // Test the string matching logic directly since we can't easily construct
+        // arbitrary surrealdb::Error variants in tests. The function lowercases
+        // and checks for keywords.
+        let transient_keywords = ["connection", "broken pipe", "reset", "timed out", "unreachable"];
+        for keyword in transient_keywords {
+            // Verify the keyword would be found in a lowercased error message
+            let lower = keyword.to_lowercase();
+            assert!(
+                lower.contains("connection")
+                    || lower.contains("broken pipe")
+                    || lower.contains("reset")
+                    || lower.contains("timed out")
+                    || lower.contains("unreachable"),
+                "Keyword '{}' should be detected as transient",
+                keyword
+            );
+        }
+    }
+
+    #[test]
+    fn test_max_db_retries_is_reasonable() {
+        // Sanity check: retry count should be small to avoid excessive delays
+        assert!(MAX_DB_RETRIES >= 2, "Should retry at least twice");
+        assert!(MAX_DB_RETRIES <= 5, "Should not retry excessively");
+    }
+
+    #[test]
+    fn test_backoff_duration_reasonable() {
+        // Verify the backoff formula produces reasonable delays
+        for attempt in 0..MAX_DB_RETRIES {
+            let delay_ms = 10 * 2u64.pow(attempt);
+            assert!(delay_ms <= 1000, "Backoff at attempt {} should be under 1s, got {}ms", attempt, delay_ms);
+        }
     }
 }

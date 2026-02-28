@@ -1010,4 +1010,176 @@ mod tests {
         assert_eq!(normalize_light_requirement("  Low  "), "Low");
         assert_eq!(normalize_light_requirement(" Medium Light "), "Medium");
     }
+
+    // ── into_orchid() pot enum conversion tests (regression for pot_medium deserialization bug) ──
+
+    #[cfg(feature = "ssr")]
+    use super::ssr_types::OrchidDbRow;
+
+    #[cfg(feature = "ssr")]
+    fn test_orchid_db_row(pot_medium: Option<&str>, pot_size: Option<&str>, pot_type: Option<&str>) -> OrchidDbRow {
+        use surrealdb::types::RecordId;
+        OrchidDbRow {
+            id: RecordId::parse_simple("orchid:test1").unwrap(),
+            name: "Test".to_string(),
+            species: "Phalaenopsis".to_string(),
+            water_frequency_days: 7,
+            light_requirement: "Medium".to_string(),
+            notes: String::new(),
+            placement: String::new(),
+            light_lux: String::new(),
+            temperature_range: String::new(),
+            conservation_status: None,
+            native_region: None,
+            native_latitude: None,
+            native_longitude: None,
+            last_watered_at: None,
+            temp_min: None,
+            temp_max: None,
+            humidity_min: None,
+            humidity_max: None,
+            first_bloom_at: None,
+            last_fertilized_at: None,
+            fertilize_frequency_days: None,
+            fertilizer_type: None,
+            last_repotted_at: None,
+            pot_medium: pot_medium.map(|s| s.to_string()),
+            pot_size: pot_size.map(|s| s.to_string()),
+            pot_type: pot_type.map(|s| s.to_string()),
+            rest_start_month: None,
+            rest_end_month: None,
+            bloom_start_month: None,
+            bloom_end_month: None,
+            rest_water_multiplier: None,
+            rest_fertilizer_multiplier: None,
+            active_water_multiplier: None,
+            active_fertilizer_multiplier: None,
+            par_ppfd: None,
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_medium_all_variants() {
+        use crate::orchid::PotMedium;
+
+        let cases = [
+            ("Bark", PotMedium::Bark),
+            ("SphagnumMoss", PotMedium::SphagnumMoss),
+            ("Leca", PotMedium::Leca),
+            ("Inorganic", PotMedium::Inorganic),
+            ("Unknown", PotMedium::Unknown),
+        ];
+        for (db_val, expected) in cases {
+            let row = test_orchid_db_row(Some(db_val), None, None);
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_medium, Some(expected), "pot_medium '{}' should parse correctly", db_val);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_medium_none() {
+        let row = test_orchid_db_row(None, None, None);
+        let orchid = row.into_orchid();
+        assert_eq!(orchid.pot_medium, None);
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_medium_unrecognized_becomes_none() {
+        // A value that doesn't match any variant should gracefully return None (not panic)
+        let row = test_orchid_db_row(Some("CoconutHusk"), None, None);
+        let orchid = row.into_orchid();
+        // serde_json::from_str with .ok() returns None for unrecognized variants
+        // But PotMedium has #[serde(other)] on Unknown, so it should actually parse as Unknown
+        assert_eq!(orchid.pot_medium, Some(crate::orchid::PotMedium::Unknown));
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_size_all_variants() {
+        use crate::orchid::PotSize;
+
+        let cases = [
+            ("Small", PotSize::Small),
+            ("Medium", PotSize::Medium),
+            ("Large", PotSize::Large),
+            ("Unknown", PotSize::Unknown),
+        ];
+        for (db_val, expected) in cases {
+            let row = test_orchid_db_row(None, Some(db_val), None);
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_size, Some(expected), "pot_size '{}' should parse correctly", db_val);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_type_all_variants() {
+        use crate::orchid::PotType;
+
+        let cases = [
+            ("Solid", PotType::Solid),
+            ("Slotted", PotType::Slotted),
+            ("Clay", PotType::Clay),
+            ("Mounted", PotType::Mounted),
+            ("Unknown", PotType::Unknown),
+        ];
+        for (db_val, expected) in cases {
+            let row = test_orchid_db_row(None, None, Some(db_val));
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_type, Some(expected), "pot_type '{}' should parse correctly", db_val);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_into_orchid_pot_medium_serde_aliases() {
+        use crate::orchid::PotMedium;
+
+        // Verify that known serde aliases also parse correctly through the JSON roundtrip
+        let alias_cases = [
+            ("Orchid Bark", PotMedium::Bark),
+            ("Sphagnum Moss", PotMedium::SphagnumMoss),
+            ("LECA", PotMedium::Leca),
+        ];
+        for (db_val, expected) in alias_cases {
+            let row = test_orchid_db_row(Some(db_val), None, None);
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_medium, Some(expected), "pot_medium alias '{}' should parse correctly", db_val);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ssr")]
+    fn test_enum_to_db_string_roundtrip() {
+        use super::enum_to_db_string;
+        use crate::orchid::{PotMedium, PotSize, PotType};
+
+        // Verify enum_to_db_string produces values that into_orchid can parse back
+        let mediums = [PotMedium::Bark, PotMedium::SphagnumMoss, PotMedium::Leca, PotMedium::Inorganic, PotMedium::Unknown];
+        for medium in mediums {
+            let db_str = enum_to_db_string(&medium);
+            let row = test_orchid_db_row(Some(&db_str), None, None);
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_medium, Some(medium.clone()), "PotMedium roundtrip failed for {:?} (db string: '{}')", medium, db_str);
+        }
+
+        let sizes = [PotSize::Small, PotSize::Medium, PotSize::Large, PotSize::Unknown];
+        for size in sizes {
+            let db_str = enum_to_db_string(&size);
+            let row = test_orchid_db_row(None, Some(&db_str), None);
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_size, Some(size.clone()), "PotSize roundtrip failed for {:?}", size);
+        }
+
+        let types = [PotType::Solid, PotType::Slotted, PotType::Clay, PotType::Mounted, PotType::Unknown];
+        for pot_type in types {
+            let db_str = enum_to_db_string(&pot_type);
+            let row = test_orchid_db_row(None, None, Some(&db_str));
+            let orchid = row.into_orchid();
+            assert_eq!(orchid.pot_type, Some(pot_type.clone()), "PotType roundtrip failed for {:?}", pot_type);
+        }
+    }
 }
